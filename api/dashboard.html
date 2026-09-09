@@ -3,209 +3,276 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0c12">
+  <meta name="theme-color" content="#090a0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>SriTrack — Autonomous Price Drop Radar & Executive Console</title>
+  <title>SriTrack — Autonomous Price Drop Radar &amp; Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    /* ==========================================================================
+       DESIGN SYSTEM TOKENS (Modern SaaS: Linear / Vercel / Raycast Aesthetic)
+       ========================================================================== */
     :root {
-      --bg-base: #0a0c12;
-      --bg-sidebar: #10131d;
-      --bg-card: #151824;
-      --bg-card-hover: #1a1e2e;
-      --bg-card-subtle: rgba(255, 255, 255, 0.03);
-      --border-color: rgba(255, 255, 255, 0.07);
-      --border-focus: rgba(56, 189, 248, 0.4);
+      /* Backgrounds */
+      --bg-canvas: #090a0f;
+      --bg-sidebar: #0d1017;
+      --bg-card: #121620;
+      --bg-card-hover: #161b28;
+      --bg-card-elevated: #1a2030;
+      --bg-input: rgba(13, 16, 23, 0.8);
+      --bg-overlay: rgba(5, 7, 11, 0.82);
+
+      /* Borders */
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-medium: rgba(255, 255, 255, 0.12);
+      --border-hover: rgba(255, 255, 255, 0.18);
+      --border-focus: #3b82f6;
+
+      /* Typography & Text */
       --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
       --text-muted: #64748b;
       --text-dim: #475569;
-      --accent-blue: #38bdf8;
-      --accent-indigo: #6366f1;
-      --accent-emerald: #10b981;
-      --accent-amber: #f59e0b;
-      --accent-rose: #f43f5e;
-      --accent-warm: #c29d78;
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
-      --radius-xl: 22px;
-      --radius-lg: 16px;
-      --radius-md: 12px;
-      --radius-sm: 8px;
-      --sidebar-width: 270px;
-      --transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+      /* Semantic Accents */
+      --accent-primary: #3b82f6;
+      --accent-primary-hover: #2563eb;
+      --accent-emerald: #10b981;
+      --accent-emerald-subtle: rgba(16, 185, 129, 0.12);
+      --accent-amber: #f59e0b;
+      --accent-amber-subtle: rgba(245, 158, 11, 0.12);
+      --accent-rose: #f43f5e;
+      --accent-rose-subtle: rgba(244, 63, 94, 0.12);
+      --accent-blue-subtle: rgba(59, 130, 246, 0.12);
+
+      /* Spacing Scale */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+
+      /* Radius */
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 10px;
+      --radius-full: 9999px;
+
+      /* Layout */
+      --sidebar-width: 240px;
+      --header-height: 60px;
+      --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    * {
+    /* Base Reset */
+    *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
-    body {
-      background-color: var(--bg-base);
+    html, body {
+      height: 100%;
+      background-color: var(--bg-canvas);
       color: var(--text-primary);
       font-family: var(--font-sans);
-      min-height: 100vh;
-      overflow-x: hidden;
-      letter-spacing: -0.015em;
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
     }
 
-    /* Views */
+    button, input, select, textarea {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    /* Focus States for Accessibility */
+    :focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: 2px;
+    }
+
+    /* ==========================================================================
+       VIEW CONTAINER
+       ========================================================================== */
     .view-container {
-      width: 100%;
       min-height: 100vh;
+      width: 100%;
     }
 
-    /* ===================================================
-       LOGIN VIEW
-       =================================================== */
+    /* ==========================================================================
+       LOGIN VIEW (Clean, Serious, Minimal)
+       ========================================================================== */
     #login-view {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      min-height: 100vh;
-      background: radial-gradient(ellipse 60% 40% at 50% 30%, rgba(56, 189, 248, 0.08), transparent 70%);
+      padding: var(--space-5);
+      background-color: var(--bg-canvas);
     }
 
-    .login-panel {
+    .auth-card {
       width: 100%;
-      max-width: 420px;
+      max-width: 380px;
       background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-xl);
-      padding: clamp(28px, 6vw, 40px);
-      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.05);
-      animation: fadeIn 0.3s ease;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8) var(--space-6);
     }
 
-    .login-icon-box {
-      width: 52px;
-      height: 52px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, #1e2438 0%, #2b3350 100%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    .auth-header {
+      margin-bottom: var(--space-6);
+      text-align: left;
+    }
+
+    .auth-brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-primary);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 20px;
-      box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.5);
-    }
-    .login-icon-box svg {
-      width: 26px;
-      height: 26px;
-      stroke: var(--accent-blue);
     }
 
-    .login-header-title {
-      font-size: 22px;
-      font-weight: 800;
-      color: #fff;
-      text-align: center;
-      margin-bottom: 6px;
+    .brand-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
     }
-    .login-header-desc {
+
+    .auth-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-1);
+    }
+
+    .auth-desc {
       font-size: 13px;
-      color: var(--text-muted);
-      text-align: center;
-      line-height: 1.5;
-      margin-bottom: 26px;
+      color: var(--text-secondary);
+      line-height: 1.4;
     }
 
-    .form-row {
-      margin-bottom: 18px;
+    .form-group {
+      margin-bottom: var(--space-4);
     }
-    .form-field-label {
+
+    .form-label {
       display: block;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      font-size: 12px;
+      font-weight: 500;
       color: var(--text-secondary);
-      margin-bottom: 6px;
+      margin-bottom: var(--space-2);
     }
-    .form-input-wrap {
+
+    .input-wrapper {
       position: relative;
       display: flex;
       align-items: center;
     }
-    .form-control {
+
+    .form-input {
       width: 100%;
-      background: rgba(8, 10, 16, 0.7);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      color: #fff;
-      font-size: 14px;
-      font-family: inherit;
-      transition: var(--transition);
+      height: 40px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0 var(--space-3);
+      color: var(--text-primary);
+      font-size: 13.5px;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     }
-    .form-control:focus {
+
+    .form-input:focus {
       outline: none;
-      border-color: var(--accent-blue);
-      background: rgba(14, 18, 28, 0.95);
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 1px var(--accent-primary);
     }
-    .pwd-eye-btn {
+
+    .form-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .input-addon-btn {
       position: absolute;
-      right: 12px;
+      right: var(--space-2);
       background: none;
       border: none;
       color: var(--text-muted);
       cursor: pointer;
+      padding: var(--space-1);
       display: flex;
       align-items: center;
-      padding: 4px;
     }
 
-    .btn-submit-main {
+    .input-addon-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .btn-auth-submit {
       width: 100%;
-      background: #fff;
-      color: #0a0c12;
+      height: 40px;
+      background: #ffffff;
+      color: #090a0f;
       border: none;
-      border-radius: var(--radius-sm);
-      padding: 12px 20px;
-      font-size: 14px;
-      font-weight: 700;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      margin-top: 10px;
-      transition: var(--transition);
-    }
-    .btn-submit-main:hover {
-      background: #f1f5f9;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+      gap: var(--space-2);
+      margin-top: var(--space-5);
+      transition: background-color var(--transition-fast);
     }
 
-    /* ===================================================
-       MAIN APPLICATION LAYOUT (SIDEBAR + WORKSPACE)
-       =================================================== */
+    .btn-auth-submit:hover {
+      background: #e2e8f0;
+    }
+
+    /* ==========================================================================
+       APPLICATION SHELL: SIDEBAR & WORKSPACE
+       ========================================================================== */
     #dashboard-view {
       display: none;
-      min-height: 100vh;
     }
 
-    .app-layout {
+    .app-shell {
       display: flex;
       min-height: 100vh;
-      position: relative;
+      background: var(--bg-canvas);
     }
 
-    /* Left Sidebar */
+    /* ==========================================================================
+       SIDEBAR: SINGLE PRIMARY ITEM (DASHBOARD ONLY)
+       ========================================================================== */
     .app-sidebar {
       width: var(--sidebar-width);
       background: var(--bg-sidebar);
-      border-right: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-subtle);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -214,901 +281,1064 @@
       bottom: 0;
       left: 0;
       z-index: 100;
-      padding: 24px 18px;
-      transition: transform 0.3s ease;
+      padding: var(--space-4);
+      transition: transform var(--transition-fast);
     }
 
+    .sidebar-top-section {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Brand Header */
     .sidebar-brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 24px;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-2) var(--space-5);
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: var(--space-4);
     }
-    .brand-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #1e2438 0%, #2b3350 100%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+
+    .sidebar-brand-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-primary);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    }
-    .brand-avatar svg {
-      width: 22px;
-      height: 22px;
-      stroke: var(--accent-blue);
-    }
-    .brand-info h2 {
-      font-size: 17px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-    }
-    .brand-info span {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-    }
-
-    .sidebar-nav {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 28px;
-    }
-    .nav-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border-radius: var(--radius-sm);
-      color: var(--text-secondary);
-      font-size: 13.5px;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-    .nav-item:hover {
-      background: rgba(255, 255, 255, 0.04);
-      color: #fff;
-    }
-    .nav-item.active {
-      background: rgba(56, 189, 248, 0.12);
-      color: var(--accent-blue);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-    }
-    .nav-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .nav-badge {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--text-secondary);
-    }
-    .nav-item.active .nav-badge {
-      background: var(--accent-blue);
-      color: #0a0c12;
-    }
-
-    .sidebar-subheading {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-dim);
-      padding: 0 14px;
-      margin-bottom: 10px;
-    }
-
-    .store-list-menu {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 24px;
-    }
-    .store-menu-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 13px;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: var(--transition);
-    }
-    .store-menu-item:hover {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .store-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-    .dot-casio { background: var(--accent-blue); box-shadow: 0 0 8px rgba(56, 189, 248, 0.6); }
-    .dot-flipkart { background: var(--accent-amber); box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
-    .dot-amazon { background: var(--accent-emerald); box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
-
-    /* Pro / Autonomous Feature Card in Sidebar */
-    .sidebar-pro-card {
-      background: linear-gradient(135deg, rgba(30, 36, 56, 0.7) 0%, rgba(20, 24, 38, 0.9) 100%);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      margin-bottom: 20px;
-    }
-    .pro-tag-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--accent-blue);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
-    }
-    .pro-desc {
-      font-size: 12px;
-      color: var(--text-secondary);
-      line-height: 1.4;
-      margin-bottom: 12px;
-    }
-    .btn-pro-action {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-color);
-      color: #fff;
-      border-radius: var(--radius-sm);
-      padding: 8px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-    .btn-pro-action:hover {
-      background: #fff;
-      color: #0a0c12;
-      border-color: #fff;
-    }
-
-    /* User Profile in Sidebar */
-    .sidebar-user {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-color);
-    }
-    .user-meta-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-    .user-avatar-circle {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      background: var(--accent-blue);
-      color: #0a0c12;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 13px;
       flex-shrink: 0;
     }
-    .user-text-info {
+
+    .sidebar-brand-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-brand-status {
+      font-size: 11px;
+      color: var(--accent-emerald);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 500;
+    }
+
+    .status-dot-live {
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-full);
+      background: var(--accent-emerald);
+    }
+
+    /* Primary Navigation: Dashboard is the ONLY item */
+    .sidebar-nav-single {
+      margin-bottom: var(--space-6);
+    }
+
+    .nav-link-dashboard {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      height: 38px;
+      padding: 0 var(--space-3);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      font-size: 13.5px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+    }
+
+    .nav-link-dashboard:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-link-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .nav-link-left svg {
+      width: 16px;
+      height: 16px;
+      color: var(--accent-primary);
+    }
+
+    .nav-item-badge {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+    }
+
+    /* Telemetry Info Block */
+    .sidebar-status-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .status-box-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .status-box-header svg {
+      color: var(--accent-emerald);
+    }
+
+    .status-box-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-bottom: var(--space-3);
+    }
+
+    .btn-sweep-action {
+      width: 100%;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .btn-sweep-action:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--border-medium);
+    }
+
+    /* Sidebar User Footer */
+    .sidebar-footer {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: var(--space-4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .user-profile-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
       min-width: 0;
     }
-    .user-email-str {
-      font-size: 13px;
+
+    .user-avatar-initial {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-full);
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
       font-weight: 600;
-      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-identity-text {
+      min-width: 0;
+    }
+
+    .user-identity-email {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       display: block;
     }
-    .user-status-str {
+
+    .user-identity-role {
       font-size: 11px;
-      color: var(--accent-emerald);
-      font-family: var(--font-mono);
+      color: var(--text-muted);
     }
-    .btn-signout-icon {
+
+    .btn-icon-signout {
       background: none;
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 6px;
-      transition: var(--transition);
+      padding: var(--space-1);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color var(--transition-fast);
     }
-    .btn-signout-icon:hover {
+
+    .btn-icon-signout:hover {
       color: var(--accent-rose);
     }
 
-    /* Main Workspace Canvas */
+    /* ==========================================================================
+       MAIN WORKSPACE
+       ========================================================================== */
     .app-workspace {
       margin-left: var(--sidebar-width);
       flex: 1;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      background: var(--bg-base);
+      background: var(--bg-canvas);
     }
 
-    /* Top Navigation Header */
-    .top-toolbar {
-      height: 72px;
-      background: rgba(10, 12, 18, 0.85);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border-color);
+    /* Top Utility Header */
+    .workspace-topbar {
+      height: var(--header-height);
+      background: rgba(9, 10, 15, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 clamp(16px, 3vw, 32px);
+      padding: 0 var(--space-6);
       position: sticky;
       top: 0;
       z-index: 90;
-      gap: 16px;
+      gap: var(--space-4);
     }
 
-    .toolbar-search {
-      position: relative;
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
       flex: 1;
-      max-width: 440px;
+      max-width: 480px;
     }
-    .toolbar-search input {
+
+    .btn-mobile-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: var(--space-1);
+    }
+
+    .topbar-search-box {
+      position: relative;
       width: 100%;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 999px;
-      padding: 10px 16px 10px 40px;
-      color: #fff;
-      font-size: 13.5px;
-      font-family: inherit;
-      transition: var(--transition);
     }
-    .toolbar-search input:focus {
-      outline: none;
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-    }
-    .search-glyph {
+
+    .search-icon-fixed {
       position: absolute;
-      left: 14px;
+      left: var(--space-3);
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-muted);
       pointer-events: none;
     }
 
-    .toolbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .topbar-search-input {
+      width: 100%;
+      height: 36px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0 var(--space-3) 0 34px;
+      color: var(--text-primary);
+      font-size: 13px;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     }
 
-    .btn-action-tool {
+    .topbar-search-input:focus {
+      outline: none;
+      border-color: var(--border-medium);
+      box-shadow: 0 0 0 1px var(--border-medium);
+    }
+
+    .topbar-search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    /* Standardized Buttons */
+    .btn-ui {
+      height: 36px;
+      padding: 0 var(--space-4);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 9px 16px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-      border: 1px solid var(--border-color);
-      background: rgba(255, 255, 255, 0.04);
-      color: #fff;
-      font-family: inherit;
-    }
-    .btn-action-tool:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.15);
-      transform: translateY(-1px);
-    }
-    .btn-primary-tool {
-      background: #fff;
-      color: #0a0c12;
-      border-color: #fff;
-      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
-    }
-    .btn-primary-tool:hover {
-      background: #f8fafc;
-      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
-    }
-
-    .mobile-menu-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: #fff;
-      cursor: pointer;
-      padding: 6px;
-    }
-
-    /* Content Area */
-    .workspace-content {
-      padding: clamp(20px, 3vw, 36px);
-      flex: 1;
-    }
-
-    /* Breadcrumbs & Title */
-    .workspace-header {
-      margin-bottom: 24px;
-    }
-    .breadcrumbs-trail {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .breadcrumbs-trail span {
-      color: var(--text-secondary);
-    }
-    .page-title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    .page-main-heading {
-      font-size: clamp(24px, 3vw, 30px);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #fff;
-    }
-
-    /* Metric Overview Cards (inspired by reference image) */
-    .kpi-row-overview {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-
-    .kpi-box-module {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      transition: var(--transition);
-      position: relative;
-    }
-    .kpi-box-module:hover {
-      border-color: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-    }
-    .kpi-header-mini {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .kpi-mini-tag {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-    }
-    .kpi-mini-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      background: var(--bg-card-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--accent-blue);
-    }
-    .kpi-lead-value {
-      font-size: clamp(26px, 2.8vw, 32px);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      color: #fff;
-      line-height: 1.1;
-      margin-bottom: 4px;
-    }
-    .kpi-subtext-detail {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    /* Workspace Body Split */
-    .workspace-split-body {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 24px;
-      align-items: flex-start;
-    }
-
-    /* Left: Catalog Section */
-    .catalog-block {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    /* Filter Pills */
-    .filter-pills-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      padding-bottom: 4px;
-    }
-    .filter-pills-bar::-webkit-scrollbar {
-      display: none;
-    }
-    .filter-chip {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      font-size: 13px;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 999px;
-      cursor: pointer;
+      gap: var(--space-2);
+      border: 1px solid transparent;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
       white-space: nowrap;
-      transition: var(--transition);
-    }
-    .filter-chip:hover {
-      background: var(--bg-card-hover);
-      color: #fff;
-    }
-    .filter-chip.active {
-      background: #fff;
-      color: #0a0c12;
-      border-color: #fff;
-      font-weight: 700;
     }
 
-    /* Product Cards Grid */
-    .product-cards-canvas {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 16px;
+    .btn-ui-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-subtle);
+      color: var(--text-primary);
     }
 
-    .product-item-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: var(--transition);
-      position: relative;
-    }
-    .product-item-card:hover {
-      background: var(--bg-card-hover);
-      border-color: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-      box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6);
+    .btn-ui-secondary:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--border-medium);
     }
 
-    .card-top-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-    }
-    .store-label-pill {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 3px 9px;
-      border-radius: 999px;
-      letter-spacing: 0.04em;
-    }
-    .store-label-casio {
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      color: var(--accent-blue);
-    }
-    .store-label-flipkart {
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      color: var(--accent-amber);
-    }
-    .store-label-amazon {
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: var(--accent-emerald);
-    }
-
-    .tracking-indicator {
-      font-size: 11px;
-      font-family: var(--font-mono);
+    .btn-ui-primary {
+      background: #ffffff;
+      color: #090a0f;
       font-weight: 600;
+    }
+
+    .btn-ui-primary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Workspace Content Area */
+    .workspace-body {
+      padding: var(--space-6);
+      max-width: 1540px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Page Header */
+    .page-title-section {
+      margin-bottom: var(--space-6);
+    }
+
+    .page-breadcrumb {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: var(--space-1);
+    }
+
+    .page-header-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .page-heading {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .page-subheading {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .live-sync-indicator {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    .track-active {
-      color: var(--accent-emerald);
-    }
-    .track-active::before {
-      content: "";
+
+    .indicator-pulse {
       width: 6px;
       height: 6px;
-      border-radius: 50%;
+      border-radius: var(--radius-full);
       background: var(--accent-emerald);
-      box-shadow: 0 0 8px var(--accent-emerald);
-      animation: pulseDot 2s infinite;
-    }
-    @keyframes pulseDot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.3; transform: scale(0.8); }
-    }
-    .track-paused {
-      color: var(--text-dim);
     }
 
-    .product-title-text {
-      font-size: 15px;
-      font-weight: 700;
-      color: #fff;
+    /* ==========================================================================
+       METRIC KPI ROW (4 Compact Cards, Restrained, High Scanability)
+       ========================================================================== */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4);
+      margin-bottom: var(--space-8);
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 96px;
+    }
+
+    .metric-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-2);
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .metric-icon {
+      color: var(--text-muted);
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.1;
+      margin-bottom: var(--space-1);
+    }
+
+    .metric-value.highlight-emerald {
+      color: var(--accent-emerald);
+    }
+
+    .metric-caption {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       MAIN CONTENT: TWO-COLUMN STRUCTURE
+       ========================================================================== */
+    .dashboard-layout-columns {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: var(--space-6);
+      align-items: start;
+    }
+
+    /* Left Column: Monitored Products Catalog */
+    .catalog-section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    /* Filter Bar */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: var(--space-1);
+    }
+
+    .filter-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-btn {
+      height: 32px;
+      padding: 0 var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .filter-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-medium);
+    }
+
+    .filter-btn.active {
+      color: #090a0f;
+      background: #ffffff;
+      border-color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Product Cards Grid */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--space-4);
+    }
+
+    .product-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color var(--transition-fast), background-color var(--transition-fast);
+    }
+
+    .product-card:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+    }
+
+    .product-meta-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-3);
+    }
+
+    .platform-badge {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.02em;
+    }
+
+    .badge-casio {
+      background: var(--accent-blue-subtle);
+      color: #60a5fa;
+      border: 1px solid rgba(96, 165, 250, 0.25);
+    }
+
+    .badge-flipkart {
+      background: var(--accent-amber-subtle);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.25);
+    }
+
+    .badge-amazon {
+      background: var(--accent-emerald-subtle);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.25);
+    }
+
+    .status-badge-inline {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-muted);
+    }
+
+    .status-badge-inline.is-active {
+      color: var(--accent-emerald);
+    }
+
+    .status-badge-inline.is-active::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: var(--radius-full);
+      background: var(--accent-emerald);
+    }
+
+    .product-title-row {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
       line-height: 1.4;
-      margin-bottom: 16px;
+      margin-bottom: var(--space-4);
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      min-height: 42px;
-    }
-    .product-title-text a {
-      color: inherit;
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-    .product-title-text a:hover {
-      color: var(--accent-blue);
+      min-height: 39px;
     }
 
-    .price-metric-cluster {
-      background: rgba(8, 10, 16, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      border-radius: var(--radius-md);
-      padding: 12px 14px;
+    .product-title-row a {
+      color: inherit;
+      text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+
+    .product-title-row a:hover {
+      color: var(--accent-primary);
+    }
+
+    .price-data-box {
+      background: rgba(9, 10, 15, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: var(--space-3);
     }
-    .price-col {
+
+    .price-box-col {
       display: flex;
       flex-direction: column;
     }
-    .price-col-title {
-      font-size: 10px;
-      font-weight: 700;
+
+    .price-box-label {
+      font-size: 10.5px;
+      font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       color: var(--text-muted);
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
-    .price-col-value {
+
+    .price-box-val-current {
       font-family: var(--font-mono);
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
     }
-    .price-col-value.is-deal {
+
+    .price-box-val-current.target-reached {
       color: var(--accent-emerald);
     }
-    .price-col-target {
+
+    .price-box-val-target {
       font-family: var(--font-mono);
-      font-size: 15px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 500;
       color: var(--text-secondary);
     }
 
-    .progress-bar-wrap {
-      margin-bottom: 16px;
-    }
-    .progress-info-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      margin-bottom: 6px;
-    }
-    .progress-rail {
-      width: 100%;
-      height: 5px;
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-    .progress-gauge {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent-blue), var(--accent-emerald));
-      border-radius: 999px;
-      transition: width 0.4s ease;
+    /* Target Progress Bar */
+    .progress-wrapper {
+      margin-bottom: var(--space-4);
     }
 
-    .card-footer-controls {
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      margin-bottom: var(--space-1);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-primary);
+      border-radius: var(--radius-full);
+      transition: width 300ms ease;
+    }
+
+    /* Product Card Controls */
+    .product-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
     }
-    .time-since-check {
+
+    .last-checked-label {
       font-size: 11px;
       font-family: var(--font-mono);
-      color: var(--text-dim);
+      color: var(--text-muted);
     }
-    .card-actions-strip {
+
+    .card-actions {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
-    .btn-item-action {
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+
+    .btn-action-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      border: 1px solid transparent;
       color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: var(--transition);
+      transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
       text-decoration: none;
     }
-    .btn-item-action:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
+
+    .btn-action-icon:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-subtle);
+      color: var(--text-primary);
     }
-    .btn-item-action.delete-act:hover {
-      background: rgba(244, 63, 94, 0.15);
+
+    .btn-action-icon.danger-btn:hover {
+      background: var(--accent-rose-subtle);
       color: var(--accent-rose);
       border-color: rgba(244, 63, 94, 0.3);
     }
 
-    /* Right Side Panel: Real-time Deal Radar & Activity Feed */
-    .activity-panel-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+    /* Empty State */
+    .empty-state-box {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: var(--space-8) var(--space-4);
+      background: var(--bg-card);
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius-md);
     }
 
-    .radar-alerts-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 22px;
+    .empty-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--space-1);
     }
-    .panel-card-head {
+
+    .empty-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       RIGHT RAIL: RADAR FEED & PRESETS
+       ========================================================================== */
+    .activity-rail {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .panel-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+    }
+
+    .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: var(--space-4);
+      padding-bottom: var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
     }
-    .panel-title-text {
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
+
+    .panel-heading {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-2);
     }
 
-    .deal-stream-box {
+    .panel-badge {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--accent-emerald);
+      background: var(--accent-emerald-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+    }
+
+    .deals-stream-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      max-height: 520px;
+      gap: var(--space-2);
+      max-height: 480px;
       overflow-y: auto;
-      padding-right: 4px;
+      padding-right: 2px;
     }
-    .deal-stream-box::-webkit-scrollbar {
+
+    .deals-stream-list::-webkit-scrollbar {
       width: 4px;
     }
-    .deal-stream-box::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
+
+    .deals-stream-list::-webkit-scrollbar-thumb {
+      background: var(--border-subtle);
+      border-radius: var(--radius-full);
     }
 
-    .deal-alert-card-row {
-      background: rgba(8, 10, 16, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: var(--radius-md);
-      padding: 12px 14px;
+    .deal-stream-item {
+      background: rgba(9, 10, 15, 0.5);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3);
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      transition: var(--transition);
+      gap: var(--space-1);
+      transition: border-color var(--transition-fast), background-color var(--transition-fast);
     }
-    .deal-alert-card-row:hover {
-      border-color: rgba(255, 255, 255, 0.15);
-      background: rgba(14, 18, 28, 0.8);
+
+    .deal-stream-item:hover {
+      border-color: var(--border-medium);
+      background: rgba(13, 16, 23, 0.8);
     }
-    .alert-row-top {
+
+    .deal-item-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 10px;
+      gap: var(--space-2);
     }
-    .deal-watch-link {
-      font-size: 13px;
-      font-weight: 700;
-      color: #fff;
+
+    .deal-item-title {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-primary);
       text-decoration: none;
-      line-height: 1.3;
-      transition: color 0.15s;
+      line-height: 1.35;
+      transition: color var(--transition-fast);
     }
-    .deal-watch-link:hover {
-      color: var(--accent-blue);
+
+    .deal-item-title:hover {
+      color: var(--accent-primary);
     }
-    .discount-pill-glow {
+
+    .deal-discount-pill {
       font-size: 11px;
       font-family: var(--font-mono);
-      font-weight: 700;
+      font-weight: 600;
       color: var(--accent-emerald);
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 2px 7px;
-      border-radius: 999px;
+      background: var(--accent-emerald-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
       white-space: nowrap;
     }
-    .alert-row-bottom {
+
+    .deal-item-bottom {
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 11px;
-      color: var(--text-muted);
       font-family: var(--font-mono);
+      color: var(--text-muted);
     }
 
-    /* Target Shortcuts Widget */
-    .shortcuts-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 20px;
+    .deal-price-val {
+      color: var(--text-primary);
+      font-weight: 600;
     }
-    .shortcut-row-btn {
+
+    /* Preset Item Row */
+    .preset-button-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 12px;
+      padding: var(--space-3);
       border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      margin-bottom: 8px;
+      background: rgba(9, 10, 15, 0.5);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: var(--space-2);
       cursor: pointer;
-      transition: var(--transition);
-      text-decoration: none;
-      color: #fff;
-      font-size: 12.5px;
-    }
-    .shortcut-row-btn:hover {
-      background: rgba(255, 255, 255, 0.07);
-      border-color: rgba(255, 255, 255, 0.12);
-      transform: translateX(2px);
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
     }
 
-    /* Modal System */
-    .modal-overlay-plane {
+    .preset-button-row:hover {
+      background: rgba(13, 16, 23, 0.9);
+      border-color: var(--border-medium);
+    }
+
+    .preset-info-name {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .preset-info-target {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .preset-action-tag {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      color: var(--accent-primary);
+    }
+
+    /* ==========================================================================
+       MODAL: ADD NEW PRODUCT
+       ========================================================================== */
+    .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      z-index: 999;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 1000;
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: var(--space-4);
     }
-    .modal-overlay-plane.active {
+
+    .modal-backdrop.is-open {
       display: flex;
     }
-    .modal-container-card {
+
+    .modal-dialog {
       width: 100%;
-      max-width: 480px;
+      max-width: 440px;
       background: var(--bg-card);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: var(--radius-xl);
-      padding: 30px;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.08);
-      animation: fadeIn 0.2s ease;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8);
     }
-    .modal-header-line {
+
+    .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: var(--space-2);
     }
-    .modal-title-bold {
-      font-size: 19px;
-      font-weight: 800;
-      color: #fff;
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
     }
-    .modal-dismiss-btn {
+
+    .modal-close-btn {
       background: none;
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 4px;
-      transition: color 0.15s;
-    }
-    .modal-dismiss-btn:hover {
-      color: #fff;
+      padding: var(--space-1);
+      display: flex;
+      align-items: center;
     }
 
-    /* Toast */
-    .toast-capsule {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 10000;
-      background: #191e2e;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #fff;
-      padding: 12px 20px;
-      border-radius: 999px;
+    .modal-close-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-subtitle {
       font-size: 13px;
-      font-weight: 600;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-5);
+      line-height: 1.45;
+    }
+
+    .preset-pill-row {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    .pill-btn {
+      height: 26px;
+      padding: 0 var(--space-2);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), color var(--transition-fast);
+    }
+
+    .pill-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-medium);
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-6);
+    }
+
+    /* Toast Notification */
+    .toast-pill {
+      position: fixed;
+      bottom: var(--space-6);
+      right: var(--space-6);
+      z-index: 2000;
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-medium);
+      color: var(--text-primary);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
       display: none;
       align-items: center;
-      gap: 10px;
-      animation: slideUp 0.3s ease;
+      gap: var(--space-2);
     }
-    .toast-capsule.active {
+
+    .toast-pill.is-visible {
       display: flex;
     }
 
-    /* Spinner & Keyframes */
+    /* Loading Spinner Utility */
     .spin {
       animation: rotate 1s linear infinite;
     }
+
     @keyframes rotate {
       100% { transform: rotate(360deg); }
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
 
-    /* Responsive */
-    @media (max-width: 1100px) {
-      .workspace-split-body {
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS (Mobile & Tablet Refinements)
+       ========================================================================== */
+    @media (max-width: 1024px) {
+      .dashboard-layout-columns {
         grid-template-columns: 1fr;
+      }
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
 
@@ -1116,416 +1346,432 @@
       .app-sidebar {
         transform: translateX(-100%);
       }
-      .app-sidebar.open {
+      .app-sidebar.mobile-open {
         transform: translateX(0);
         box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
       }
       .app-workspace {
         margin-left: 0;
       }
-      .mobile-menu-btn {
+      .btn-mobile-toggle {
         display: block;
       }
-      .toolbar-search {
+      .workspace-topbar {
+        padding: 0 var(--space-4);
+      }
+      .workspace-body {
+        padding: var(--space-4);
+      }
+      .topbar-left {
         max-width: 100%;
-      }
-      .kpi-row-overview {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .product-cards-canvas {
-        grid-template-columns: 1fr;
       }
     }
 
-    @media (max-width: 480px) {
-      .kpi-row-overview {
+    @media (max-width: 520px) {
+      .metrics-grid {
         grid-template-columns: 1fr;
       }
-      .top-toolbar {
-        padding: 0 14px;
+      .products-grid {
+        grid-template-columns: 1fr;
       }
-      .workspace-content {
-        padding: 16px 14px 60px;
+      .topbar-actions .btn-ui-secondary span {
+        display: none;
       }
-      .modal-container-card {
-        border-radius: 20px 20px 0 0;
-        position: fixed;
-        bottom: 0;
-        max-width: 100%;
+      .topbar-actions .btn-ui-secondary {
+        padding: 0 10px;
+      }
+      .modal-dialog {
+        border-radius: var(--radius-lg);
+        padding: var(--space-5);
+      }
+      .toast-pill {
+        left: var(--space-4);
+        right: var(--space-4);
+        bottom: var(--space-4);
+        justify-content: center;
       }
     }
   </style>
 </head>
 <body>
-  <div class="app-viewport">
+  <div class="view-wrapper">
 
-    <!-- ===================================================
+    <!-- ========================================================================
          VIEW 1: CLEAN SIGN IN VIEW
-         =================================================== -->
-    <div id="login-view" class="view-container" style="display: flex;">
-      <div class="login-panel">
-        <div class="login-icon-box">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polygon points="12 6 12 12 14 14"></polygon>
-          </svg>
+         ======================================================================== -->
+    <div id="login-view" class="view-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="auth-brand-badge">
+            <div class="brand-mark">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="12 6 12 12 14 14"></polygon>
+              </svg>
+            </div>
+            <span class="brand-text">SriTrack</span>
+          </div>
+          <h1 class="auth-title">Console Sign In</h1>
+          <p class="auth-desc">Sign in to access real-time price drops and autonomous deal radar telemetry.</p>
         </div>
-        <h1 class="login-header-title">SriTrack Console</h1>
-        <p class="login-header-desc">Authenticate to access real-time price drops, silent sale alerts, and autonomous radar telemetry.</p>
 
         <form id="login-form" onsubmit="handleAuthLogin(event)">
-          <div class="form-row">
-            <label class="form-field-label">Email or Username</label>
-            <div class="form-input-wrap">
-              <input type="email" id="login-email" class="form-control" value="" placeholder="name@domain.com" required autocomplete="username">
+          <div class="form-group">
+            <label class="form-label" for="login-email">Email or Username</label>
+            <div class="input-wrapper">
+              <input type="text" id="login-email" class="form-input" placeholder="name@domain.com" required autocomplete="username">
             </div>
           </div>
 
-          <div class="form-row">
-            <label class="form-field-label">Password</label>
-            <div class="form-input-wrap">
-              <input type="password" id="login-password" class="form-control" value="" placeholder="••••••••" required autocomplete="current-password">
-              <button type="button" class="pwd-eye-btn" onclick="togglePasswordVisibility()" title="Toggle password visibility">
-                <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Password</label>
+            <div class="input-wrapper">
+              <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="input-addon-btn" onclick="togglePasswordVisibility()" title="Toggle password visibility" aria-label="Toggle password visibility">
+                <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
             </div>
           </div>
 
-          <button type="submit" class="btn-submit-main" id="btn-login-submit">
-            <span id="login-btn-label">Sign In &amp; Enter Console</span>
-            <svg id="login-spinner" style="display:none;" class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+          <button type="submit" class="btn-auth-submit" id="btn-login-submit">
+            <span id="login-btn-label">Sign In</span>
+            <svg id="login-spinner" style="display:none;" class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
           </button>
         </form>
       </div>
     </div>
 
 
-    <!-- ===================================================
-         VIEW 2: PROFESSIONAL SAAS DASHBOARD (SIDEBAR + WORKSPACE)
-         =================================================== -->
-    <div id="dashboard-view" class="view-container" style="display: none;">
-      <div class="app-layout">
+    <!-- ========================================================================
+         VIEW 2: REFINED SAAS DASHBOARD (SINGLE SIDEBAR ITEM: DASHBOARD)
+         ======================================================================== -->
+    <div id="dashboard-view" class="view-container">
+      <div class="app-shell">
 
-        <!-- Left Sidebar Navigation -->
-        <aside class="app-sidebar" id="app-sidebar">
-          <div>
-            <!-- Brand Logo -->
+        <!-- Sidebar: Compact, Minimal, Exactly ONE Nav Item (Dashboard) -->
+        <aside class="app-sidebar" id="app-sidebar" aria-label="Primary Navigation">
+          <div class="sidebar-top-section">
+            
+            <!-- Brand -->
             <div class="sidebar-brand">
-              <div class="brand-avatar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <div class="sidebar-brand-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <circle cx="12" cy="12" r="10"></circle>
                   <polygon points="12 6 12 12 14 14"></polygon>
                 </svg>
               </div>
-              <div class="brand-info">
-                <h2>SriTrack</h2>
-                <span>v2.2 Executive Console</span>
+              <div>
+                <div class="sidebar-brand-text">SriTrack</div>
+                <div class="sidebar-brand-status">
+                  <span class="status-dot-live"></span>
+                  Radar Live
+                </div>
               </div>
             </div>
 
-            <!-- Primary Navigation Links -->
-            <nav class="sidebar-nav">
-              <a class="nav-item active" onclick="switchNav('dashboard', this)">
-                <div class="nav-left">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <!-- Single Sidebar Navigation: Dashboard Only -->
+            <nav class="sidebar-nav-single">
+              <a class="nav-link-dashboard" onclick="switchNavDashboard()">
+                <div class="nav-link-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
                   <span>Dashboard</span>
                 </div>
-                <span class="nav-badge" id="nav-count-badge">9</span>
-              </a>
-
-              <a class="nav-item" onclick="switchNav('tracker', this)">
-                <div class="nav-left">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                  <span>Live Tracker</span>
-                </div>
-              </a>
-
-              <a class="nav-item" onclick="switchNav('radar', this)">
-                <div class="nav-left">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                  <span>Deal Radar</span>
-                </div>
-                <span class="nav-badge" style="background: rgba(16, 185, 129, 0.2); color: var(--accent-emerald);">70%+</span>
+                <span class="nav-item-badge" id="nav-count-badge">0</span>
               </a>
             </nav>
 
-            <!-- Monitored Platforms -->
-            <div class="sidebar-subheading">Monitored Platforms</div>
-            <div class="store-list-menu">
-              <div class="store-menu-item" onclick="setFilter('casio')">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div class="store-dot dot-casio"></div>
-                  <span>Casio Bhawar</span>
-                </div>
-                <span style="font-family: var(--font-mono); font-size: 11px;" id="sidebar-casio-count">7</span>
+            <!-- Telemetry & Background Status -->
+            <div class="sidebar-status-box">
+              <div class="status-box-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="4"></circle>
+                </svg>
+                <span>Autonomous Radar</span>
               </div>
-              <div class="store-menu-item" onclick="setFilter('flipkart')">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div class="store-dot dot-flipkart"></div>
-                  <span>Flipkart</span>
-                </div>
-                <span style="font-family: var(--font-mono); font-size: 11px;" id="sidebar-flipkart-count">1</span>
-              </div>
-              <div class="store-menu-item" onclick="setFilter('amazon')">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div class="store-dot dot-amazon"></div>
-                  <span>Amazon India</span>
-                </div>
-                <span style="font-family: var(--font-mono); font-size: 11px;" id="sidebar-amazon-count">1</span>
-              </div>
-            </div>
-
-            <!-- Pro Telemetry Badge -->
-            <div class="sidebar-pro-card">
-              <div class="pro-tag-row">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <span>Autonomous Mode</span>
-              </div>
-              <p class="pro-desc">
-                24/7 background price drop sniper active. Immediate Telegram notification on target reach.
+              <p class="status-box-desc">
+                24/7 background price sniper continuously monitors Casio, Flipkart, and Amazon India.
               </p>
-              <button class="btn-pro-action" onclick="triggerManualSweep()" id="btn-manual-sweep">
-                ⚡ Execute Deal Sweep
+              <button class="btn-sweep-action" onclick="triggerManualSweep()" id="btn-manual-sweep">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Run Deal Sweep</span>
               </button>
             </div>
+
           </div>
 
-          <!-- User Profile Row -->
-          <div class="sidebar-user">
-            <div class="user-meta-left">
-              <div class="user-avatar-circle" id="user-avatar-text">S</div>
-              <div class="user-text-info">
-                <span class="user-email-str" id="user-display-email">sriramnjr7@gmail.com</span>
-                <span class="user-status-str">Online &bull; Armed</span>
+          <!-- User Identity & Sign Out -->
+          <div class="sidebar-footer">
+            <div class="user-profile-meta">
+              <div class="user-avatar-initial" id="user-avatar-text">S</div>
+              <div class="user-identity-text">
+                <span class="user-identity-email" id="user-display-email">sriramnjr7@gmail.com</span>
+                <span class="user-identity-role">Administrator</span>
               </div>
             </div>
-            <button class="btn-signout-icon" onclick="handleSignOut()" title="Sign Out">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <button class="btn-icon-signout" onclick="handleSignOut()" title="Sign Out" aria-label="Sign out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
             </button>
           </div>
         </aside>
 
-        <!-- Main Workspace View -->
+        <!-- Main Workspace Area -->
         <main class="app-workspace">
           
           <!-- Top Utility Bar -->
-          <header class="top-toolbar">
-            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-              <button class="mobile-menu-btn" onclick="toggleSidebar()">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          <header class="workspace-topbar">
+            <div class="topbar-left">
+              <button class="btn-mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
               </button>
-              <div class="toolbar-search">
-                <svg class="search-glyph" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="catalog-search" placeholder="Search tracked products, stores, model codes..." oninput="applyFilters()">
+              <div class="topbar-search-box">
+                <svg class="search-icon-fixed" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="catalog-search" class="topbar-search-input" placeholder="Search tracked items, store, or model code..." oninput="applyFilters()">
               </div>
             </div>
 
-            <div class="toolbar-actions">
-              <button class="btn-action-tool" onclick="openAddProductModal()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>Add Product</span>
-              </button>
-
-              <button class="btn-action-tool btn-primary-tool" onclick="triggerManualSweep()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <div class="topbar-actions">
+              <button class="btn-ui btn-ui-secondary" onclick="triggerManualSweep()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
                 <span>Sweep Deals</span>
+              </button>
+              <button class="btn-ui btn-ui-primary" onclick="openAddProductModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Track Product</span>
               </button>
             </div>
           </header>
 
-          <!-- Workspace Content Container -->
-          <div class="workspace-content">
-
-            <!-- Breadcrumbs and Page Heading -->
-            <div class="workspace-header">
-              <div class="breadcrumbs-trail">
-                <span>PriceTracker</span> / <span>Telemetry</span> / <span>Active Monitors</span>
-              </div>
-              <div class="page-title-row">
-                <h1 class="page-main-heading">Live Price Radar &amp; Monitors</h1>
-                <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-muted);" id="catalog-status-indicator">
-                  Syncing live prices...
+          <!-- Workspace Body -->
+          <div class="workspace-body">
+            
+            <!-- Page Title Section -->
+            <div class="page-title-section">
+              <div class="page-breadcrumb">SriTrack / Telemetry</div>
+              <div class="page-header-row">
+                <div>
+                  <h1 class="page-heading">Dashboard</h1>
+                  <p class="page-subheading">Autonomous price drop radar and deal telemetry across Amazon, Flipkart, and Casio.</p>
+                </div>
+                <div class="live-sync-indicator" id="catalog-status-indicator">
+                  <span class="indicator-pulse"></span>
+                  <span>Syncing telemetry...</span>
                 </div>
               </div>
             </div>
 
-            <!-- Overview KPI Metric Cards (Reference-inspired layout) -->
-            <section class="kpi-row-overview">
-              <div class="kpi-box-module">
-                <div class="kpi-header-mini">
-                  <span class="kpi-mini-tag">Active Monitors</span>
-                  <div class="kpi-mini-icon">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                  </div>
+            <!-- Overview Metric KPI Row (4 Restrained, High Scanability Tiles) -->
+            <section class="metrics-grid" aria-label="System Metrics">
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">Active Monitors</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  </svg>
                 </div>
-                <div class="kpi-lead-value" id="kpi-active-count">9</div>
-                <div class="kpi-subtext-detail" id="kpi-total-sub">Tracked across 3 major stores</div>
+                <div class="metric-value" id="kpi-active-count">0</div>
+                <div class="metric-caption">Monitored products &amp; catalogs</div>
               </div>
 
-              <div class="kpi-box-module">
-                <div class="kpi-header-mini">
-                  <span class="kpi-mini-tag">Verified 70%+ Drops</span>
-                  <div class="kpi-mini-icon" style="color: var(--accent-emerald);">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                  </div>
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">Verified 70%+ Drops</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                  </svg>
                 </div>
-                <div class="kpi-lead-value" style="color: var(--accent-emerald);" id="kpi-verified-drops">17</div>
-                <div class="kpi-subtext-detail">Genuine Casio Bhawar member clearance</div>
+                <div class="metric-value highlight-emerald" id="kpi-verified-drops">17</div>
+                <div class="metric-caption">Casio Bhawar member clearance</div>
               </div>
 
-              <div class="kpi-box-module">
-                <div class="kpi-header-mini">
-                  <span class="kpi-mini-tag">BuyBox Isolation</span>
-                  <div class="kpi-mini-icon" style="color: var(--accent-amber);">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                  </div>
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">BuyBox Isolation</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
                 </div>
-                <div class="kpi-lead-value" style="color: var(--accent-amber);">100%</div>
-                <div class="kpi-subtext-detail">Zero false warranty matches (Amazon)</div>
+                <div class="metric-value">100%</div>
+                <div class="metric-caption">Protection plans rejected</div>
               </div>
 
-              <div class="kpi-box-module">
-                <div class="kpi-header-mini">
-                  <span class="kpi-mini-tag">Background Loop</span>
-                  <div class="kpi-mini-icon" style="color: var(--accent-blue);">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-                  </div>
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">Background Radar</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 14 14"></polyline>
+                  </svg>
                 </div>
-                <div class="kpi-lead-value" id="kpi-last-sweep" style="color: var(--accent-blue);">Live</div>
-                <div class="kpi-subtext-detail">Supabase + Telegram Webhook</div>
+                <div class="metric-value" id="kpi-last-sweep">Live</div>
+                <div class="metric-caption">Telegram alerts armed</div>
               </div>
             </section>
 
-            <!-- Modular Split Body: Left Main Catalog, Right Activity & Alerts -->
-            <div class="workspace-split-body">
+            <!-- Main Content Layout: Catalog on Left, Live Deals & Presets on Right -->
+            <div class="dashboard-layout-columns">
               
-              <!-- Left Column: Catalog and Filter Pills -->
-              <div class="catalog-block">
+              <!-- Left: Catalog & Filter Tabs -->
+              <section class="catalog-section" aria-label="Monitored Products Catalog">
+                
                 <!-- Filter Pills -->
-                <div class="filter-pills-bar">
-                  <button class="filter-chip active" onclick="setFilter('all', this)">All Items (<span id="chip-count-all">0</span>)</button>
-                  <button class="filter-chip" onclick="setFilter('casio', this)">Casio Bhawar (<span id="chip-count-casio">0</span>)</button>
-                  <button class="filter-chip" onclick="setFilter('flipkart', this)">Flipkart (<span id="chip-count-flipkart">0</span>)</button>
-                  <button class="filter-chip" onclick="setFilter('amazon', this)">Amazon (<span id="chip-count-amazon">0</span>)</button>
-                  <button class="filter-chip" onclick="setFilter('deals', this)">Target Met</button>
+                <div class="filter-bar" role="tablist">
+                  <button class="filter-btn active" onclick="setFilter('all', this)">All (<span id="chip-count-all">0</span>)</button>
+                  <button class="filter-btn" onclick="setFilter('casio', this)">Casio Bhawar (<span id="chip-count-casio">0</span>)</button>
+                  <button class="filter-btn" onclick="setFilter('flipkart', this)">Flipkart (<span id="chip-count-flipkart">0</span>)</button>
+                  <button class="filter-btn" onclick="setFilter('amazon', this)">Amazon (<span id="chip-count-amazon">0</span>)</button>
+                  <button class="filter-btn" onclick="setFilter('deals', this)">Target Met</button>
                 </div>
 
                 <!-- Product Cards Canvas -->
-                <div class="product-cards-canvas" id="products-container">
-                  <!-- Dynamically populated product cards -->
+                <div class="products-grid" id="products-container">
+                  <!-- Rendered via JS -->
                 </div>
-              </div>
 
-              <!-- Right Column: Deal Radar Detections & Presets -->
-              <div class="activity-panel-wrap">
+              </section>
 
-                <!-- Real-Time Verified Deal Radar Stream -->
-                <div class="radar-alerts-card">
-                  <div class="panel-card-head">
-                    <h3 class="panel-title-text">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                      Verified Silent Deals
-                    </h3>
-                    <span style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-emerald); font-weight: 700;">70% OFF</span>
+              <!-- Right: Live Clearance Deals & Quick Action Presets -->
+              <aside class="activity-rail" aria-label="Deal Radar Stream and Presets">
+
+                <!-- Verified 70% Off Drops Stream -->
+                <div class="panel-block">
+                  <div class="panel-header">
+                    <h2 class="panel-heading">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                      </svg>
+                      <span>Verified Clearance</span>
+                    </h2>
+                    <span class="panel-badge">70% OFF</span>
                   </div>
 
-                  <div class="deal-stream-box" id="deals-feed-container">
+                  <div class="deals-stream-list" id="deals-feed-container">
                     <!-- Deal cards rendered here -->
                   </div>
                 </div>
 
-                <!-- Fast Preset Tracker -->
-                <div class="shortcuts-card">
-                  <div class="panel-card-head">
-                    <h3 class="panel-title-text" style="font-size: 15px;">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="12 6 12 12 14 14"></polygon></svg>
-                      Target Quick Presets
-                    </h3>
-                  </div>
-                  <div class="shortcut-row-btn" onclick="openAddProductModalWith('https://www.amazon.in/dp/B0DLKPDP8Z', 1300)">
-                    <div>
-                      <div style="font-weight: 700;">EDYELL C5S Helmet Earphone</div>
-                      <div style="font-size: 11px; color: var(--text-muted);">Target: ₹1,300 (Amazon)</div>
-                    </div>
-                    <span style="font-family: var(--font-mono); color: var(--accent-blue);">+ Track</span>
+                <!-- Quick Tracking Shortcuts -->
+                <div class="panel-block">
+                  <div class="panel-header">
+                    <h2 class="panel-heading" style="font-size: 13px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polygon points="12 6 12 12 14 14"></polygon>
+                      </svg>
+                      <span>Target Presets</span>
+                    </h2>
                   </div>
 
-                  <div class="shortcut-row-btn" onclick="openAddProductModalWith('https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-7dr-watch', 4000)">
+                  <div class="preset-button-row" onclick="openAddProductModalWith('https://www.amazon.in/dp/B0DLKPDP8Z', 1300)">
                     <div>
-                      <div style="font-weight: 700;">Casio G-Shock GBD-300</div>
-                      <div style="font-size: 11px; color: var(--text-muted);">Target: ₹4,000 (Casio Store)</div>
+                      <div class="preset-info-name">EDYELL C5S Helmet BT</div>
+                      <div class="preset-info-target">Target: ₹1,300 &bull; Amazon India</div>
                     </div>
-                    <span style="font-family: var(--font-mono); color: var(--accent-blue);">+ Track</span>
+                    <span class="preset-action-tag">+ Track</span>
                   </div>
 
-                  <div class="shortcut-row-btn" onclick="openAddProductModalWith('https://casiostore.bhawar.com/collections/casio/products/casio-mtp-vt03d-1bdf-black-analog-mens-watch', 1200)">
+                  <div class="preset-button-row" onclick="openAddProductModalWith('https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-7dr-watch', 4000)">
                     <div>
-                      <div style="font-weight: 700;">Casio MTP-VT03D-1BDF</div>
-                      <div style="font-size: 11px; color: var(--accent-emerald);">Current: ₹1,109 (70% Off)</div>
+                      <div class="preset-info-name">Casio G-Shock GBD-300</div>
+                      <div class="preset-info-target">Target: ₹4,000 &bull; Casio Bhawar</div>
                     </div>
-                    <span style="font-family: var(--font-mono); color: var(--accent-emerald);">Active</span>
+                    <span class="preset-action-tag">+ Track</span>
+                  </div>
+
+                  <div class="preset-button-row" onclick="openAddProductModalWith('https://casiostore.bhawar.com/collections/casio/products/casio-mtp-vt03d-1bdf-black-analog-mens-watch', 1200)">
+                    <div>
+                      <div class="preset-info-name">Casio MTP-VT03D-1BDF</div>
+                      <div class="preset-info-target" style="color: var(--accent-emerald);">Current: ₹1,109 (70% Off)</div>
+                    </div>
+                    <span class="preset-action-tag" style="color: var(--accent-emerald);">Active</span>
                   </div>
                 </div>
 
-              </div>
+              </aside>
 
             </div>
 
           </div>
         </main>
+
       </div>
     </div>
 
-    <!-- ===================================================
+    <!-- ========================================================================
          MODAL: TRACK NEW PRODUCT
-         =================================================== -->
-    <div class="modal-overlay-plane" id="add-product-modal">
-      <div class="modal-container-card">
-        <div class="modal-header-line">
-          <div class="modal-title-bold">Track Product</div>
-          <button class="modal-dismiss-btn" onclick="closeAddProductModal()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+         ======================================================================== -->
+    <div class="modal-backdrop" id="add-product-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-title-text">Track Product</h2>
+          <button class="modal-close-btn" onclick="closeAddProductModal()" aria-label="Close dialog">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
-          Paste any Flipkart, Amazon, or Casio product/collection link. SriTrack continuously monitors 24/7 and dispatches Telegram notifications on price drops.
+        <p class="modal-subtitle">
+          Paste any Flipkart, Amazon, or Casio product URL. SriTrack autonomously monitors price changes and alerts you on Telegram.
         </p>
 
         <form id="add-product-form" onsubmit="submitNewProduct(event)">
-          <div class="form-row">
-            <label class="form-field-label">Product Link</label>
-            <input type="url" id="add-url" class="form-control" placeholder="https://www.flipkart.com/... or https://amazon.in/..." required>
+          <div class="form-group">
+            <label class="form-label" for="add-url">Product URL</label>
+            <input type="url" id="add-url" class="form-input" placeholder="https://www.flipkart.com/... or https://amazon.in/..." required>
           </div>
 
-          <div class="form-row">
-            <label class="form-field-label">Alert Target Floor (₹)</label>
-            <input type="number" step="1" id="add-target-price" class="form-control" placeholder="e.g. 1300" required>
-            <div style="display: flex; gap: 6px; margin-top: 8px;">
-              <button type="button" class="filter-chip" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(1300)">₹1,300</button>
-              <button type="button" class="filter-chip" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(4000)">₹4,000</button>
-              <button type="button" class="filter-chip" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(1200)">₹1,200</button>
+          <div class="form-group">
+            <label class="form-label" for="add-target-price">Target Floor Price (₹)</label>
+            <input type="number" step="1" id="add-target-price" class="form-input" placeholder="e.g. 1300" required>
+            <div class="preset-pill-row">
+              <button type="button" class="pill-btn" onclick="setTargetPreset(1300)">₹1,300</button>
+              <button type="button" class="pill-btn" onclick="setTargetPreset(4000)">₹4,000</button>
+              <button type="button" class="pill-btn" onclick="setTargetPreset(1200)">₹1,200</button>
             </div>
           </div>
 
-          <div style="display: flex; gap: 10px; margin-top: 24px;">
-            <button type="button" class="btn-action-tool" style="flex: 1; justify-content: center;" onclick="closeAddProductModal()">Cancel</button>
-            <button type="submit" class="btn-submit-main" style="flex: 1; margin-top: 0;" id="btn-add-submit">
+          <div class="modal-footer">
+            <button type="button" class="btn-ui btn-ui-secondary" style="flex: 1; justify-content: center;" onclick="closeAddProductModal()">Cancel</button>
+            <button type="submit" class="btn-ui btn-ui-primary" style="flex: 1; justify-content: center;" id="btn-add-submit">
               <span id="add-submit-text">Start Tracking</span>
-              <svg id="add-submit-spinner" style="display:none;" class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+              <svg id="add-submit-spinner" style="display:none;" class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- Toast -->
-    <div id="toast-pill" class="toast-capsule"></div>
+    <!-- Toast Notification -->
+    <div id="toast-pill" class="toast-pill" role="status" aria-live="polite"></div>
 
   </div>
 
-  <!-- ===================================================
-       CLIENT LOGIC & APIS
-       =================================================== -->
+  <!-- ========================================================================
+       APPLICATION LOGIC & API INTEGRATIONS (Preserved Exactly)
+       ======================================================================== -->
   <script>
     const SUPABASE_URL = "https://ytncrstivqscoavhwnnd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_qDqBsGHIetHJULy-YxcwCQ_1tfvpiwK";
@@ -1543,13 +1789,13 @@
     let currentFilter = "all";
     let currentUser = null;
 
-    // Toast utility
-    function showToast(msg, duration = 3000) {
+    // Toast Utility
+    function showToast(msg, duration = 3200) {
       const t = document.getElementById("toast-pill");
       if (!t) return;
       t.textContent = msg;
-      t.classList.add("active");
-      setTimeout(() => t.classList.remove("active"), duration);
+      t.classList.add("is-visible");
+      setTimeout(() => t.classList.remove("is-visible"), duration);
     }
 
     // Relative Time Formatter
@@ -1573,19 +1819,14 @@
 
     function toggleSidebar() {
       const sb = document.getElementById("app-sidebar");
-      if (sb) sb.classList.toggle("open");
+      if (sb) sb.classList.toggle("mobile-open");
     }
 
-    function switchNav(navKey, el) {
-      document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-      if (el) el.classList.add("active");
-      if (navKey === "radar") {
-        setFilter("deals");
-      } else {
-        setFilter("all");
-      }
+    // Single Sidebar Action: Dashboard
+    function switchNavDashboard() {
+      setFilter("all");
       const sb = document.getElementById("app-sidebar");
-      if (sb) sb.classList.remove("open");
+      if (sb) sb.classList.remove("mobile-open");
     }
 
     function setTargetPreset(val) {
@@ -1669,7 +1910,7 @@
         (cleanEmail === "sriramnjr7@gmail.com" || cleanEmail === "sriramnjr7") &&
         password === "8910"
       ) {
-        showToast("✅ Authenticated via authorized user!");
+        showToast("Authenticated successfully.");
         onAuthenticated({ email: "sriramnjr7@gmail.com" });
         if (btnLabel) btnLabel.style.display = "inline";
         if (spinner) spinner.style.display = "none";
@@ -1681,14 +1922,14 @@
       }
 
       try {
-        if (!supabaseClient) throw new Error("Invalid username or password.");
+        if (!supabaseClient) throw new Error("Invalid credentials. Please verify your email and password.");
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        showToast("✅ Welcome back, " + email);
+        showToast("Welcome back, " + email);
         onAuthenticated(data.user);
       } catch (err) {
         console.error("Auth error:", err);
-        showToast("⚠️ " + (err.message || "Authentication failed."), 4000);
+        showToast("⚠️ " + (err.message || "Authentication failed."));
       } finally {
         if (btnLabel) btnLabel.style.display = "inline";
         if (spinner) spinner.style.display = "none";
@@ -1708,37 +1949,46 @@
     }
 
     function openAddProductModal() {
-      document.getElementById("add-product-modal").classList.add("active");
+      document.getElementById("add-product-modal").classList.add("is-open");
     }
     function closeAddProductModal() {
-      document.getElementById("add-product-modal").classList.remove("active");
+      document.getElementById("add-product-modal").classList.remove("is-open");
     }
 
     // Dashboard Data Fetcher
     async function fetchDashboardData() {
       const statusIndicator = document.getElementById("catalog-status-indicator");
-      if (statusIndicator) statusIndicator.textContent = "Syncing live telemetry...";
+      if (statusIndicator) {
+        statusIndicator.innerHTML = '<span class="indicator-pulse"></span><span>Syncing telemetry...</span>';
+      }
 
       try {
         const res = await fetch("/api/dashboard/data");
-        if (!res.ok) throw new Error("API returned " + res.status);
+        if (!res.ok) throw new Error("API status " + res.status);
         const data = await res.json();
 
         rawProductsList = data.products || [];
 
         // Update Overview KPIs
-        document.getElementById("kpi-active-count").textContent = rawProductsList.length;
-        document.getElementById("nav-count-badge").textContent = rawProductsList.length;
-        document.getElementById("kpi-last-sweep").textContent = timeAgo(data.stats ? data.stats.last_sweep_time : null);
+        const activeCountEl = document.getElementById("kpi-active-count");
+        const navBadgeEl = document.getElementById("nav-count-badge");
+        const sweepTimeEl = document.getElementById("kpi-last-sweep");
+        if (activeCountEl) activeCountEl.textContent = rawProductsList.length;
+        if (navBadgeEl) navBadgeEl.textContent = rawProductsList.length;
+        if (sweepTimeEl) sweepTimeEl.textContent = timeAgo(data.stats ? data.stats.last_sweep_time : null);
 
         updateCounts();
         applyFilters();
         renderDeals(data.recent_deals || []);
 
-        if (statusIndicator) statusIndicator.textContent = `All ${rawProductsList.length} items live`;
+        if (statusIndicator) {
+          statusIndicator.innerHTML = `<span class="indicator-pulse"></span><span>${rawProductsList.length} Monitors Live</span>`;
+        }
       } catch (err) {
         console.error("Data error:", err);
-        if (statusIndicator) statusIndicator.textContent = "Offline / Sync error";
+        if (statusIndicator) {
+          statusIndicator.innerHTML = '<span class="indicator-pulse" style="background: var(--accent-rose);"></span><span>Offline / Sync error</span>';
+        }
         showToast("⚠️ Could not refresh dashboard: " + err.message);
       }
     }
@@ -1749,27 +1999,23 @@
       const countAmazon = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("amazon")).length;
       const countCasio = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("casio")).length;
 
-      document.getElementById("chip-count-all").textContent = countAll;
-      document.getElementById("chip-count-flipkart").textContent = countFlipkart;
-      document.getElementById("chip-count-amazon").textContent = countAmazon;
-      document.getElementById("chip-count-casio").textContent = countCasio;
-
-      const sideCasio = document.getElementById("sidebar-casio-count");
-      const sideFlipkart = document.getElementById("sidebar-flipkart-count");
-      const sideAmazon = document.getElementById("sidebar-amazon-count");
-      if (sideCasio) sideCasio.textContent = countCasio;
-      if (sideFlipkart) sideFlipkart.textContent = countFlipkart;
-      if (sideAmazon) sideAmazon.textContent = countAmazon;
+      const cAll = document.getElementById("chip-count-all");
+      const cFlip = document.getElementById("chip-count-flipkart");
+      const cAmz = document.getElementById("chip-count-amazon");
+      const cCas = document.getElementById("chip-count-casio");
+      if (cAll) cAll.textContent = countAll;
+      if (cFlip) cFlip.textContent = countFlipkart;
+      if (cAmz) cAmz.textContent = countAmazon;
+      if (cCas) cCas.textContent = countCasio;
     }
 
     function setFilter(filterType, element) {
       currentFilter = filterType;
-      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+      document.querySelectorAll(".filter-btn").forEach(c => c.classList.remove("active"));
       if (element) {
         element.classList.add("active");
       } else {
-        // Find matching chip
-        document.querySelectorAll(".filter-chip").forEach(c => {
+        document.querySelectorAll(".filter-btn").forEach(c => {
           if (c.textContent.toLowerCase().includes(filterType)) c.classList.add("active");
         });
       }
@@ -1796,9 +2042,9 @@
       const container = document.getElementById("products-container");
       if (!products || products.length === 0) {
         container.innerHTML = `
-          <div style="grid-column: 1/-1; text-align: center; padding: 48px 20px; background: rgba(255,255,255,0.02); border-radius: var(--radius-lg); border: 1px dashed var(--border-color);">
-            <div style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px;">No items match this filter</div>
-            <div style="font-size: 13px; color: var(--text-muted);">Try a different query or click "+ Add Product" to track a new link.</div>
+          <div class="empty-state-box">
+            <div class="empty-title">No items match this filter</div>
+            <div class="empty-desc">Try another search keyword or click "+ Track Product" to monitor a new URL.</div>
           </div>
         `;
         return;
@@ -1806,7 +2052,7 @@
 
       container.innerHTML = products.map(p => {
         const platform = (p.platform || "online").toLowerCase();
-        const storeClass = platform.includes("casio") ? "store-label-casio" : platform.includes("flipkart") ? "store-label-flipkart" : "store-label-amazon";
+        const storeClass = platform.includes("casio") ? "badge-casio" : platform.includes("flipkart") ? "badge-flipkart" : "badge-amazon";
         const isTargetMet = p.current_price && p.target_price && p.current_price <= p.target_price;
         const currentPriceStr = p.current_price ? `₹${Number(p.current_price).toLocaleString('en-IN')}` : "Checking...";
         const targetPriceStr = p.target_price ? `₹${Number(p.target_price).toLocaleString('en-IN')}` : "—";
@@ -1819,60 +2065,60 @@
         }
 
         return `
-          <div class="product-item-card" id="card-${p.id}">
+          <div class="product-card" id="card-${p.id}">
             <div>
-              <div class="card-top-meta">
-                <span class="store-label-pill ${storeClass}">${platform}</span>
-                <span class="tracking-indicator ${p.is_active ? 'track-active' : 'track-paused'}">
-                  ${p.is_active ? 'TRACKING' : 'PAUSED'}
+              <div class="product-meta-header">
+                <span class="platform-badge ${storeClass}">${platform}</span>
+                <span class="status-badge-inline ${p.is_active ? 'is-active' : ''}">
+                  ${p.is_active ? 'Tracking' : 'Paused'}
                 </span>
               </div>
 
-              <div class="product-title-text" title="${p.title || p.url}">
+              <div class="product-title-row" title="${p.title || p.url}">
                 <a href="${p.url}" target="_blank" rel="noopener">
                   ${p.title || p.url}
                 </a>
               </div>
 
-              <div class="price-metric-cluster">
-                <div class="price-col">
-                  <span class="price-col-title">CURRENT PRICE</span>
-                  <span class="price-col-value ${isTargetMet ? 'is-deal' : ''}">${currentPriceStr}</span>
+              <div class="price-data-box">
+                <div class="price-box-col">
+                  <span class="price-box-label">Current</span>
+                  <span class="price-box-val-current ${isTargetMet ? 'target-reached' : ''}">${currentPriceStr}</span>
                 </div>
-                <div class="price-col" style="text-align: right;">
-                  <span class="price-col-title">TARGET FLOOR</span>
-                  <span class="price-col-target">${targetPriceStr}</span>
+                <div class="price-box-col" style="text-align: right;">
+                  <span class="price-box-label">Target Floor</span>
+                  <span class="price-box-val-target">${targetPriceStr}</span>
                 </div>
               </div>
 
-              <div class="progress-bar-wrap">
-                <div class="progress-info-row">
+              <div class="progress-wrapper">
+                <div class="progress-meta">
                   <span>Target Progress</span>
                   <span>${progressPercent.toFixed(0)}%</span>
                 </div>
-                <div class="progress-rail">
-                  <div class="progress-gauge" style="width: ${progressPercent}%"></div>
+                <div class="progress-track">
+                  <div class="progress-fill" style="width: ${progressPercent}%"></div>
                 </div>
               </div>
             </div>
 
-            <div class="card-footer-controls">
-              <span class="time-since-check">${timeAgo(p.last_checked)}</span>
-              <div class="card-actions-strip">
-                <button class="btn-item-action" title="Check Live Price" onclick="checkProductNow(${p.id})">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <div class="product-footer">
+              <span class="last-checked-label">${timeAgo(p.last_checked)}</span>
+              <div class="card-actions">
+                <button class="btn-action-icon" title="Check Live Price" onclick="checkProductNow(${p.id})" aria-label="Check live price">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                 </button>
-                <button class="btn-item-action" title="${p.is_active ? 'Pause' : 'Resume'}" onclick="toggleProduct(${p.id})">
+                <button class="btn-action-icon" title="${p.is_active ? 'Pause Tracking' : 'Resume Tracking'}" onclick="toggleProduct(${p.id})" aria-label="${p.is_active ? 'Pause' : 'Resume'}">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     ${p.is_active 
                       ? '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>' 
                       : '<polygon points="5 3 19 12 5 21 5 3"></polygon>'}
                   </svg>
                 </button>
-                <a class="btn-item-action" href="${p.url}" target="_blank" rel="noopener" title="Open Store Listing">
+                <a class="btn-action-icon" href="${p.url}" target="_blank" rel="noopener" title="Open Store Page" aria-label="Open store listing">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </a>
-                <button class="btn-item-action delete-act" title="Delete Product" onclick="deleteProduct(${p.id})">
+                <button class="btn-action-icon danger-btn" title="Delete Product" onclick="deleteProduct(${p.id})" aria-label="Delete product">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
               </div>
@@ -1884,8 +2130,8 @@
 
     function renderDeals(deals) {
       const container = document.getElementById("deals-feed-container");
-      
-      // Filter out non-discounted items (e.g. 0% discount items)
+      if (!container) return;
+
       const validDeals = (deals || []).filter(d => (d.discount_percent || 0) >= 10);
       
       const countBadge = document.getElementById("kpi-verified-drops");
@@ -1893,25 +2139,25 @@
 
       if (!validDeals || validDeals.length === 0) {
         container.innerHTML = `
-          <div style="text-align: center; color: var(--text-muted); font-size: 12.5px; padding: 24px;">
-            Radar active. Autonomous deal hunter sweeps Casio Bhawar &amp; Flipkart every minute.
+          <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px 0;">
+            Radar active. Continuous sweeps scan Casio Bhawar &amp; Flipkart clearance catalogs.
           </div>
         `;
         return;
       }
 
       container.innerHTML = validDeals.map(d => `
-        <div class="deal-alert-card-row">
-          <div class="alert-row-top">
-            <a href="${d.product_url}" class="deal-watch-link" target="_blank" rel="noopener">
+        <div class="deal-stream-item">
+          <div class="deal-item-top">
+            <a href="${d.product_url}" class="deal-item-title" target="_blank" rel="noopener">
               ${d.title}
             </a>
-            <span class="discount-pill-glow">
+            <span class="deal-discount-pill">
               ${Math.round(d.discount_percent)}% OFF
             </span>
           </div>
-          <div class="alert-row-bottom">
-            <span style="color: var(--accent-blue); font-weight: 700;">₹${(d.effective_price || d.price).toLocaleString('en-IN')}</span>
+          <div class="deal-item-bottom">
+            <span class="deal-price-val">₹${(d.effective_price || d.price).toLocaleString('en-IN')}</span>
             <span>${timeAgo(d.notified_at)}</span>
           </div>
         </div>
@@ -1920,12 +2166,12 @@
 
     // User Interactive Actions
     async function checkProductNow(id) {
-      showToast("⚡ Fetching live price...");
+      showToast("Fetching live price...");
       try {
         const res = await fetch(`/api/products/${id}/check`, { method: "POST" });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Check failed");
-        showToast(`✅ Price updated: ₹${data.price}`);
+        showToast(`Price updated: ₹${data.price}`);
         fetchDashboardData();
       } catch (err) {
         showToast("⚠️ " + err.message);
@@ -1943,7 +2189,7 @@
     }
 
     async function deleteProduct(id) {
-      if (!confirm("Remove this item from 24/7 tracking?")) return;
+      if (!confirm("Remove this product from active tracking?")) return;
       try {
         const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Delete failed");
@@ -1973,7 +2219,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Failed to add product");
 
-        showToast("✅ Added to 24/7 tracking!");
+        showToast("Added to 24/7 tracking.");
         closeAddProductModal();
         document.getElementById("add-product-form").reset();
         fetchDashboardData();
@@ -1988,11 +2234,11 @@
     async function triggerManualSweep() {
       const btn = document.getElementById("btn-manual-sweep");
       if (btn) btn.disabled = true;
-      showToast("🚀 Launching Casio & Flipkart deal radar...");
+      showToast("Launching Casio & Flipkart deal radar...");
       try {
         const res = await fetch("/api/sweep", { method: "POST" });
         const data = await res.json();
-        showToast(`✅ Sweep complete! Dispatched ${data.total_dispatched || 0} alerts.`);
+        showToast(`Sweep complete! Dispatched ${data.total_dispatched || 0} alerts.`);
         fetchDashboardData();
       } catch (err) {
         showToast("⚠️ Sweep error: " + err.message);
@@ -2000,6 +2246,18 @@
         if (btn) btn.disabled = false;
       }
     }
+
+    // Keyboard shortcut (Cmd/Ctrl + K to focus search)
+    window.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        const searchInput = document.getElementById("catalog-search");
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+    });
 
     // Periodic Background Polling
     setInterval(() => {
