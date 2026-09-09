@@ -52,24 +52,26 @@ def _now() -> str:
 @app.get("/index.py")
 async def root(request: Request):
     """Health check and status dashboard."""
-    db = get_database(settings)
-    await db.initialize()
-    products = await db.get_products(active_only=True)
-    await db.close()
-
-    # If Vercel rewrote an endpoint to /api/index.py, inspect original path from headers:
     orig_path = (
-        request.headers.get("x-vercel-matched-path")
+        request.query_params.get("_vercel_path")
+        or request.headers.get("x-vercel-matched-path")
         or request.headers.get("x-matched-path")
         or request.headers.get("x-forwarded-uri")
         or request.headers.get("x-invoke-path")
         or ""
-    )
+    ).lower()
 
-    if "cron" in orig_path.lower():
+    if "cron" in orig_path:
         return await cron_sweep(request)
-    elif "set-webhook" in orig_path.lower():
+    elif "set-webhook" in orig_path or "set_webhook" in orig_path:
         return await set_telegram_webhook(request)
+    elif "telegram" in orig_path:
+        return await telegram_webhook(request)
+
+    db = get_database(settings)
+    await db.initialize()
+    products = await db.get_products(active_only=True)
+    await db.close()
 
     return {
         "status": "online",
@@ -83,12 +85,24 @@ async def root(request: Request):
             "cron_deal_scanner": "GET /api/cron",
             "setup_webhook": "GET /api/set-webhook",
         },
-        "debug_info": {
-            "url": str(request.url),
-            "headers": dict(request.headers),
-            "scope": {k: str(v) for k, v in request.scope.items() if k in ("path", "raw_path", "root_path", "endpoint")},
-        },
     }
+
+
+@app.post("/api/index.py")
+@app.post("/index.py")
+@app.post("/api/index")
+async def post_root(request: Request):
+    """Catch-all POST handler for Vercel rewrites to /api/index.py."""
+    orig_path = (
+        request.query_params.get("_vercel_path")
+        or request.headers.get("x-vercel-matched-path")
+        or request.headers.get("x-matched-path")
+        or ""
+    ).lower()
+    if "telegram" in orig_path or not orig_path:
+        return await telegram_webhook(request)
+    return JSONResponse(status_code=400, content={"error": "Unsupported POST endpoint"})
+
 
 
 @app.post("/telegram")
