@@ -131,26 +131,30 @@ class StealRadar:
                         else:
                             deals = []
                     else:
-                        # 2. Collection scanning
-                        handles_to_scan = set()
+                        # 2. Collection & Catalog scanning
                         q_lower = rule.query.lower()
-                        if "g-shock" in q_lower or "gshock" in q_lower:
-                            handles_to_scan.add("g-shock")
-                        if "edifice" in q_lower:
-                            handles_to_scan.add("edifice-watches")
-                        if "vintage" in q_lower:
-                            handles_to_scan.add("casio-vintage")
-                        if "enticer" in q_lower:
-                            handles_to_scan.add("enticer-men")
-                            handles_to_scan.add("enticer-women")
-                        
-                        if not handles_to_scan or "watch" in q_lower:
-                            handles_to_scan.update(["g-shock", "edifice-watches", "casio-vintage", "casio-all-watches"])
-                            
-                        deals = []
-                        for handle in handles_to_scan:
-                            collection_deals = await casio_scraper.scan_collection_deals(handle, min_discount=rule.min_discount)
-                            deals.extend(collection_deals)
+                        # If query is general "casio watch", "casio", or general watches, sweep master catalog
+                        if "watch" in q_lower or "casio" in q_lower or not rule.query:
+                            deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
+                        else:
+                            handles_to_scan = set()
+                            if "g-shock" in q_lower or "gshock" in q_lower:
+                                handles_to_scan.add("g-shock")
+                            if "edifice" in q_lower:
+                                handles_to_scan.add("edifice-watches")
+                            if "vintage" in q_lower:
+                                handles_to_scan.add("casio-vintage")
+                            if "enticer" in q_lower:
+                                handles_to_scan.add("enticer-men")
+                                handles_to_scan.add("enticer-women")
+
+                            if not handles_to_scan:
+                                deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
+                            else:
+                                deals = []
+                                for handle in handles_to_scan:
+                                    collection_deals = await casio_scraper.scan_collection_deals(handle, min_discount=rule.min_discount)
+                                    deals.extend(collection_deals)
 
                     for d in deals:
                         d["effective_price"] = d["price"]
@@ -196,7 +200,10 @@ class StealRadar:
 
                 # Independent check: must contain at least one required keyword if specified
                 has_req = False
-                if rule.required_keywords:
+                if is_trusted:
+                    # casiostore.bhawar.com is the official Casio store; all products are 100% genuine Casio
+                    has_req = True
+                elif rule.required_keywords:
                     title_lower = d["title"].lower()
                     has_req = any(k.lower() in title_lower for k in rule.required_keywords)
                 else:

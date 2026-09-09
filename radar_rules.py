@@ -118,17 +118,16 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         brand="Casio",
         platforms=["casio", "flipkart"],
         min_discount=70.0,
-        min_price=None,  # Removed: casiostore.bhawar.com lists only watches
-        min_mrp=None,    # Removed: allows all watches with 70%+ discount regardless of price
+        min_price=None,  # casiostore.bhawar.com lists only genuine watches
+        min_mrp=None,    # allows all watches with 70%+ discount regardless of price
         required_keywords=["casio", "g-shock", "gshock", "edifice", "vintage", "enticer"],
         negative_keywords=[
             "strap", "straps", "band", "bands", "resin strap", "silicone strap",
             "replacement", "belt", "loop", "buckle", "bezel", "adapter", "link",
-            "pin", "spring bar", "chain", "connector", "case cover", "screen protector",
-            "gold", "silver"
+            "pin", "spring bar", "chain", "connector", "case cover", "screen protector"
         ],
         search_url_template={
-            "casio": "https://casiostore.bhawar.com/collections/g-shock",
+            "casio": "https://casiostore.bhawar.com/collections/all",
         },
         is_active=True,
     ),
@@ -142,7 +141,7 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         min_discount=70.0,
         max_price=4000.0,  # Target price floor (~70% off ₹12,995 MRP)
         required_keywords=["gbd-300", "g-300", "gbd300", "300"],
-        negative_keywords=["strap", "band", "bezel", "protector", "gold", "silver"],
+        negative_keywords=["strap", "band", "bezel", "protector"],
         search_url_template={
             "casio": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-7dr-watch",
         },

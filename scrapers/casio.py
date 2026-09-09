@@ -182,17 +182,198 @@ class CasioScraper(BaseScraper):
             url=url,
         )
 
+    def _classify_casio_watch(
+        self, raw_title: str, tags: Optional[List[str]] = None, handle: str = ""
+    ) -> tuple[str, str]:
+        """Classify a Casio model into its family and generate a normalized brand title."""
+        tags = [t.lower() for t in (tags or [])]
+        clean_title = raw_title.strip()
+        upper_title = clean_title.upper()
+        handle_upper = handle.upper()
+
+        # G-Shock patterns (model code prefixes & tags)
+        gshock_prefixes = (
+            "DW-", "GA-", "GMA-", "GD-", "GBD-", "GBX-", "GM-", "GMD-", "GMW-",
+            "GW-", "GWG-", "GST-", "MTG-", "MRG-", "GG-", "GR-", "GLX-", "GCW-",
+            "DW", "GA", "GD", "GMA", "GBD", "GM", "GW"
+        )
+        is_gshock = (
+            any(upper_title.startswith(p) for p in gshock_prefixes)
+            or any(k in upper_title for k in ["G-SHOCK", "GSHOCK", "BABY-G"])
+            or any(k in tags for k in ["g-shock", "gshock", "resin", "master of g", "g-steel", "g-squad"])
+            or any(handle_upper.startswith(p) for p in gshock_prefixes)
+            or "g-shock" in handle.lower()
+        )
+
+        # Edifice patterns
+        edifice_prefixes = (
+            "EF-", "EFR-", "EFB-", "EFV-", "ECB-", "EQB-", "EQS-", "EFS-", "ERA-", "EMA-",
+            "EF", "EFR", "EFB", "EFV", "ECB", "EQB", "EQS"
+        )
+        is_edifice = (
+            any(upper_title.startswith(p) for p in edifice_prefixes)
+            or "EDIFICE" in upper_title
+            or any(k in tags for k in ["edifice", "10_motorsports"])
+            or any(handle_upper.startswith(p) for p in edifice_prefixes)
+            or "edifice" in handle.lower()
+        )
+
+        # Vintage patterns
+        vintage_prefixes = ("A1", "A158", "A168", "A1000", "A700", "AQ-", "B6", "DBC-", "CA-")
+        is_vintage = (
+            any(upper_title.startswith(p) for p in vintage_prefixes)
+            or "VINTAGE" in upper_title
+            or any(k in tags for k in ["vintage", "a-1000"])
+            or "vintage" in handle.lower()
+        )
+
+        if is_gshock:
+            family = "G-Shock"
+            if not re.search(r"\bg[- ]?shock\b", clean_title, re.I):
+                formatted_title = f"Casio G-Shock {clean_title}"
+            elif not clean_title.lower().startswith("casio"):
+                formatted_title = f"Casio {clean_title}"
+            else:
+                formatted_title = clean_title
+        elif is_edifice:
+            family = "Edifice"
+            if "edifice" not in clean_title.lower():
+                formatted_title = f"Casio Edifice {clean_title}"
+            elif not clean_title.lower().startswith("casio"):
+                formatted_title = f"Casio {clean_title}"
+            else:
+                formatted_title = clean_title
+        elif is_vintage:
+            family = "Vintage"
+            if not clean_title.lower().startswith("casio"):
+                formatted_title = f"Casio Vintage {clean_title}"
+            else:
+                formatted_title = clean_title
+        else:
+            family = "Casio"
+            if not clean_title.lower().startswith("casio"):
+                formatted_title = f"Casio {clean_title}"
+            else:
+                formatted_title = clean_title
+
+        return family, formatted_title
+
+    async def scan_catalog_deals(self, min_discount: float = 0.0) -> List[dict[str, Any]]:
+        """Sweep all pages of the Bhawar catalog plus silent-sale/promotional collections."""
+        deals_map: dict[str, dict[str, Any]] = {}
+        headers = {"User-Agent": self._random_user_agent()}
+
+        async with httpx.AsyncClient(timeout=20) as client:
+            # 1. Sweep dedicated discount and clearance hubs first
+            hub_collections = [
+                "silent-sale", "silent-sale-products", "sale-products",
+                "raksha-bandhan-special", "promotional-watches"
+            ]
+            for hub in hub_collections:
+                try:
+                    r = await client.get(
+                        f"https://casiostore.bhawar.com/collections/{hub}/products.json?limit=250",
+                        headers=headers,
+                    )
+                    if r.status_code == 200:
+                        prods = r.json().get("products", [])
+                        for p in prods:
+                            handle = p.get("handle", "")
+                            product_url = f"https://casiostore.bhawar.com/products/{handle}"
+                            if product_url in deals_map:
+                                continue
+                            tags = p.get("tags", [])
+                            family, formatted_title = self._classify_casio_watch(
+                                p.get("title", ""), tags, handle
+                            )
+                            for v in p.get("variants", []):
+                                price = float(v.get("price", 0))
+                                compare_at = float(v.get("compare_at_price") or price)
+                                available = bool(v.get("available", False))
+                                disc = (
+                                    round(((compare_at - price) / compare_at * 100.0), 1)
+                                    if compare_at > price
+                                    else 0.0
+                                )
+                                is_silent = "silent_sale_product" in tags or "silent-sale" in hub
+                                if (disc >= min_discount or is_silent) and available:
+                                    deals_map[product_url] = {
+                                        "title": formatted_title,
+                                        "price": price,
+                                        "mrp": compare_at,
+                                        "discount_percent": disc,
+                                        "in_stock": available,
+                                        "url": product_url,
+                                        "family": family,
+                                        "is_silent_sale": is_silent,
+                                    }
+                except Exception as exc:
+                    logger.debug("[casio] hub %s scan error: %s", hub, exc)
+
+            # 2. Sweep entire master catalog across all pages (up to 8 pages / 2,000 items)
+            page = 1
+            while page <= 8:
+                try:
+                    r = await client.get(
+                        f"https://casiostore.bhawar.com/collections/all/products.json?limit=250&page={page}",
+                        headers=headers,
+                    )
+                    if r.status_code != 200:
+                        break
+                    prods = r.json().get("products", [])
+                    if not prods:
+                        break
+                    for p in prods:
+                        handle = p.get("handle", "")
+                        product_url = f"https://casiostore.bhawar.com/products/{handle}"
+                        if product_url in deals_map:
+                            continue
+                        tags = p.get("tags", [])
+                        family, formatted_title = self._classify_casio_watch(
+                            p.get("title", ""), tags, handle
+                        )
+                        for v in p.get("variants", []):
+                            price = float(v.get("price", 0))
+                            compare_at = float(v.get("compare_at_price") or price)
+                            available = bool(v.get("available", False))
+                            disc = (
+                                round(((compare_at - price) / compare_at * 100.0), 1)
+                                if compare_at > price
+                                else 0.0
+                            )
+                            is_silent = "silent_sale_product" in tags
+                            if (disc >= min_discount or (is_silent and min_discount <= 70.0)) and available:
+                                deals_map[product_url] = {
+                                    "title": formatted_title,
+                                    "price": price,
+                                    "mrp": compare_at,
+                                    "discount_percent": disc,
+                                    "in_stock": available,
+                                    "url": product_url,
+                                    "family": family,
+                                    "is_silent_sale": is_silent,
+                                }
+                    page += 1
+                except Exception as exc:
+                    logger.debug("[casio] master catalog page %s scan error: %s", page, exc)
+                    break
+
+        return list(deals_map.values())
+
     async def scan_collection_deals(
         self, collection_handle: str = "g-shock", min_discount: float = 0.0
     ) -> List[dict[str, Any]]:
-        """Fetch all products in a collection via filter tags and paginated JSON."""
+        """Fetch all products in a collection via filter tags, catalog sweep, or paginated JSON."""
+        # If user asks for master catalog or broad casio collections, use catalog sweep
+        if collection_handle.lower() in ("all", "master", "catalog", "casio-all-watches", "casio"):
+            return await self.scan_catalog_deals(min_discount=min_discount)
+
         deals_map: dict[str, dict[str, Any]] = {}
         int_disc = int(min_discount)
 
         headers = {"User-Agent": self._random_user_agent()}
 
         # 1. Method A: Check Shopify Metafield Filter Tags (90%, 80%, 70%, 60%, 50%, 40%, 30%)
-        # Check higher tiers first so items get matched to their highest valid discount
         filter_urls = []
         for d_tier in range(90, int_disc - 10, -10):
             if d_tier >= int_disc:
@@ -209,7 +390,6 @@ class CasioScraper(BaseScraper):
                             soup = BeautifulSoup(r.text, "html.parser")
                             cards = soup.select("ul#product-grid li.grid__item, .card-wrapper")
                             for card in cards:
-                                # Find product title and link
                                 model_link = None
                                 model_name = None
                                 for a in card.find_all("a", href=True):
@@ -237,19 +417,19 @@ class CasioScraper(BaseScraper):
                                         except ValueError:
                                             pass
 
-                                # Compute actual discounted deal price
-                                if raw_mrp > 0:
-                                    actual_deal_price = round(raw_mrp * (1.0 - float(d_tier) / 100.0), 2)
-                                else:
-                                    actual_deal_price = 0.0
+                                actual_deal_price = round(raw_mrp * (1.0 - float(d_tier) / 100.0), 2) if raw_mrp > 0 else 0.0
+
+                                raw_title = model_name or clean_link.split("/products/")[-1].replace("-", " ").title()
+                                family, formatted_title = self._classify_casio_watch(raw_title, handle=clean_link.split("/")[-1])
 
                                 deals_map[clean_link] = {
-                                    "title": f"[{collection_handle.title()}] " + (model_name or clean_link.split("/products/")[-1].replace("-", " ").title()),
+                                    "title": formatted_title,
                                     "price": actual_deal_price,
                                     "mrp": raw_mrp,
                                     "discount_percent": float(d_tier),
                                     "in_stock": True,
                                     "url": clean_link,
+                                    "family": family,
                                 }
                     except Exception as exc:
                         logger.debug("[casio] filter tag scan %s error: %s", f_url, exc)
@@ -260,7 +440,7 @@ class CasioScraper(BaseScraper):
         page = 1
         try:
             async with httpx.AsyncClient(timeout=20) as client:
-                while page <= 5:  # Scan up to 5 pages (1,250 items)
+                while page <= 5:
                     json_url = f"https://casiostore.bhawar.com/collections/{collection_handle}/products.json?limit=250&page={page}"
                     r = await client.get(json_url, headers=headers)
                     if r.status_code != 200:
@@ -273,7 +453,9 @@ class CasioScraper(BaseScraper):
                     for p in products:
                         title = p.get("title", "")
                         handle = p.get("handle", "")
+                        tags = p.get("tags", [])
                         product_url = f"https://casiostore.bhawar.com/products/{handle}"
+                        family, formatted_title = self._classify_casio_watch(title, tags, handle)
                         for v in p.get("variants", []):
                             price = float(v.get("price", 0))
                             compare_at = float(v.get("compare_at_price") or price)
@@ -286,12 +468,13 @@ class CasioScraper(BaseScraper):
 
                             if available and discount >= min_discount:
                                 deals_map[product_url] = {
-                                    "title": f"[{collection_handle.title()}] {title}",
+                                    "title": formatted_title,
                                     "price": price,
                                     "mrp": compare_at,
                                     "discount_percent": discount,
                                     "in_stock": available,
                                     "url": product_url,
+                                    "family": family,
                                 }
                     page += 1
         except Exception as exc:
