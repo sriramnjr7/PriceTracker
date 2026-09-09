@@ -55,6 +55,7 @@ class AmazonScraper(BaseScraper):
         "warranty",
         "protection",
         "insurance",
+        "onsitego",
         "accessory",
         "accessories",
         "fbt",
@@ -65,6 +66,10 @@ class AmazonScraper(BaseScraper):
         "bundle",
         "tradein",
         "addon",
+        "add-on",
+        "attachment",
+        "cart-protection",
+        "checkbox",
         "a-text-price",
         "apex-basisprice-value",
         "apex-basis-price-value",
@@ -106,10 +111,26 @@ class AmazonScraper(BaseScraper):
                 except Exception:
                     continue
 
+        # Helper to verify an element is not inside an unwanted add-on / warranty
+        def is_clean_node(node) -> bool:
+            curr = node
+            depth = 0
+            while curr and depth < 25:
+                c_cls = " ".join(curr.get("class", [])) if isinstance(curr.get("class"), list) else str(curr.get("class") or "")
+                c_id = str(curr.get("id") or "")
+                combined = f"{c_cls} {c_id}".lower()
+                if any(uw in combined for uw in self.unwanted_subselectors):
+                    return False
+                if curr.name == "body":
+                    break
+                curr = curr.parent
+                depth += 1
+            return True
+
         # 2. Main BuyBox & Core Price containers
         for container_sel in self.main_price_containers:
             container = soup.select_one(container_sel)
-            if not container:
+            if not container or not is_clean_node(container):
                 continue
 
             for p_sel in (
@@ -117,28 +138,14 @@ class AmazonScraper(BaseScraper):
                 ".apex-pricetopay-value .a-offscreen",
                 ".priceToPay .a-price-whole",
                 ".apex-pricetopay-value .a-price-whole",
-                ".a-price:not(.a-text-price) .a-offscreen",
-                ".a-price:not(.a-text-price) .a-price-whole",
+                ".priceToPay",
+                ".apex-pricetopay-value",
                 "#priceblock_dealprice",
                 "#priceblock_ourprice",
                 "#priceblock_saleprice",
-                ".a-offscreen",
             ):
                 for node in container.select(p_sel):
-                    # Ensure node is not inside an accessory, warranty, or strikethrough element
-                    parent = node
-                    is_unwanted = False
-                    for _ in range(5):
-                        parent = parent.parent if parent else None
-                        if not parent:
-                            break
-                        p_cls = " ".join(parent.get("class", [])) if isinstance(parent.get("class"), list) else str(parent.get("class") or "")
-                        p_id = str(parent.get("id") or "")
-                        combined = f"{p_cls} {p_id}".lower()
-                        if any(uw in combined for uw in self.unwanted_subselectors):
-                            is_unwanted = True
-                            break
-                    if is_unwanted:
+                    if not is_clean_node(node):
                         continue
 
                     val = self.clean_price(node.get_text(" ", strip=True))
@@ -155,19 +162,7 @@ class AmazonScraper(BaseScraper):
             ".priceToPay",
         ):
             for node in soup.select(p_sel):
-                parent = node
-                is_unwanted = False
-                for _ in range(5):
-                    parent = parent.parent if parent else None
-                    if not parent:
-                        break
-                    p_cls = " ".join(parent.get("class", [])) if isinstance(parent.get("class"), list) else str(parent.get("class") or "")
-                    p_id = str(parent.get("id") or "")
-                    combined = f"{p_cls} {p_id}".lower()
-                    if any(uw in combined for uw in self.unwanted_subselectors):
-                        is_unwanted = True
-                        break
-                if is_unwanted:
+                if not is_clean_node(node):
                     continue
 
                 val = self.clean_price(node.get_text(" ", strip=True))

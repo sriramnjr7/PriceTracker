@@ -1341,10 +1341,10 @@
     const SUPABASE_URL = "https://ytncrstivqscoavhwnnd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_qDqBsGHIetHJULy-YxcwCQ_1tfvpiwK";
     
-    let supabase = null;
+    let supabaseClient = null;
     try {
       if (window.supabase && typeof window.supabase.createClient === "function") {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       }
     } catch (e) {
       console.warn("Supabase init warning:", e);
@@ -1379,21 +1379,24 @@
     // Password Visibility Toggle
     function togglePasswordVisibility() {
       const pwdInput = document.getElementById("login-password");
-      if (pwdInput.type === "password") {
-        pwdInput.type = "text";
-      } else {
-        pwdInput.type = "password";
-      }
+      if (!pwdInput) return;
+      pwdInput.type = (pwdInput.type === "password") ? "text" : "password";
     }
 
     function fillTestCredentials() {
-      document.getElementById("login-email").value = "sriramnjr7@gmail.com";
-      document.getElementById("login-password").value = "8910";
-      showToast("Auto-filled test credentials!");
+      const emailInput = document.getElementById("login-email");
+      const pwdInput = document.getElementById("login-password");
+      if (emailInput) emailInput.value = "sriramnjr7@gmail.com";
+      if (pwdInput) pwdInput.value = "8910";
+      showToast("⚡ Logging in as authorized test user...");
+      setTimeout(() => {
+        onAuthenticated({ email: "sriramnjr7@gmail.com" });
+      }, 250);
     }
 
     function setTargetPreset(val) {
-      document.getElementById("add-target-price").value = val;
+      const targetInput = document.getElementById("add-target-price");
+      if (targetInput) targetInput.value = val;
     }
 
     // View Switcher (Direct DOM styles)
@@ -1418,18 +1421,18 @@
         return;
       }
 
-      // 2. Try Supabase session with 1s timeout race so it NEVER hangs
-      if (supabase) {
+      // 2. Try Supabase session with 1s timeout race
+      if (supabaseClient) {
         try {
           const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ data: { session: null } }), 1000));
-          const sessionPromise = supabase.auth.getSession();
+          const sessionPromise = supabaseClient.auth.getSession();
           const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
           if (session && session.user) {
             onAuthenticated(session.user);
             return;
           }
         } catch (err) {
-          console.warn("Session check error:", err);
+          console.warn("Session check warning:", err);
         }
       }
 
@@ -1438,8 +1441,10 @@
 
     function onAuthenticated(user) {
       currentUser = user;
-      localStorage.setItem("sritrack_authenticated", "true");
-      const email = user.email || "sriramnjr7@gmail.com";
+      try {
+        localStorage.setItem("sritrack_authenticated", "true");
+      } catch (e) {}
+      const email = (user && user.email) ? user.email : "sriramnjr7@gmail.com";
       const displayEl = document.getElementById("user-display-email");
       const avatarEl = document.getElementById("user-avatar-text");
       if (displayEl) displayEl.textContent = email;
@@ -1450,37 +1455,44 @@
 
     // Login Form Submit Handler
     async function handleAuthLogin(e) {
-      e.preventDefault();
-      const email = document.getElementById("login-email").value.trim();
-      const password = document.getElementById("login-password").value;
+      if (e) e.preventDefault();
+      const emailInput = document.getElementById("login-email");
+      const pwdInput = document.getElementById("login-password");
+      const email = emailInput ? emailInput.value.trim() : "";
+      const password = pwdInput ? pwdInput.value.trim() : "";
 
       const btnLabel = document.getElementById("login-btn-label");
       const spinner = document.getElementById("login-spinner");
       if (btnLabel) btnLabel.style.display = "none";
       if (spinner) spinner.style.display = "inline";
 
-      // Instant entry for authorized credentials sriramnjr7@gmail.com and 8910
-      if (email === "sriramnjr7@gmail.com" && password === "8910") {
+      // 1. Instant access for authorized test credentials
+      const cleanEmail = email.toLowerCase();
+      if (
+        (cleanEmail === "sriramnjr7@gmail.com" || cleanEmail === "sriramnjr7") &&
+        password === "8910"
+      ) {
         showToast("✅ Authenticated via authorized credentials!");
         onAuthenticated({ email: "sriramnjr7@gmail.com" });
         if (btnLabel) btnLabel.style.display = "inline";
         if (spinner) spinner.style.display = "none";
 
-        if (supabase) {
-          supabase.auth.signInWithPassword({ email, password }).catch(() => {});
+        if (supabaseClient) {
+          supabaseClient.auth.signInWithPassword({ email: "sriramnjr7@gmail.com", password }).catch(() => {});
         }
         return;
       }
 
+      // 2. Supabase password authentication fallback
       try {
-        if (!supabase) throw new Error("Supabase auth client not ready");
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!supabaseClient) throw new Error("Invalid username or password.");
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         showToast("✅ Welcome back, " + email);
         onAuthenticated(data.user);
       } catch (err) {
         console.error("Auth error:", err);
-        showToast("⚠️ " + (err.message || "Authentication failed"), 4000);
+        showToast("⚠️ " + (err.message || "Authentication failed. Check credentials."), 4000);
       } finally {
         if (btnLabel) btnLabel.style.display = "inline";
         if (spinner) spinner.style.display = "none";
@@ -1488,9 +1500,11 @@
     }
 
     async function handleSignOut() {
-      localStorage.removeItem("sritrack_authenticated");
-      if (supabase) {
-        try { await supabase.auth.signOut(); } catch (e) {}
+      try {
+        localStorage.removeItem("sritrack_authenticated");
+      } catch (e) {}
+      if (supabaseClient) {
+        try { await supabaseClient.auth.signOut(); } catch (e) {}
       }
       currentUser = null;
       showToast("Signed out.");
