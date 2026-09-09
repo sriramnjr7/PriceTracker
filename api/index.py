@@ -292,7 +292,7 @@ async def check_single_product(product_id: int):
             "status": "success",
             "id": product_id,
             "price": updated.current_price if updated else None,
-            "last_checked": updated.last_checked.isoformat() if updated and updated.last_checked else None,
+            "last_checked": _format_datetime(updated.last_checked) if updated else None,
         }
     finally:
         await db.close()
