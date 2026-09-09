@@ -1391,6 +1391,25 @@
         justify-content: center;
       }
     }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 95;
+    }
+    .sidebar-backdrop.is-active {
+      display: block;
+    }
+
+    .btn-text-short { display: none; }
+    @media (max-width: 480px) {
+      .btn-text-full { display: none; }
+      .btn-text-short { display: inline; }
+    }
   </style>
 </head>
 <body>
@@ -1447,6 +1466,9 @@
          ======================================================================== -->
     <div id="dashboard-view" class="view-container">
       <div class="app-shell">
+
+        <!-- Mobile Drawer Backdrop -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
 
         <!-- Sidebar: Compact, Minimal, Exactly ONE Nav Item (Dashboard) -->
         <aside class="app-sidebar" id="app-sidebar" aria-label="Primary Navigation">
@@ -1559,7 +1581,8 @@
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>Track Product</span>
+                <span class="btn-text-full">Track Product</span>
+                <span class="btn-text-short">Track</span>
               </button>
             </div>
           </header>
@@ -1819,14 +1842,18 @@
 
     function toggleSidebar() {
       const sb = document.getElementById("app-sidebar");
+      const bd = document.getElementById("sidebar-backdrop");
       if (sb) sb.classList.toggle("mobile-open");
+      if (bd) bd.classList.toggle("is-active");
     }
 
     // Single Sidebar Action: Dashboard
     function switchNavDashboard() {
       setFilter("all");
       const sb = document.getElementById("app-sidebar");
+      const bd = document.getElementById("sidebar-backdrop");
       if (sb) sb.classList.remove("mobile-open");
+      if (bd) bd.classList.remove("is-active");
     }
 
     function setTargetPreset(val) {
