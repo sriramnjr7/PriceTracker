@@ -190,9 +190,16 @@ class Database:
         return int(row["id"])
 
     async def get_product(self, product_id: int) -> Optional[Product]:
+        """Fetch a single product row or None."""
         cursor = await self.conn.execute("SELECT * FROM products WHERE id = ?", (product_id,))
         row = await cursor.fetchone()
-        return _row_to_product(row) if row else None
+        return Product.from_row(row) if row else None
+
+    async def get_product_by_url(self, url: str) -> Optional[Product]:
+        """Fetch a single product by URL or None."""
+        cursor = await self.conn.execute("SELECT * FROM products WHERE url = ? LIMIT 1", (url,))
+        row = await cursor.fetchone()
+        return Product.from_row(row) if row else None
 
     async def get_products(self, active_only: bool = False) -> list[Product]:
         query = "SELECT * FROM products"

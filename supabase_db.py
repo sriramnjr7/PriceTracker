@@ -123,6 +123,18 @@ class SupabaseDatabase:
                     return _row_to_product(rows[0])
         return None
 
+    async def get_product_by_url(self, url: str) -> Optional[Product]:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{self.base_rest}/products?url=eq.{url}&limit=1",
+                headers=self._headers,
+            )
+            if resp.status_code == 200:
+                rows = resp.json()
+                if rows:
+                    return _row_to_product(rows[0])
+        return None
+
     async def get_products(self, active_only: bool = False) -> List[Product]:
         url = f"{self.base_rest}/products?select=*&order=id.asc"
         if active_only:
