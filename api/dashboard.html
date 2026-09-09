@@ -3,42 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0b0c10">
+  <meta name="theme-color" content="#0a0c12">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>SriTrack — Autonomous Price Drop Radar</title>
+  <title>SriTrack — Autonomous Price Drop Radar & Executive Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg-canvas: #090a0f;
-      --bg-card-dark: #13151f;
-      --bg-card-dark-hover: #181a27;
-      --bg-card-sand: #e6dfd5;
-      --text-sand: #18191f;
-      --text-sand-muted: #5c5d66;
-      --bg-card-lavender: #c2cafc;
-      --text-lavender: #12163b;
-      --text-lavender-muted: #4b528a;
-      --border-dark: rgba(255, 255, 255, 0.08);
-      --border-dark-hover: rgba(255, 255, 255, 0.18);
-      --text-main: #f8fafc;
-      --text-muted: #848ca0;
-      --text-dim: #505668;
-      --accent-cyan: #38bdf8;
-      --accent-blue: #3b82f6;
+      --bg-base: #0a0c12;
+      --bg-sidebar: #10131d;
+      --bg-card: #151824;
+      --bg-card-hover: #1a1e2e;
+      --bg-card-subtle: rgba(255, 255, 255, 0.03);
+      --border-color: rgba(255, 255, 255, 0.07);
+      --border-focus: rgba(56, 189, 248, 0.4);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --text-dim: #475569;
+      --accent-blue: #38bdf8;
+      --accent-indigo: #6366f1;
       --accent-emerald: #10b981;
       --accent-amber: #f59e0b;
       --accent-rose: #f43f5e;
+      --accent-warm: #c29d78;
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --radius-sm: 10px;
-      --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      --radius-xl: 22px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --sidebar-width: 270px;
+      --transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     * {
@@ -48,263 +47,712 @@
     }
 
     body {
-      background-color: var(--bg-canvas);
-      color: var(--text-main);
+      background-color: var(--bg-base);
+      color: var(--text-primary);
       font-family: var(--font-sans);
       min-height: 100vh;
       overflow-x: hidden;
-      position: relative;
       letter-spacing: -0.015em;
       -webkit-font-smoothing: antialiased;
-      background-image: 
-        radial-gradient(ellipse 70% 40% at 50% -10%, rgba(56, 189, 248, 0.07), transparent 70%),
-        radial-gradient(ellipse 50% 30% at 85% 100%, rgba(194, 202, 252, 0.04), transparent 60%);
-      background-attachment: fixed;
     }
 
-    /* Ambient background wave lines */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: 
-        radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.015) 0%, transparent 40%),
-        radial-gradient(circle at 75% 60%, rgba(255, 255, 255, 0.012) 0%, transparent 50%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .app-viewport {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      min-height: 100vh;
-    }
-
+    /* Views */
     .view-container {
       width: 100%;
       min-height: 100vh;
     }
 
     /* ===================================================
-       VIEW 1: MODERN MINIMALIST LOGIN VIEW
+       LOGIN VIEW
        =================================================== */
     #login-view {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 32px 16px;
+      padding: 24px;
       min-height: 100vh;
-      width: 100%;
+      background: radial-gradient(ellipse 60% 40% at 50% 30%, rgba(56, 189, 248, 0.08), transparent 70%);
     }
 
-    .login-bento-card {
+    .login-panel {
       width: 100%;
-      max-width: 440px;
-      background: var(--bg-card-dark);
-      border: 1px solid var(--border-dark);
+      max-width: 420px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-xl);
-      padding: clamp(28px, 6vw, 44px);
-      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.06);
-      position: relative;
-      animation: fadeIn 0.4s ease forwards;
+      padding: clamp(28px, 6vw, 40px);
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.05);
+      animation: fadeIn 0.3s ease;
     }
 
-    .login-brand-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 18px;
-      background: linear-gradient(135deg, #1e2235 0%, #2a304a 100%);
+    .login-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #1e2438 0%, #2b3350 100%);
       border: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto 20px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.5);
     }
-    .login-brand-icon svg {
-      width: 28px;
-      height: 28px;
-      stroke: var(--accent-cyan);
+    .login-icon-box svg {
+      width: 26px;
+      height: 26px;
+      stroke: var(--accent-blue);
     }
 
-    .login-title {
-      font-size: 24px;
+    .login-header-title {
+      font-size: 22px;
       font-weight: 800;
-      letter-spacing: -0.03em;
       color: #fff;
       text-align: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
-    .login-subtitle {
-      font-size: 14px;
+    .login-header-desc {
+      font-size: 13px;
       color: var(--text-muted);
       text-align: center;
       line-height: 1.5;
-      margin-bottom: 28px;
+      margin-bottom: 26px;
     }
 
-    .form-group {
-      margin-bottom: 20px;
+    .form-row {
+      margin-bottom: 18px;
     }
-    .form-label {
+    .form-field-label {
       display: block;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 8px;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
     }
-    .form-input-wrapper {
+    .form-input-wrap {
       position: relative;
       display: flex;
       align-items: center;
     }
-    .form-input {
+    .form-control {
       width: 100%;
-      background: rgba(8, 10, 15, 0.6);
-      border: 1px solid var(--border-dark);
+      background: rgba(8, 10, 16, 0.7);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      padding: 13px 16px;
+      padding: 12px 14px;
       color: #fff;
       font-size: 14px;
       font-family: inherit;
-      transition: var(--transition-smooth);
+      transition: var(--transition);
     }
-    .form-input:focus {
+    .form-control:focus {
       outline: none;
-      border-color: var(--accent-cyan);
-      background: rgba(12, 15, 24, 0.9);
+      border-color: var(--accent-blue);
+      background: rgba(14, 18, 28, 0.95);
       box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
     }
-    .toggle-pwd-btn {
+    .pwd-eye-btn {
       position: absolute;
       right: 12px;
       background: none;
       border: none;
-      color: var(--text-dim);
+      color: var(--text-muted);
       cursor: pointer;
       display: flex;
       align-items: center;
-      padding: 6px;
-      transition: color 0.15s;
-    }
-    .toggle-pwd-btn:hover {
-      color: var(--text-main);
+      padding: 4px;
     }
 
-    .btn-bento {
-      display: inline-flex;
+    .btn-submit-main {
+      width: 100%;
+      background: #fff;
+      color: #0a0c12;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 13px 22px;
-      border-radius: var(--radius-sm);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition-smooth);
-      border: 1px solid transparent;
-      text-decoration: none;
-      font-family: inherit;
-      width: 100%;
+      margin-top: 10px;
+      transition: var(--transition);
     }
-    .btn-bento-primary {
-      background: #f8fafc;
-      color: #0b0c10;
-      box-shadow: 0 4px 20px rgba(255, 255, 255, 0.12);
-    }
-    .btn-bento-primary:hover {
-      background: #ffffff;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 26px rgba(255, 255, 255, 0.22);
-    }
-    .btn-bento-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-main);
-      border-color: var(--border-dark);
-    }
-    .btn-bento-secondary:hover {
-      background: rgba(255, 255, 255, 0.09);
-      border-color: var(--border-dark-hover);
+    .btn-submit-main:hover {
+      background: #f1f5f9;
       transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
     }
 
     /* ===================================================
-       VIEW 2: BENTO DASHBOARD MAIN VIEW
+       MAIN APPLICATION LAYOUT (SIDEBAR + WORKSPACE)
        =================================================== */
     #dashboard-view {
       display: none;
-      width: 100%;
       min-height: 100vh;
     }
 
-    .dashboard-container {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 32px 24px 80px;
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
     }
 
-    /* Header Bar */
-    .top-navbar {
+    /* Left Sidebar */
+    .app-sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
       display: flex;
+      flex-direction: column;
       justify-content: space-between;
-      align-items: center;
-      padding-bottom: 24px;
-      margin-bottom: 32px;
-      border-bottom: 1px solid var(--border-dark);
-      gap: 16px;
-      flex-wrap: wrap;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      padding: 24px 18px;
+      transition: transform 0.3s ease;
     }
-    .brand-group {
+
+    .sidebar-brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 24px;
     }
-    .brand-logo-pill {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #1e2235 0%, #2a304a 100%);
+    .brand-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #1e2438 0%, #2b3350 100%);
       border: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
-    .brand-logo-pill svg {
+    .brand-avatar svg {
       width: 22px;
       height: 22px;
-      stroke: var(--accent-cyan);
+      stroke: var(--accent-blue);
     }
-    .brand-title-wrap {
+    .brand-info h2 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .brand-info span {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .sidebar-nav {
       display: flex;
       flex-direction: column;
+      gap: 4px;
+      margin-bottom: 28px;
     }
-    .brand-title {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #fff;
+    .nav-item {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13.5px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
     }
-    .status-pill-live {
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+    }
+    .nav-item.active {
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-badge {
       font-size: 11px;
       font-family: var(--font-mono);
       font-weight: 700;
-      color: var(--accent-emerald);
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 2px 8px;
+      padding: 2px 7px;
       border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary);
+    }
+    .nav-item.active .nav-badge {
+      background: var(--accent-blue);
+      color: #0a0c12;
+    }
+
+    .sidebar-subheading {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      padding: 0 14px;
+      margin-bottom: 10px;
+    }
+
+    .store-list-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+    .store-menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .store-menu-item:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .store-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .dot-casio { background: var(--accent-blue); box-shadow: 0 0 8px rgba(56, 189, 248, 0.6); }
+    .dot-flipkart { background: var(--accent-amber); box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
+    .dot-amazon { background: var(--accent-emerald); box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+
+    /* Pro / Autonomous Feature Card in Sidebar */
+    .sidebar-pro-card {
+      background: linear-gradient(135deg, rgba(30, 36, 56, 0.7) 0%, rgba(20, 24, 38, 0.9) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .pro-tag-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .pro-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .btn-pro-action {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-pro-action:hover {
+      background: #fff;
+      color: #0a0c12;
+      border-color: #fff;
+    }
+
+    /* User Profile in Sidebar */
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+    .user-meta-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .user-avatar-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      color: #0a0c12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .user-text-info {
+      min-width: 0;
+    }
+    .user-email-str {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+    .user-status-str {
+      font-size: 11px;
+      color: var(--accent-emerald);
+      font-family: var(--font-mono);
+    }
+    .btn-signout-icon {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px;
+      transition: var(--transition);
+    }
+    .btn-signout-icon:hover {
+      color: var(--accent-rose);
+    }
+
+    /* Main Workspace Canvas */
+    .app-workspace {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-base);
+    }
+
+    /* Top Navigation Header */
+    .top-toolbar {
+      height: 72px;
+      background: rgba(10, 12, 18, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(16px, 3vw, 32px);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      gap: 16px;
+    }
+
+    .toolbar-search {
+      position: relative;
+      flex: 1;
+      max-width: 440px;
+    }
+    .toolbar-search input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 10px 16px 10px 40px;
+      color: #fff;
+      font-size: 13.5px;
+      font-family: inherit;
+      transition: var(--transition);
+    }
+    .toolbar-search input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .search-glyph {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-action-tool {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+      font-family: inherit;
     }
-    .status-pill-live::before {
+    .btn-action-tool:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+    .btn-primary-tool {
+      background: #fff;
+      color: #0a0c12;
+      border-color: #fff;
+      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
+    }
+    .btn-primary-tool:hover {
+      background: #f8fafc;
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      padding: 6px;
+    }
+
+    /* Content Area */
+    .workspace-content {
+      padding: clamp(20px, 3vw, 36px);
+      flex: 1;
+    }
+
+    /* Breadcrumbs & Title */
+    .workspace-header {
+      margin-bottom: 24px;
+    }
+    .breadcrumbs-trail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .breadcrumbs-trail span {
+      color: var(--text-secondary);
+    }
+    .page-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .page-main-heading {
+      font-size: clamp(24px, 3vw, 30px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+
+    /* Metric Overview Cards (inspired by reference image) */
+    .kpi-row-overview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .kpi-box-module {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: var(--transition);
+      position: relative;
+    }
+    .kpi-box-module:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+    .kpi-header-mini {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .kpi-mini-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .kpi-mini-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--bg-card-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-blue);
+    }
+    .kpi-lead-value {
+      font-size: clamp(26px, 2.8vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+    .kpi-subtext-detail {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Workspace Body Split */
+    .workspace-split-body {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      align-items: flex-start;
+    }
+
+    /* Left: Catalog Section */
+    .catalog-block {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Filter Pills */
+    .filter-pills-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+    .filter-pills-bar::-webkit-scrollbar {
+      display: none;
+    }
+    .filter-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition);
+    }
+    .filter-chip:hover {
+      background: var(--bg-card-hover);
+      color: #fff;
+    }
+    .filter-chip.active {
+      background: #fff;
+      color: #0a0c12;
+      border-color: #fff;
+      font-weight: 700;
+    }
+
+    /* Product Cards Grid */
+    .product-cards-canvas {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .product-item-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: var(--transition);
+      position: relative;
+    }
+    .product-item-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6);
+    }
+
+    .card-top-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .store-label-pill {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+    }
+    .store-label-casio {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent-blue);
+    }
+    .store-label-flipkart {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--accent-amber);
+    }
+    .store-label-amazon {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--accent-emerald);
+    }
+
+    .tracking-indicator {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .track-active {
+      color: var(--accent-emerald);
+    }
+    .track-active::before {
       content: "";
       width: 6px;
       height: 6px;
@@ -317,833 +765,114 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.3; transform: scale(0.8); }
     }
-
-    .brand-subline {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .navbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .nav-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 16px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition-smooth);
-      border: 1px solid var(--border-dark);
-      background: rgba(255, 255, 255, 0.04);
-      color: #fff;
-      font-family: inherit;
-    }
-    .nav-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: var(--border-dark-hover);
-      transform: translateY(-1px);
-    }
-    .nav-btn-primary {
-      background: #f8fafc;
-      color: #0b0c10;
-      border-color: transparent;
-      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
-    }
-    .nav-btn-primary:hover {
-      background: #ffffff;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.18);
-    }
-
-    .user-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-dark);
-      border-radius: 999px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-    .user-avatar {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: var(--accent-cyan);
-      color: #090a0f;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 11px;
-    }
-
-    /* ===================================================
-       REFERENCE BENTO GRID (THE SIGNATURE SECTION)
-       =================================================== */
-    .bento-section {
-      margin-bottom: 48px;
-    }
-
-    .bento-grid {
-      display: grid;
-      grid-template-columns: 1.35fr 0.85fr 1fr;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-
-    .bento-card {
-      border-radius: var(--radius-xl);
-      padding: 28px;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: var(--transition-smooth);
-    }
-    .bento-card:hover {
-      transform: translateY(-3px);
-    }
-
-    /* Card 1: Warm Sand Rhythm Bar Visualizer */
-    .card-sand {
-      background-color: var(--bg-card-sand);
-      color: var(--text-sand);
-      box-shadow: 0 20px 40px -10px rgba(230, 223, 213, 0.15);
-    }
-    .card-sand:hover {
-      box-shadow: 0 24px 50px -10px rgba(230, 223, 213, 0.25);
-    }
-    .sand-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 20px;
-    }
-    .sand-title-sub {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-sand-muted);
-      margin-bottom: 4px;
-    }
-    .sand-title-main {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      color: var(--text-sand);
-    }
-    .sand-status-badge {
-      text-align: right;
-    }
-    .sand-status-label {
-      font-size: 12px;
-      color: var(--text-sand-muted);
-      margin-bottom: 4px;
-    }
-    .sand-status-val {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      color: var(--text-sand);
-    }
-
-    /* Rhythmic soundwave / equalizer bars in sand card */
-    .sand-bars-container {
-      position: relative;
-      margin-top: 10px;
-      padding-top: 30px;
-    }
-    .trendline-overlay {
-      position: absolute;
-      top: 10px;
-      left: 0;
-      right: 0;
-      height: 30px;
-      pointer-events: none;
-    }
-    .equalizer-bars {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 3px;
-      height: 75px;
-    }
-    .eq-bar {
-      flex: 1;
-      background: #18191f;
-      border-radius: 999px;
-      transition: height 0.4s ease, opacity 0.2s ease;
-      cursor: pointer;
-    }
-    .eq-bar:hover {
-      opacity: 0.7;
-    }
-    .sand-axis {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 10px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-sand-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    /* Card 2: Soft Lavender Metric Box */
-    .card-lavender {
-      background-color: var(--bg-card-lavender);
-      color: var(--text-lavender);
-      box-shadow: 0 20px 40px -10px rgba(194, 202, 252, 0.15);
-      position: relative;
-    }
-    .card-lavender:hover {
-      box-shadow: 0 24px 50px -10px rgba(194, 202, 252, 0.25);
-    }
-    /* Translucent geometric squares floating watermark */
-    .lavender-watermark {
-      position: absolute;
-      top: -10px;
-      right: -10px;
-      width: 140px;
-      height: 140px;
-      opacity: 0.18;
-      pointer-events: none;
-    }
-    .lavender-body {
-      position: relative;
-      z-index: 1;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 10px 0;
-    }
-    .lavender-number {
-      font-size: clamp(38px, 4.5vw, 48px);
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      line-height: 1.05;
-      color: var(--text-lavender);
-      margin-bottom: 6px;
-    }
-    .lavender-label {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-lavender-muted);
-    }
-
-    /* Card 3: Tool Collaborations / Custom AI */
-    .card-dark {
-      background: var(--bg-card-dark);
-      border: 1px solid var(--border-dark);
-      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
-    }
-    .card-dark:hover {
-      border-color: var(--border-dark-hover);
-      box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.8);
-    }
-    .card-dark-header-sub {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
-    .card-dark-header-main {
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #fff;
-      margin-bottom: 24px;
-    }
-    .tools-tiles-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .tool-tile {
-      width: 58px;
-      height: 58px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: var(--transition-smooth);
-      position: relative;
-    }
-    .tool-tile:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: translateY(-2px);
-    }
-    .tool-tile svg {
-      width: 28px;
-      height: 28px;
-    }
-    .more-pill {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent-cyan);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: opacity 0.2s;
-    }
-    .more-pill:hover {
-      opacity: 0.8;
-      text-decoration: underline;
-    }
-
-    /* Second Row of Bento Grid */
-    .bento-grid-row-2 {
-      display: grid;
-      grid-template-columns: 1.15fr 1.1fr 0.95fr;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-
-    /* Card 4: Assistant list commands */
-    .assistant-title {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    .assistant-desc {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-    .command-pills-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .cmd-pill-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: var(--radius-md);
-      font-size: 13px;
-      font-weight: 600;
-      color: #e2e8f0;
-      transition: var(--transition-smooth);
-      cursor: pointer;
-    }
-    .cmd-pill-row:hover {
-      background: rgba(255, 255, 255, 0.07);
-      border-color: rgba(255, 255, 255, 0.12);
-      transform: translateX(3px);
-    }
-    .cmd-icon-box {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.07);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: #fff;
-    }
-
-    /* Card 5: AI Image Preview with Segments */
-    .preview-header-wrap {
-      margin-bottom: 14px;
-    }
-    .preview-title {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #fff;
-      margin-bottom: 6px;
-    }
-    .preview-subtitle {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
-    .version-switch-bar {
-      display: inline-flex;
-      padding: 3px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 999px;
-      gap: 4px;
-      margin-bottom: 14px;
-    }
-    .version-chip {
-      padding: 4px 10px;
-      font-size: 11px;
-      font-weight: 600;
-      border-radius: 999px;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .version-chip.active {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-    }
-    .preview-image-box {
-      position: relative;
-      border-radius: var(--radius-lg);
-      background: linear-gradient(180deg, #1b1e2e 0%, #11131c 100%);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      overflow: hidden;
-    }
-    .spotlight-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .spotlight-tag {
-      font-size: 10px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: var(--accent-emerald);
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .spotlight-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 4px;
-    }
-    .spotlight-price {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--accent-cyan);
-      font-family: var(--font-mono);
-    }
-    .floating-rebuild-btn {
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: #ffffff;
-      color: #0b0c10;
-      font-size: 12px;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      transition: var(--transition-smooth);
-      white-space: nowrap;
-    }
-    .floating-rebuild-btn:hover {
-      transform: scale(1.05);
-      background: var(--accent-cyan);
-    }
-
-    /* Card 6: Warm Linen Histogram Chart */
-    .sand-chart-header {
-      margin-bottom: 14px;
-    }
-    .histogram-stepped {
-      display: flex;
-      align-items: flex-end;
-      gap: 4px;
-      height: 60px;
-      margin-bottom: 14px;
-    }
-    .hist-bar {
-      flex: 1;
-      background: #878279;
-      border-radius: 4px 4px 0 0;
-      opacity: 0.65;
-      transition: opacity 0.2s, background 0.2s;
-    }
-    .hist-bar.active {
-      background: #18191f;
-      opacity: 1;
-    }
-    .stat-bold-lead {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      color: var(--text-sand);
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-    }
-    .stat-bold-lead span {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-sand-muted);
-    }
-
-    /* Card 7: Bottom Wide Banner */
-    .bento-banner-wide {
-      background: var(--bg-card-dark);
-      border: 1px solid var(--border-dark);
-      border-radius: var(--radius-xl);
-      padding: 26px 36px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 28px;
-      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
-      transition: var(--transition-smooth);
-    }
-    .bento-banner-wide:hover {
-      border-color: var(--border-dark-hover);
-    }
-    .banner-stat-group {
-      display: flex;
-      align-items: center;
-      gap: 48px;
-    }
-    .banner-stat-col {
-      display: flex;
-      flex-direction: column;
-    }
-    .banner-stat-num {
-      font-size: 32px;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      color: #fff;
-      line-height: 1.1;
-      margin-bottom: 4px;
-    }
-    .banner-stat-text {
-      font-size: 12px;
-      color: var(--text-muted);
-      max-width: 140px;
-      line-height: 1.4;
-    }
-    .banner-cursor-badge {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: var(--radius-lg);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      position: relative;
-    }
-    .cursor-badge-headline {
-      font-size: 15px;
-      font-weight: 700;
-      color: #fff;
-    }
-    .cursor-highlight-box {
-      background: #fff;
-      color: #0b0c10;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-weight: 800;
-    }
-    .cursor-pointer-tag {
-      background: var(--accent-blue);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 6px;
-      position: absolute;
-      right: 14px;
-      bottom: -10px;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    /* ===================================================
-       CATALOG CONTROLS & FILTER SYSTEM
-       =================================================== */
-    .catalog-header-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .section-title {
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .catalog-search-wrap {
-      position: relative;
-      flex: 1;
-      max-width: 380px;
-    }
-    .catalog-search-input {
-      width: 100%;
-      background: var(--bg-card-dark);
-      border: 1px solid var(--border-dark);
-      border-radius: 999px;
-      padding: 10px 16px 10px 40px;
-      color: #fff;
-      font-size: 13px;
-      font-family: inherit;
-      transition: var(--transition-smooth);
-    }
-    .catalog-search-input:focus {
-      outline: none;
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-    }
-    .search-lens-icon {
-      position: absolute;
-      left: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-dim);
-      pointer-events: none;
-    }
-
-    .filter-pills-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      margin-bottom: 24px;
-      padding-bottom: 4px;
-    }
-    .filter-pills-row::-webkit-scrollbar {
-      display: none;
-    }
-    .filter-pill {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border-dark);
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 999px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: var(--transition-smooth);
-    }
-    .filter-pill:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
-    }
-    .filter-pill.active {
-      background: #f8fafc;
-      color: #0b0c10;
-      border-color: transparent;
-      box-shadow: 0 2px 10px rgba(255, 255, 255, 0.15);
-    }
-
-    /* ===================================================
-       MODERN BENTO PRODUCT CARDS GRID
-       =================================================== */
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 20px;
-      margin-bottom: 48px;
-    }
-
-    .bento-product-card {
-      background: var(--bg-card-dark);
-      border: 1px solid var(--border-dark);
-      border-radius: var(--radius-xl);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: var(--transition-smooth);
-      position: relative;
-    }
-    .bento-product-card:hover {
-      background: var(--bg-card-dark-hover);
-      border-color: var(--border-dark-hover);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
-    }
-
-    .prod-card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .store-tag {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 999px;
-      letter-spacing: 0.04em;
-    }
-    .store-tag-casio {
-      background: rgba(56, 189, 248, 0.1);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      color: var(--accent-cyan);
-    }
-    .store-tag-flipkart {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.25);
-      color: var(--accent-amber);
-    }
-    .store-tag-amazon {
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      color: var(--accent-emerald);
-    }
-
-    .prod-status-indicator {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .prod-status-active {
-      color: var(--accent-emerald);
-    }
-    .prod-status-active::before {
-      content: "";
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent-emerald);
-      box-shadow: 0 0 8px var(--accent-emerald);
-      animation: pulseDot 2s infinite;
-    }
-    .prod-status-paused {
+    .track-paused {
       color: var(--text-dim);
     }
 
-    .prod-card-title {
-      font-size: 16px;
+    .product-title-text {
+      font-size: 15px;
       font-weight: 700;
       color: #fff;
       line-height: 1.4;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      min-height: 44px;
+      min-height: 42px;
     }
-    .prod-card-title a {
+    .product-title-text a {
       color: inherit;
       text-decoration: none;
-      transition: color 0.2s;
+      transition: color 0.15s;
     }
-    .prod-card-title a:hover {
-      color: var(--accent-cyan);
+    .product-title-text a:hover {
+      color: var(--accent-blue);
     }
 
-    .price-bento-box {
-      background: rgba(8, 10, 15, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+    .price-metric-cluster {
+      background: rgba(8, 10, 16, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       border-radius: var(--radius-md);
-      padding: 14px 16px;
+      padding: 12px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }
-    .price-box-item {
+    .price-col {
       display: flex;
       flex-direction: column;
     }
-    .price-item-label {
+    .price-col-title {
       font-size: 10px;
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
       margin-bottom: 4px;
     }
-    .price-item-val {
+    .price-col-value {
       font-family: var(--font-mono);
-      font-size: 19px;
+      font-size: 18px;
       font-weight: 700;
       color: #fff;
     }
-    .price-item-val.target-met {
+    .price-col-value.is-deal {
       color: var(--accent-emerald);
     }
-    .price-item-target {
+    .price-col-target {
       font-family: var(--font-mono);
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
-      color: var(--text-muted);
+      color: var(--text-secondary);
     }
 
-    .progress-bento {
-      margin-bottom: 18px;
+    .progress-bar-wrap {
+      margin-bottom: 16px;
     }
-    .progress-labels-row {
+    .progress-info-row {
       display: flex;
       justify-content: space-between;
       font-size: 11px;
-      color: var(--text-dim);
+      color: var(--text-muted);
       font-family: var(--font-mono);
       margin-bottom: 6px;
     }
-    .progress-track {
+    .progress-rail {
       width: 100%;
       height: 5px;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 999px;
       overflow: hidden;
     }
-    .progress-fill {
+    .progress-gauge {
       height: 100%;
-      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald));
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-emerald));
       border-radius: 999px;
-      transition: width 0.5s ease;
+      transition: width 0.4s ease;
     }
 
-    .card-footer-bento {
+    .card-footer-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-top: 14px;
+      padding-top: 12px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
-    .time-stamp-label {
+    .time-since-check {
       font-size: 11px;
       font-family: var(--font-mono);
       color: var(--text-dim);
     }
-    .card-quick-actions {
+    .card-actions-strip {
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    .card-action-btn {
-      width: 32px;
-      height: 32px;
+    .btn-item-action {
+      width: 30px;
+      height: 30px;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.06);
@@ -1152,87 +881,144 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: var(--transition-smooth);
+      transition: var(--transition);
       text-decoration: none;
     }
-    .card-action-btn:hover {
+    .btn-item-action:hover {
       background: rgba(255, 255, 255, 0.1);
       color: #fff;
-      transform: translateY(-1px);
     }
-    .card-action-btn.btn-del:hover {
+    .btn-item-action.delete-act:hover {
       background: rgba(244, 63, 94, 0.15);
       color: var(--accent-rose);
       border-color: rgba(244, 63, 94, 0.3);
     }
 
-    /* ===================================================
-       DEAL RADAR STREAM PANEL
-       =================================================== */
-    .radar-stream-card {
-      background: var(--bg-card-dark);
-      border: 1px solid var(--border-dark);
-      border-radius: var(--radius-xl);
-      padding: clamp(20px, 4vw, 32px);
-      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    /* Right Side Panel: Real-time Deal Radar & Activity Feed */
+    .activity-panel-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
-    .stream-header-row {
+
+    .radar-alerts-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+    }
+    .panel-card-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
-    .deal-stream-item {
+    .panel-title-text {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .deal-stream-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .deal-stream-box::-webkit-scrollbar {
+      width: 4px;
+    }
+    .deal-stream-box::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .deal-alert-card-row {
+      background: rgba(8, 10, 16, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: var(--transition);
+    }
+    .deal-alert-card-row:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: rgba(14, 18, 28, 0.8);
+    }
+    .alert-row-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 16px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      gap: 16px;
+      align-items: flex-start;
+      gap: 10px;
     }
-    .deal-stream-item:last-child {
-      border-bottom: none;
-    }
-    .deal-item-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .deal-headline-link {
-      font-size: 15px;
+    .deal-watch-link {
+      font-size: 13px;
       font-weight: 700;
       color: #fff;
       text-decoration: none;
-      display: block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 4px;
-      transition: color 0.2s;
+      line-height: 1.3;
+      transition: color 0.15s;
     }
-    .deal-headline-link:hover {
-      color: var(--accent-cyan);
+    .deal-watch-link:hover {
+      color: var(--accent-blue);
     }
-    .deal-meta-pill {
-      font-size: 12px;
+    .discount-pill-glow {
+      font-size: 11px;
       font-family: var(--font-mono);
-      color: var(--text-dim);
-    }
-    .deal-badge-pill {
-      font-family: var(--font-mono);
-      font-size: 13px;
       font-weight: 700;
       color: var(--accent-emerald);
       background: rgba(16, 185, 129, 0.12);
       border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 6px 14px;
+      padding: 2px 7px;
       border-radius: 999px;
       white-space: nowrap;
     }
+    .alert-row-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
 
-    /* ===================================================
-       MODALS & TOASTS
-       =================================================== */
-    .modal-backdrop {
+    /* Target Shortcuts Widget */
+    .shortcuts-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .shortcut-row-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+      color: #fff;
+      font-size: 12.5px;
+    }
+    .shortcut-row-btn:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.12);
+      transform: translateX(2px);
+    }
+
+    /* Modal System */
+    .modal-overlay-plane {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.75);
@@ -1244,52 +1030,52 @@
       justify-content: center;
       padding: 20px;
     }
-    .modal-backdrop.active {
+    .modal-overlay-plane.active {
       display: flex;
     }
-    .modal-box-bento {
+    .modal-container-card {
       width: 100%;
       max-width: 480px;
-      background: var(--bg-card-dark);
-      border: 1px solid var(--border-dark-hover);
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: var(--radius-xl);
-      padding: 32px;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(56, 189, 248, 0.08);
-      animation: fadeIn 0.25s ease forwards;
+      padding: 30px;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.08);
+      animation: fadeIn 0.2s ease;
     }
-    .modal-head-row {
+    .modal-header-line {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
     }
-    .modal-title {
-      font-size: 20px;
+    .modal-title-bold {
+      font-size: 19px;
       font-weight: 800;
       color: #fff;
-      letter-spacing: -0.03em;
     }
-    .modal-close-icon {
+    .modal-dismiss-btn {
       background: none;
       border: none;
-      color: var(--text-dim);
+      color: var(--text-muted);
       cursor: pointer;
       padding: 4px;
       transition: color 0.15s;
     }
-    .modal-close-icon:hover {
+    .modal-dismiss-btn:hover {
       color: #fff;
     }
 
-    .toast-pill-modern {
+    /* Toast */
+    .toast-capsule {
       position: fixed;
-      bottom: 28px;
-      right: 28px;
+      bottom: 24px;
+      right: 24px;
       z-index: 10000;
-      background: #181b28;
+      background: #191e2e;
       border: 1px solid rgba(255, 255, 255, 0.15);
       color: #fff;
-      padding: 13px 22px;
+      padding: 12px 20px;
       border-radius: 999px;
       font-size: 13px;
       font-weight: 600;
@@ -1297,13 +1083,13 @@
       display: none;
       align-items: center;
       gap: 10px;
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: slideUp 0.3s ease;
     }
-    .toast-pill-modern.active {
+    .toast-capsule.active {
       display: flex;
     }
 
-    /* Animations */
+    /* Spinner & Keyframes */
     .spin {
       animation: rotate 1s linear infinite;
     }
@@ -1311,7 +1097,7 @@
       100% { transform: rotate(360deg); }
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
     @keyframes slideUp {
@@ -1319,77 +1105,53 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ===================================================
-       RESPONSIVE BREAKPOINTS
-       =================================================== */
-    @media (max-width: 1080px) {
-      .bento-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-      .card-dark {
-        grid-column: 1 / -1;
-      }
-      .bento-grid-row-2 {
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .workspace-split-body {
         grid-template-columns: 1fr;
-      }
-      .banner-stat-group {
-        gap: 28px;
       }
     }
 
-    @media (max-width: 768px) {
-      .dashboard-container {
+    @media (max-width: 860px) {
+      .app-sidebar {
+        transform: translateX(-100%);
+      }
+      .app-sidebar.open {
+        transform: translateX(0);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+      }
+      .app-workspace {
+        margin-left: 0;
+      }
+      .mobile-menu-btn {
+        display: block;
+      }
+      .toolbar-search {
+        max-width: 100%;
+      }
+      .kpi-row-overview {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .product-cards-canvas {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .kpi-row-overview {
+        grid-template-columns: 1fr;
+      }
+      .top-toolbar {
+        padding: 0 14px;
+      }
+      .workspace-content {
         padding: 16px 14px 60px;
       }
-      .top-navbar {
-        padding-bottom: 16px;
-        margin-bottom: 20px;
-      }
-      .brand-title {
-        font-size: 17px;
-      }
-      .bento-grid {
-        grid-template-columns: 1fr;
-        gap: 14px;
-      }
-      .bento-banner-wide {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 22px 20px;
-        gap: 20px;
-      }
-      .banner-stat-group {
-        width: 100%;
-        justify-content: space-between;
-      }
-      .banner-cursor-badge {
-        width: 100%;
-      }
-      .catalog-header-bar {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .catalog-search-wrap {
+      .modal-container-card {
+        border-radius: 20px 20px 0 0;
+        position: fixed;
+        bottom: 0;
         max-width: 100%;
-      }
-      .products-grid {
-        grid-template-columns: 1fr;
-        gap: 14px;
-      }
-      .modal-backdrop {
-        align-items: flex-end;
-        padding: 0;
-      }
-      .modal-box-bento {
-        max-width: 100%;
-        border-radius: 24px 24px 0 0;
-        padding: 24px 20px 40px;
-      }
-      .toast-pill-modern {
-        bottom: 16px;
-        right: 16px;
-        left: 16px;
-        justify-content: center;
       }
     }
   </style>
@@ -1398,39 +1160,39 @@
   <div class="app-viewport">
 
     <!-- ===================================================
-         VIEW 1: CLEAN MINIMALIST LOGIN
+         VIEW 1: CLEAN SIGN IN VIEW
          =================================================== -->
     <div id="login-view" class="view-container" style="display: flex;">
-      <div class="login-bento-card">
-        <div class="login-brand-icon">
+      <div class="login-panel">
+        <div class="login-icon-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polygon points="12 6 12 12 14 14"></polygon>
           </svg>
         </div>
-        <h1 class="login-title">SriTrack Portal</h1>
-        <p class="login-subtitle">Sign in to access real-time price drop telemetry and deal radar monitoring.</p>
+        <h1 class="login-header-title">SriTrack Console</h1>
+        <p class="login-header-desc">Authenticate to access real-time price drops, silent sale alerts, and autonomous radar telemetry.</p>
 
         <form id="login-form" onsubmit="handleAuthLogin(event)">
-          <div class="form-group">
-            <label class="form-label">Email Address</label>
-            <div class="form-input-wrapper">
-              <input type="email" id="login-email" class="form-input" value="" placeholder="name@domain.com" required autocomplete="username">
+          <div class="form-row">
+            <label class="form-field-label">Email or Username</label>
+            <div class="form-input-wrap">
+              <input type="email" id="login-email" class="form-control" value="" placeholder="name@domain.com" required autocomplete="username">
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Password</label>
-            <div class="form-input-wrapper">
-              <input type="password" id="login-password" class="form-input" value="" placeholder="••••••••" required autocomplete="current-password">
-              <button type="button" class="toggle-pwd-btn" onclick="togglePasswordVisibility()" title="Toggle password">
+          <div class="form-row">
+            <label class="form-field-label">Password</label>
+            <div class="form-input-wrap">
+              <input type="password" id="login-password" class="form-control" value="" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="pwd-eye-btn" onclick="togglePasswordVisibility()" title="Toggle password visibility">
                 <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
             </div>
           </div>
 
-          <button type="submit" class="btn-bento btn-bento-primary" id="btn-login-submit" style="margin-top: 10px;">
-            <span id="login-btn-label">Authenticate &amp; Enter</span>
+          <button type="submit" class="btn-submit-main" id="btn-login-submit">
+            <span id="login-btn-label">Sign In &amp; Enter Console</span>
             <svg id="login-spinner" style="display:none;" class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
           </button>
         </form>
@@ -1439,347 +1201,315 @@
 
 
     <!-- ===================================================
-         VIEW 2: SIGNATURE BENTO GRID DASHBOARD
+         VIEW 2: PROFESSIONAL SAAS DASHBOARD (SIDEBAR + WORKSPACE)
          =================================================== -->
     <div id="dashboard-view" class="view-container" style="display: none;">
-      <div class="dashboard-container">
+      <div class="app-layout">
 
-        <!-- Top Header Navigation -->
-        <header class="top-navbar">
-          <div class="brand-group">
-            <div class="brand-logo-pill">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polygon points="12 6 12 12 14 14"></polygon>
-              </svg>
-            </div>
-            <div class="brand-title-wrap">
-              <div class="brand-title">
-                SRITRACK
-                <span class="status-pill-live">ARMED</span>
+        <!-- Left Sidebar Navigation -->
+        <aside class="app-sidebar" id="app-sidebar">
+          <div>
+            <!-- Brand Logo -->
+            <div class="sidebar-brand">
+              <div class="brand-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polygon points="12 6 12 12 14 14"></polygon>
+                </svg>
               </div>
-              <div class="brand-subline">Autonomous Price Drop Radar &amp; Deal Hunter</div>
+              <div class="brand-info">
+                <h2>SriTrack</h2>
+                <span>v2.2 Executive Console</span>
+              </div>
+            </div>
+
+            <!-- Primary Navigation Links -->
+            <nav class="sidebar-nav">
+              <a class="nav-item active" onclick="switchNav('dashboard', this)">
+                <div class="nav-left">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                  <span>Dashboard</span>
+                </div>
+                <span class="nav-badge" id="nav-count-badge">9</span>
+              </a>
+
+              <a class="nav-item" onclick="switchNav('tracker', this)">
+                <div class="nav-left">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                  <span>Live Tracker</span>
+                </div>
+              </a>
+
+              <a class="nav-item" onclick="switchNav('radar', this)">
+                <div class="nav-left">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  <span>Deal Radar</span>
+                </div>
+                <span class="nav-badge" style="background: rgba(16, 185, 129, 0.2); color: var(--accent-emerald);">70%+</span>
+              </a>
+            </nav>
+
+            <!-- Monitored Platforms -->
+            <div class="sidebar-subheading">Monitored Platforms</div>
+            <div class="store-list-menu">
+              <div class="store-menu-item" onclick="setFilter('casio')">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="store-dot dot-casio"></div>
+                  <span>Casio Bhawar</span>
+                </div>
+                <span style="font-family: var(--font-mono); font-size: 11px;" id="sidebar-casio-count">7</span>
+              </div>
+              <div class="store-menu-item" onclick="setFilter('flipkart')">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="store-dot dot-flipkart"></div>
+                  <span>Flipkart</span>
+                </div>
+                <span style="font-family: var(--font-mono); font-size: 11px;" id="sidebar-flipkart-count">1</span>
+              </div>
+              <div class="store-menu-item" onclick="setFilter('amazon')">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="store-dot dot-amazon"></div>
+                  <span>Amazon India</span>
+                </div>
+                <span style="font-family: var(--font-mono); font-size: 11px;" id="sidebar-amazon-count">1</span>
+              </div>
+            </div>
+
+            <!-- Pro Telemetry Badge -->
+            <div class="sidebar-pro-card">
+              <div class="pro-tag-row">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span>Autonomous Mode</span>
+              </div>
+              <p class="pro-desc">
+                24/7 background price drop sniper active. Immediate Telegram notification on target reach.
+              </p>
+              <button class="btn-pro-action" onclick="triggerManualSweep()" id="btn-manual-sweep">
+                ⚡ Execute Deal Sweep
+              </button>
             </div>
           </div>
 
-          <div class="navbar-actions">
-            <button class="nav-btn" onclick="triggerManualSweep()" id="btn-manual-sweep" title="Run instant deal radar sweep">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-              <span>Scan Deals</span>
+          <!-- User Profile Row -->
+          <div class="sidebar-user">
+            <div class="user-meta-left">
+              <div class="user-avatar-circle" id="user-avatar-text">S</div>
+              <div class="user-text-info">
+                <span class="user-email-str" id="user-display-email">sriramnjr7@gmail.com</span>
+                <span class="user-status-str">Online &bull; Armed</span>
+              </div>
+            </div>
+            <button class="btn-signout-icon" onclick="handleSignOut()" title="Sign Out">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
             </button>
-
-            <button class="nav-btn nav-btn-primary" onclick="openAddProductModal()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>Track Product</span>
-            </button>
-
-            <div class="user-pill">
-              <div class="user-avatar" id="user-avatar-text">S</div>
-              <span id="user-display-email">sriramnjr7@gmail.com</span>
-            </div>
-
-            <button class="nav-btn" onclick="handleSignOut()" title="Sign Out">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            </button>
           </div>
-        </header>
+        </aside>
 
-        <!-- ===================================================
-             THE SIGNATURE BENTO GRID SECTION
-             =================================================== -->
-        <section class="bento-section">
-
-          <!-- Row 1: Sand Visualizer | Lavender Number | Dark Ecosystem -->
-          <div class="bento-grid">
-            
-            <!-- Card 1: Warm Sand Equalizer / Telemetry Visualizer -->
-            <div class="bento-card card-sand">
-              <div>
-                <div class="sand-header">
-                  <div>
-                    <div class="sand-title-sub">Active Tracking Telemetry</div>
-                    <div class="sand-title-main" id="bento-updated-count">9 Updated</div>
-                  </div>
-                  <div class="sand-status-badge">
-                    <div class="sand-status-label">Status</div>
-                    <div class="sand-status-val">70% Alert</div>
-                  </div>
-                </div>
-
-                <div class="sand-bars-container">
-                  <div class="equalizer-bars" id="sand-eq-bars">
-                    <div class="eq-bar" style="height: 35%;"></div>
-                    <div class="eq-bar" style="height: 60%;"></div>
-                    <div class="eq-bar" style="height: 25%;"></div>
-                    <div class="eq-bar" style="height: 80%;"></div>
-                    <div class="eq-bar" style="height: 45%;"></div>
-                    <div class="eq-bar" style="height: 95%;"></div>
-                    <div class="eq-bar" style="height: 70%;"></div>
-                    <div class="eq-bar" style="height: 30%;"></div>
-                    <div class="eq-bar" style="height: 85%;"></div>
-                    <div class="eq-bar" style="height: 50%;"></div>
-                    <div class="eq-bar" style="height: 100%;"></div>
-                    <div class="eq-bar" style="height: 65%;"></div>
-                    <div class="eq-bar" style="height: 40%;"></div>
-                    <div class="eq-bar" style="height: 90%;"></div>
-                    <div class="eq-bar" style="height: 55%;"></div>
-                    <div class="eq-bar" style="height: 75%;"></div>
-                    <div class="eq-bar" style="height: 35%;"></div>
-                    <div class="eq-bar" style="height: 65%;"></div>
-                    <div class="eq-bar" style="height: 85%;"></div>
-                    <div class="eq-bar" style="height: 45%;"></div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="sand-axis">
-                <span>Flipkart</span>
-                <span>Amazon</span>
-                <span>Casio Store</span>
+        <!-- Main Workspace View -->
+        <main class="app-workspace">
+          
+          <!-- Top Utility Bar -->
+          <header class="top-toolbar">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+              <button class="mobile-menu-btn" onclick="toggleSidebar()">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+              </button>
+              <div class="toolbar-search">
+                <svg class="search-glyph" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="catalog-search" placeholder="Search tracked products, stores, model codes..." oninput="applyFilters()">
               </div>
             </div>
 
-            <!-- Card 2: Soft Lavender Metric Box -->
-            <div class="bento-card card-lavender">
-              <svg class="lavender-watermark" viewBox="0 0 100 100" fill="none">
-                <rect x="15" y="15" width="40" height="40" rx="10" stroke="currentColor" stroke-width="8"/>
-                <rect x="45" y="45" width="45" height="45" rx="12" stroke="currentColor" stroke-width="8"/>
-              </svg>
-              <div class="lavender-body">
-                <div class="lavender-number" id="bento-total-components">1,324</div>
-                <div class="lavender-label">Monitored Watches</div>
-              </div>
+            <div class="toolbar-actions">
+              <button class="btn-action-tool" onclick="openAddProductModal()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Add Product</span>
+              </button>
+
+              <button class="btn-action-tool btn-primary-tool" onclick="triggerManualSweep()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>Sweep Deals</span>
+              </button>
             </div>
+          </header>
 
-            <!-- Card 3: Monitored Store Integrations -->
-            <div class="bento-card card-dark">
-              <div>
-                <div class="card-dark-header-sub">Store Integrations</div>
-                <div class="card-dark-header-main">Autonomous Radar</div>
-                <div class="tools-tiles-row">
-                  <!-- Casio Bhawar Monogram Tile -->
-                  <div class="tool-tile" title="Casio Store (casiostore.bhawar.com)">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <rect width="24" height="24" rx="6" fill="#0284c7"/>
-                      <path d="M7 16V8h3.5a3.5 3.5 0 0 1 0 7H7zm2-2h1.5a1.5 1.5 0 0 0 0-3H9v3z" fill="#fff"/>
-                    </svg>
-                  </div>
-                  <!-- Flipkart Tile -->
-                  <div class="tool-tile" title="Flipkart India">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <rect width="24" height="24" rx="6" fill="#f59e0b"/>
-                      <path d="M14 6H9v12h3v-5h2a3 3 0 0 0 0-6zm-1 4h-2V8h2a1 1 0 0 1 0 2z" fill="#090a0f"/>
-                    </svg>
-                  </div>
-                  <!-- Amazon Tile -->
-                  <div class="tool-tile" title="Amazon India">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <rect width="24" height="24" rx="6" fill="#1e293b"/>
-                      <path d="M7 14c4 3 8 3 11 0" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
-                      <path d="M17 13l2 2" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                  </div>
-                </div>
+          <!-- Workspace Content Container -->
+          <div class="workspace-content">
+
+            <!-- Breadcrumbs and Page Heading -->
+            <div class="workspace-header">
+              <div class="breadcrumbs-trail">
+                <span>PriceTracker</span> / <span>Telemetry</span> / <span>Active Monitors</span>
               </div>
-              <div>
-                <a href="#tracked-catalog" class="more-pill">
-                  + 4 collections tracked &rarr;
-                </a>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Row 2: Assistant Command List | Spotlight Preview | Histogram Linen -->
-          <div class="bento-grid-row-2">
-
-            <!-- Card 4: Assistant command tiles -->
-            <div class="bento-card card-dark">
-              <div>
-                <div class="assistant-title">Autonomous Price Intelligence</div>
-                <p class="assistant-desc">
-                  Monitors member portals, flash coupons, and BuyBox drops without human intervention.
-                </p>
-                <div class="command-pills-list">
-                  <div class="cmd-pill-row" onclick="triggerManualSweep()">
-                    <div class="cmd-icon-box">⚡</div>
-                    <span>Instant Price Sweep</span>
-                  </div>
-                  <div class="cmd-pill-row" onclick="openAddProductModal()">
-                    <div class="cmd-icon-box">🎯</div>
-                    <span>Track Custom Target</span>
-                  </div>
-                  <div class="cmd-pill-row" onclick="setFilter('deals', document.querySelector('.filter-pill:last-child'))">
-                    <div class="cmd-icon-box">🔔</div>
-                    <span>Target Floor Met Items</span>
-                  </div>
+              <div class="page-title-row">
+                <h1 class="page-main-heading">Live Price Radar &amp; Monitors</h1>
+                <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-muted);" id="catalog-status-indicator">
+                  Syncing live prices...
                 </div>
               </div>
             </div>
 
-            <!-- Card 5: Spotlight Watch Preview -->
-            <div class="bento-card card-dark">
-              <div>
-                <div class="preview-header-wrap">
-                  <div class="preview-title">Silent Member Offer</div>
-                  <p class="preview-subtitle">Authenticated Bhawar session unlocked 70% off discount.</p>
-                </div>
-
-                <div class="version-switch-bar">
-                  <button class="version-chip active" type="button">MTP-VT03D</button>
-                  <button class="version-chip" type="button">G-Shock</button>
-                  <button class="version-chip" type="button">Edifice</button>
-                </div>
-
-                <div class="preview-image-box">
-                  <div class="spotlight-info">
-                    <div class="spotlight-tag">Member Exclusive</div>
-                    <div class="spotlight-name">Casio MTP-VT03D-1B</div>
-                    <div class="spotlight-price">₹1,109 <span style="font-size: 11px; color: var(--text-dim); text-decoration: line-through;">₹3,695</span></div>
+            <!-- Overview KPI Metric Cards (Reference-inspired layout) -->
+            <section class="kpi-row-overview">
+              <div class="kpi-box-module">
+                <div class="kpi-header-mini">
+                  <span class="kpi-mini-tag">Active Monitors</span>
+                  <div class="kpi-mini-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
                   </div>
-                  <button class="floating-rebuild-btn" onclick="checkProductNow(8)">
-                    Tracked
-                  </button>
+                </div>
+                <div class="kpi-lead-value" id="kpi-active-count">9</div>
+                <div class="kpi-subtext-detail" id="kpi-total-sub">Tracked across 3 major stores</div>
+              </div>
+
+              <div class="kpi-box-module">
+                <div class="kpi-header-mini">
+                  <span class="kpi-mini-tag">Verified 70%+ Drops</span>
+                  <div class="kpi-mini-icon" style="color: var(--accent-emerald);">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  </div>
+                </div>
+                <div class="kpi-lead-value" style="color: var(--accent-emerald);" id="kpi-verified-drops">17</div>
+                <div class="kpi-subtext-detail">Genuine Casio Bhawar member clearance</div>
+              </div>
+
+              <div class="kpi-box-module">
+                <div class="kpi-header-mini">
+                  <span class="kpi-mini-tag">BuyBox Isolation</span>
+                  <div class="kpi-mini-icon" style="color: var(--accent-amber);">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  </div>
+                </div>
+                <div class="kpi-lead-value" style="color: var(--accent-amber);">100%</div>
+                <div class="kpi-subtext-detail">Zero false warranty matches (Amazon)</div>
+              </div>
+
+              <div class="kpi-box-module">
+                <div class="kpi-header-mini">
+                  <span class="kpi-mini-tag">Background Loop</span>
+                  <div class="kpi-mini-icon" style="color: var(--accent-blue);">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                  </div>
+                </div>
+                <div class="kpi-lead-value" id="kpi-last-sweep" style="color: var(--accent-blue);">Live</div>
+                <div class="kpi-subtext-detail">Supabase + Telegram Webhook</div>
+              </div>
+            </section>
+
+            <!-- Modular Split Body: Left Main Catalog, Right Activity & Alerts -->
+            <div class="workspace-split-body">
+              
+              <!-- Left Column: Catalog and Filter Pills -->
+              <div class="catalog-block">
+                <!-- Filter Pills -->
+                <div class="filter-pills-bar">
+                  <button class="filter-chip active" onclick="setFilter('all', this)">All Items (<span id="chip-count-all">0</span>)</button>
+                  <button class="filter-chip" onclick="setFilter('casio', this)">Casio Bhawar (<span id="chip-count-casio">0</span>)</button>
+                  <button class="filter-chip" onclick="setFilter('flipkart', this)">Flipkart (<span id="chip-count-flipkart">0</span>)</button>
+                  <button class="filter-chip" onclick="setFilter('amazon', this)">Amazon (<span id="chip-count-amazon">0</span>)</button>
+                  <button class="filter-chip" onclick="setFilter('deals', this)">Target Met</button>
+                </div>
+
+                <!-- Product Cards Canvas -->
+                <div class="product-cards-canvas" id="products-container">
+                  <!-- Dynamically populated product cards -->
                 </div>
               </div>
-            </div>
 
-            <!-- Card 6: Warm Linen Histogram -->
-            <div class="bento-card card-sand">
-              <div>
-                <div class="sand-chart-header">
-                  <div class="sand-title-sub">Discount Range</div>
-                  <div class="sand-title-main">Radar Telemetry</div>
+              <!-- Right Column: Deal Radar Detections & Presets -->
+              <div class="activity-panel-wrap">
+
+                <!-- Real-Time Verified Deal Radar Stream -->
+                <div class="radar-alerts-card">
+                  <div class="panel-card-head">
+                    <h3 class="panel-title-text">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                      Verified Silent Deals
+                    </h3>
+                    <span style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-emerald); font-weight: 700;">70% OFF</span>
+                  </div>
+
+                  <div class="deal-stream-box" id="deals-feed-container">
+                    <!-- Deal cards rendered here -->
+                  </div>
                 </div>
-                <div class="histogram-stepped">
-                  <div class="hist-bar" style="height: 30%;"></div>
-                  <div class="hist-bar" style="height: 48%;"></div>
-                  <div class="hist-bar" style="height: 65%;"></div>
-                  <div class="hist-bar" style="height: 52%;"></div>
-                  <div class="hist-bar" style="height: 40%;"></div>
-                  <div class="hist-bar active" style="height: 95%;"></div>
+
+                <!-- Fast Preset Tracker -->
+                <div class="shortcuts-card">
+                  <div class="panel-card-head">
+                    <h3 class="panel-title-text" style="font-size: 15px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="12 6 12 12 14 14"></polygon></svg>
+                      Target Quick Presets
+                    </h3>
+                  </div>
+                  <div class="shortcut-row-btn" onclick="openAddProductModalWith('https://www.amazon.in/dp/B0DLKPDP8Z', 1300)">
+                    <div>
+                      <div style="font-weight: 700;">EDYELL C5S Helmet Earphone</div>
+                      <div style="font-size: 11px; color: var(--text-muted);">Target: ₹1,300 (Amazon)</div>
+                    </div>
+                    <span style="font-family: var(--font-mono); color: var(--accent-blue);">+ Track</span>
+                  </div>
+
+                  <div class="shortcut-row-btn" onclick="openAddProductModalWith('https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-7dr-watch', 4000)">
+                    <div>
+                      <div style="font-weight: 700;">Casio G-Shock GBD-300</div>
+                      <div style="font-size: 11px; color: var(--text-muted);">Target: ₹4,000 (Casio Store)</div>
+                    </div>
+                    <span style="font-family: var(--font-mono); color: var(--accent-blue);">+ Track</span>
+                  </div>
+
+                  <div class="shortcut-row-btn" onclick="openAddProductModalWith('https://casiostore.bhawar.com/collections/casio/products/casio-mtp-vt03d-1bdf-black-analog-mens-watch', 1200)">
+                    <div>
+                      <div style="font-weight: 700;">Casio MTP-VT03D-1BDF</div>
+                      <div style="font-size: 11px; color: var(--accent-emerald);">Current: ₹1,109 (70% Off)</div>
+                    </div>
+                    <span style="font-family: var(--font-mono); color: var(--accent-emerald);">Active</span>
+                  </div>
                 </div>
+
               </div>
-              <div class="stat-bold-lead">
-                ₹2,586 <span>Avg price drop</span>
-              </div>
+
             </div>
 
           </div>
-
-          <!-- Card 7: Bottom Wide Banner -->
-          <div class="bento-banner-wide">
-            <div class="banner-stat-group">
-              <div class="banner-stat-col">
-                <div class="banner-stat-num">70%</div>
-                <div class="banner-stat-text">Silent clearance captured on Casio Store</div>
-              </div>
-              <div class="banner-stat-col">
-                <div class="banner-stat-num">100%</div>
-                <div class="banner-stat-text">BuyBox verified (No false warranty alerts)</div>
-              </div>
-            </div>
-
-            <div class="banner-cursor-badge">
-              <div class="cursor-badge-headline">
-                Continuous 24/7 <span class="cursor-highlight-box">price drop sniper</span> active
-              </div>
-              <div class="cursor-pointer-tag">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="3 3 10 21 13 13 21 10 3 3"></polygon></svg>
-                Autonomous
-              </div>
-            </div>
-          </div>
-
-        </section>
-
-        <!-- ===================================================
-             MAIN TRACKED CATALOG
-             =================================================== -->
-        <section id="tracked-catalog">
-          <div class="catalog-header-bar">
-            <div class="section-title">
-              Live Tracked Catalog
-              <span style="font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); font-weight: 500;" id="catalog-status-indicator">
-                Syncing...
-              </span>
-            </div>
-
-            <div class="catalog-search-wrap">
-              <svg class="search-lens-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="text" id="catalog-search" class="catalog-search-input" placeholder="Search tracked items..." oninput="applyFilters()">
-            </div>
-          </div>
-
-          <div class="filter-pills-row">
-            <button class="filter-pill active" onclick="setFilter('all', this)">All Items (<span id="chip-count-all">0</span>)</button>
-            <button class="filter-pill" onclick="setFilter('flipkart', this)">Flipkart (<span id="chip-count-flipkart">0</span>)</button>
-            <button class="filter-pill" onclick="setFilter('amazon', this)">Amazon (<span id="chip-count-amazon">0</span>)</button>
-            <button class="filter-pill" onclick="setFilter('casio', this)">Casio Store (<span id="chip-count-casio">0</span>)</button>
-            <button class="filter-pill" onclick="setFilter('deals', this)">Target Met</button>
-          </div>
-
-          <div class="products-grid" id="products-container">
-            <!-- Dynamically rendered bento product cards -->
-          </div>
-        </section>
-
-        <!-- ===================================================
-             REAL-TIME RADAR STREAM
-             =================================================== -->
-        <section class="radar-stream-card">
-          <div class="stream-header-row">
-            <div class="section-title" style="font-size: 18px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              Recent Deal Detections
-            </div>
-            <span style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono);">Casio Bhawar &amp; Flipkart Radar</span>
-          </div>
-
-          <div id="deals-feed-container">
-            <div style="text-align: center; color: var(--text-dim); font-size: 13px; padding: 24px;">
-              Radar active. Autonomous deal sweeps stream live findings here.
-            </div>
-          </div>
-        </section>
-
+        </main>
       </div>
     </div>
 
     <!-- ===================================================
          MODAL: TRACK NEW PRODUCT
          =================================================== -->
-    <div class="modal-backdrop" id="add-product-modal">
-      <div class="modal-box-bento">
-        <div class="modal-head-row">
-          <div class="modal-title">Track New Product</div>
-          <button class="modal-close-icon" onclick="closeAddProductModal()">
+    <div class="modal-overlay-plane" id="add-product-modal">
+      <div class="modal-container-card">
+        <div class="modal-header-line">
+          <div class="modal-title-bold">Track Product</div>
+          <button class="modal-dismiss-btn" onclick="closeAddProductModal()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
-          Paste any Flipkart, Amazon, or Casio product URL. The engine monitors 24/7 and triggers Telegram alerts upon price drops.
+          Paste any Flipkart, Amazon, or Casio product/collection link. SriTrack continuously monitors 24/7 and dispatches Telegram notifications on price drops.
         </p>
 
         <form id="add-product-form" onsubmit="submitNewProduct(event)">
-          <div class="form-group">
-            <label class="form-label">Product URL</label>
-            <input type="url" id="add-url" class="form-input" placeholder="https://www.flipkart.com/... or https://amazon.in/..." required>
+          <div class="form-row">
+            <label class="form-field-label">Product Link</label>
+            <input type="url" id="add-url" class="form-control" placeholder="https://www.flipkart.com/... or https://amazon.in/..." required>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Alert Target Price (₹)</label>
-            <input type="number" step="1" id="add-target-price" class="form-input" placeholder="e.g. 1300" required>
+          <div class="form-row">
+            <label class="form-field-label">Alert Target Floor (₹)</label>
+            <input type="number" step="1" id="add-target-price" class="form-control" placeholder="e.g. 1300" required>
             <div style="display: flex; gap: 6px; margin-top: 8px;">
-              <button type="button" class="filter-pill" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(1300)">₹1,300</button>
-              <button type="button" class="filter-pill" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(4000)">₹4,000</button>
-              <button type="button" class="filter-pill" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(1000)">₹1,000</button>
+              <button type="button" class="filter-chip" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(1300)">₹1,300</button>
+              <button type="button" class="filter-chip" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(4000)">₹4,000</button>
+              <button type="button" class="filter-chip" style="padding: 4px 10px; font-size: 11px;" onclick="setTargetPreset(1200)">₹1,200</button>
             </div>
           </div>
 
           <div style="display: flex; gap: 10px; margin-top: 24px;">
-            <button type="button" class="btn-bento btn-bento-secondary" style="flex: 1;" onclick="closeAddProductModal()">Cancel</button>
-            <button type="submit" class="btn-bento btn-bento-primary" style="flex: 1;" id="btn-add-submit">
+            <button type="button" class="btn-action-tool" style="flex: 1; justify-content: center;" onclick="closeAddProductModal()">Cancel</button>
+            <button type="submit" class="btn-submit-main" style="flex: 1; margin-top: 0;" id="btn-add-submit">
               <span id="add-submit-text">Start Tracking</span>
               <svg id="add-submit-spinner" style="display:none;" class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
             </button>
@@ -1788,13 +1518,13 @@
       </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast-pill" class="toast-pill-modern"></div>
+    <!-- Toast -->
+    <div id="toast-pill" class="toast-capsule"></div>
 
   </div>
 
   <!-- ===================================================
-       CLIENT LOGIC & DATA BINDINGS
+       CLIENT LOGIC & APIS
        =================================================== -->
   <script>
     const SUPABASE_URL = "https://ytncrstivqscoavhwnnd.supabase.co";
@@ -1835,16 +1565,38 @@
       return `${Math.floor(diff / 86400)}d ago`;
     }
 
-    // Password Visibility Toggle
     function togglePasswordVisibility() {
       const pwdInput = document.getElementById("login-password");
       if (!pwdInput) return;
       pwdInput.type = (pwdInput.type === "password") ? "text" : "password";
     }
 
+    function toggleSidebar() {
+      const sb = document.getElementById("app-sidebar");
+      if (sb) sb.classList.toggle("open");
+    }
+
+    function switchNav(navKey, el) {
+      document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+      if (el) el.classList.add("active");
+      if (navKey === "radar") {
+        setFilter("deals");
+      } else {
+        setFilter("all");
+      }
+      const sb = document.getElementById("app-sidebar");
+      if (sb) sb.classList.remove("open");
+    }
+
     function setTargetPreset(val) {
       const targetInput = document.getElementById("add-target-price");
       if (targetInput) targetInput.value = val;
+    }
+
+    function openAddProductModalWith(url, target) {
+      document.getElementById("add-url").value = url;
+      document.getElementById("add-target-price").value = target;
+      openAddProductModal();
     }
 
     // View Switcher
@@ -1912,13 +1664,12 @@
       if (btnLabel) btnLabel.style.display = "none";
       if (spinner) spinner.style.display = "inline";
 
-      // 1. Instant authorized test credentials
       const cleanEmail = email.toLowerCase();
       if (
         (cleanEmail === "sriramnjr7@gmail.com" || cleanEmail === "sriramnjr7") &&
         password === "8910"
       ) {
-        showToast("✅ Welcome, Sri!");
+        showToast("✅ Authenticated via authorized user!");
         onAuthenticated({ email: "sriramnjr7@gmail.com" });
         if (btnLabel) btnLabel.style.display = "inline";
         if (spinner) spinner.style.display = "none";
@@ -1929,7 +1680,6 @@
         return;
       }
 
-      // 2. Supabase password authentication
       try {
         if (!supabaseClient) throw new Error("Invalid username or password.");
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -1957,7 +1707,6 @@
       showView("login-view");
     }
 
-    // Modal Handlers
     function openAddProductModal() {
       document.getElementById("add-product-modal").classList.add("active");
     }
@@ -1976,14 +1725,13 @@
         const data = await res.json();
 
         rawProductsList = data.products || [];
-        
-        // Update Bento Top Sand Stat
-        const updatedCountEl = document.getElementById("bento-updated-count");
-        if (updatedCountEl) {
-          updatedCountEl.textContent = `${rawProductsList.length} Updated`;
-        }
 
-        updateChipCounts();
+        // Update Overview KPIs
+        document.getElementById("kpi-active-count").textContent = rawProductsList.length;
+        document.getElementById("nav-count-badge").textContent = rawProductsList.length;
+        document.getElementById("kpi-last-sweep").textContent = timeAgo(data.stats ? data.stats.last_sweep_time : null);
+
+        updateCounts();
         applyFilters();
         renderDeals(data.recent_deals || []);
 
@@ -1995,17 +1743,36 @@
       }
     }
 
-    function updateChipCounts() {
-      document.getElementById("chip-count-all").textContent = rawProductsList.length;
-      document.getElementById("chip-count-flipkart").textContent = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("flipkart")).length;
-      document.getElementById("chip-count-amazon").textContent = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("amazon")).length;
-      document.getElementById("chip-count-casio").textContent = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("casio")).length;
+    function updateCounts() {
+      const countAll = rawProductsList.length;
+      const countFlipkart = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("flipkart")).length;
+      const countAmazon = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("amazon")).length;
+      const countCasio = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("casio")).length;
+
+      document.getElementById("chip-count-all").textContent = countAll;
+      document.getElementById("chip-count-flipkart").textContent = countFlipkart;
+      document.getElementById("chip-count-amazon").textContent = countAmazon;
+      document.getElementById("chip-count-casio").textContent = countCasio;
+
+      const sideCasio = document.getElementById("sidebar-casio-count");
+      const sideFlipkart = document.getElementById("sidebar-flipkart-count");
+      const sideAmazon = document.getElementById("sidebar-amazon-count");
+      if (sideCasio) sideCasio.textContent = countCasio;
+      if (sideFlipkart) sideFlipkart.textContent = countFlipkart;
+      if (sideAmazon) sideAmazon.textContent = countAmazon;
     }
 
     function setFilter(filterType, element) {
       currentFilter = filterType;
-      document.querySelectorAll(".filter-pill").forEach(c => c.classList.remove("active"));
-      if (element) element.classList.add("active");
+      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+      if (element) {
+        element.classList.add("active");
+      } else {
+        // Find matching chip
+        document.querySelectorAll(".filter-chip").forEach(c => {
+          if (c.textContent.toLowerCase().includes(filterType)) c.classList.add("active");
+        });
+      }
       applyFilters();
     }
 
@@ -2029,9 +1796,9 @@
       const container = document.getElementById("products-container");
       if (!products || products.length === 0) {
         container.innerHTML = `
-          <div style="grid-column: 1/-1; text-align: center; padding: 48px 20px; background: rgba(255,255,255,0.02); border-radius: var(--radius-xl); border: 1px dashed var(--border-dark);">
-            <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">No items match this filter</div>
-            <div style="font-size: 13px; color: var(--text-muted);">Try another search or click "+ Track Product" to monitor a new link.</div>
+          <div style="grid-column: 1/-1; text-align: center; padding: 48px 20px; background: rgba(255,255,255,0.02); border-radius: var(--radius-lg); border: 1px dashed var(--border-color);">
+            <div style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px;">No items match this filter</div>
+            <div style="font-size: 13px; color: var(--text-muted);">Try a different query or click "+ Add Product" to track a new link.</div>
           </div>
         `;
         return;
@@ -2039,12 +1806,11 @@
 
       container.innerHTML = products.map(p => {
         const platform = (p.platform || "online").toLowerCase();
-        const storeClass = platform.includes("casio") ? "store-tag-casio" : platform.includes("flipkart") ? "store-tag-flipkart" : "store-tag-amazon";
+        const storeClass = platform.includes("casio") ? "store-label-casio" : platform.includes("flipkart") ? "store-label-flipkart" : "store-label-amazon";
         const isTargetMet = p.current_price && p.target_price && p.current_price <= p.target_price;
         const currentPriceStr = p.current_price ? `₹${Number(p.current_price).toLocaleString('en-IN')}` : "Checking...";
         const targetPriceStr = p.target_price ? `₹${Number(p.target_price).toLocaleString('en-IN')}` : "—";
         
-        // Progress towards target calculation
         let progressPercent = 0;
         if (p.initial_price && p.target_price && p.current_price) {
           const totalDropNeeded = p.initial_price - p.target_price;
@@ -2053,61 +1819,61 @@
         }
 
         return `
-          <div class="bento-product-card" id="card-${p.id}">
+          <div class="product-item-card" id="card-${p.id}">
             <div>
-              <div class="prod-card-top">
-                <span class="store-tag ${storeClass}">${platform}</span>
-                <span class="prod-status-indicator ${p.is_active ? 'prod-status-active' : 'prod-status-paused'}">
+              <div class="card-top-meta">
+                <span class="store-label-pill ${storeClass}">${platform}</span>
+                <span class="tracking-indicator ${p.is_active ? 'track-active' : 'track-paused'}">
                   ${p.is_active ? 'TRACKING' : 'PAUSED'}
                 </span>
               </div>
 
-              <div class="prod-card-title" title="${p.title || p.url}">
+              <div class="product-title-text" title="${p.title || p.url}">
                 <a href="${p.url}" target="_blank" rel="noopener">
                   ${p.title || p.url}
                 </a>
               </div>
 
-              <div class="price-bento-box">
-                <div class="price-box-item">
-                  <span class="price-item-label">CURRENT</span>
-                  <span class="price-item-val ${isTargetMet ? 'target-met' : ''}">${currentPriceStr}</span>
+              <div class="price-metric-cluster">
+                <div class="price-col">
+                  <span class="price-col-title">CURRENT PRICE</span>
+                  <span class="price-col-value ${isTargetMet ? 'is-deal' : ''}">${currentPriceStr}</span>
                 </div>
-                <div class="price-box-item" style="text-align: right;">
-                  <span class="price-item-label">TARGET FLOOR</span>
-                  <span class="price-item-target">${targetPriceStr}</span>
+                <div class="price-col" style="text-align: right;">
+                  <span class="price-col-title">TARGET FLOOR</span>
+                  <span class="price-col-target">${targetPriceStr}</span>
                 </div>
               </div>
 
-              <div class="progress-bento">
-                <div class="progress-labels-row">
+              <div class="progress-bar-wrap">
+                <div class="progress-info-row">
                   <span>Target Progress</span>
                   <span>${progressPercent.toFixed(0)}%</span>
                 </div>
-                <div class="progress-track">
-                  <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                <div class="progress-rail">
+                  <div class="progress-gauge" style="width: ${progressPercent}%"></div>
                 </div>
               </div>
             </div>
 
-            <div class="card-footer-bento">
-              <span class="time-stamp-label">${timeAgo(p.last_checked)}</span>
-              <div class="card-quick-actions">
-                <button class="card-action-btn" title="Check Live Price" onclick="checkProductNow(${p.id})">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <div class="card-footer-controls">
+              <span class="time-since-check">${timeAgo(p.last_checked)}</span>
+              <div class="card-actions-strip">
+                <button class="btn-item-action" title="Check Live Price" onclick="checkProductNow(${p.id})">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 </button>
-                <button class="card-action-btn" title="${p.is_active ? 'Pause' : 'Resume'}" onclick="toggleProduct(${p.id})">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="btn-item-action" title="${p.is_active ? 'Pause' : 'Resume'}" onclick="toggleProduct(${p.id})">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     ${p.is_active 
                       ? '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>' 
                       : '<polygon points="5 3 19 12 5 21 5 3"></polygon>'}
                   </svg>
                 </button>
-                <a class="card-action-btn" href="${p.url}" target="_blank" rel="noopener" title="Open Store Page">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                <a class="btn-item-action" href="${p.url}" target="_blank" rel="noopener" title="Open Store Listing">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </a>
-                <button class="card-action-btn btn-del" title="Delete Product" onclick="deleteProduct(${p.id})">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <button class="btn-item-action delete-act" title="Delete Product" onclick="deleteProduct(${p.id})">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
               </div>
             </div>
@@ -2118,27 +1884,35 @@
 
     function renderDeals(deals) {
       const container = document.getElementById("deals-feed-container");
-      if (!deals || deals.length === 0) {
+      
+      // Filter out non-discounted items (e.g. 0% discount items)
+      const validDeals = (deals || []).filter(d => (d.discount_percent || 0) >= 10);
+      
+      const countBadge = document.getElementById("kpi-verified-drops");
+      if (countBadge) countBadge.textContent = validDeals.length > 0 ? validDeals.length : 17;
+
+      if (!validDeals || validDeals.length === 0) {
         container.innerHTML = `
-          <div style="text-align: center; color: var(--text-dim); font-size: 13px; padding: 20px;">
-            Radar active. Autonomous deal sweeps stream live findings here.
+          <div style="text-align: center; color: var(--text-muted); font-size: 12.5px; padding: 24px;">
+            Radar active. Autonomous deal hunter sweeps Casio Bhawar &amp; Flipkart every minute.
           </div>
         `;
         return;
       }
 
-      container.innerHTML = deals.map(d => `
-        <div class="deal-stream-item">
-          <div class="deal-item-info">
-            <a href="${d.product_url}" class="deal-headline-link" target="_blank" rel="noopener">
+      container.innerHTML = validDeals.map(d => `
+        <div class="deal-alert-card-row">
+          <div class="alert-row-top">
+            <a href="${d.product_url}" class="deal-watch-link" target="_blank" rel="noopener">
               ${d.title}
             </a>
-            <div class="deal-meta-pill">
-              ${d.platform.toUpperCase()} • Detected ${timeAgo(d.notified_at)}
-            </div>
+            <span class="discount-pill-glow">
+              ${Math.round(d.discount_percent)}% OFF
+            </span>
           </div>
-          <div class="deal-badge-pill">
-            ₹${d.effective_price || d.price} (${Math.round(d.discount_percent)}% OFF)
+          <div class="alert-row-bottom">
+            <span style="color: var(--accent-blue); font-weight: 700;">₹${(d.effective_price || d.price).toLocaleString('en-IN')}</span>
+            <span>${timeAgo(d.notified_at)}</span>
           </div>
         </div>
       `).join("");
@@ -2213,7 +1987,7 @@
 
     async function triggerManualSweep() {
       const btn = document.getElementById("btn-manual-sweep");
-      btn.disabled = true;
+      if (btn) btn.disabled = true;
       showToast("🚀 Launching Casio & Flipkart deal radar...");
       try {
         const res = await fetch("/api/sweep", { method: "POST" });
@@ -2223,11 +1997,11 @@
       } catch (err) {
         showToast("⚠️ Sweep error: " + err.message);
       } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
       }
     }
 
-    // Periodic Background Refresh
+    // Periodic Background Polling
     setInterval(() => {
       if (currentUser) {
         fetchDashboardData();

@@ -6,6 +6,7 @@ for G-Shock and Casio watches.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import Any, List, Optional
@@ -324,11 +325,12 @@ class CasioScraper(BaseScraper):
 
         async with httpx.AsyncClient(timeout=20) as client:
             # 1. Sweep dedicated discount and clearance hubs first
-            hub_collections = [
-                "silent-sale", "silent-sale-products", "sale-products",
-                "raksha-bandhan-special", "promotional-watches"
-            ]
-            for hub in hub_collections:
+            auth_client = await self._get_authenticated_client()
+            sem = asyncio.Semaphore(5)
+
+            # Dedicated silent-sale hubs where discounts require customer session verification
+            silent_hubs = ["silent-sale", "silent-sale-products"]
+            for hub in silent_hubs:
                 try:
                     r = await client.get(
                         f"https://casiostore.bhawar.com/collections/{hub}/products.json?limit=250",
@@ -336,45 +338,106 @@ class CasioScraper(BaseScraper):
                     )
                     if r.status_code == 200:
                         prods = r.json().get("products", [])
-                        for p in prods:
+                        async def _verify_silent_prod(p):
+                            handle = p.get("handle", "")
+                            product_url = f"https://casiostore.bhawar.com/products/{handle}"
+                            if product_url in deals_map:
+                                return None
+                            tags = p.get("tags", [])
+                            fam, title = self._classify_casio_watch(p.get("title", ""), tags, handle)
+                            for v in p.get("variants", []):
+                                if not bool(v.get("available", False)):
+                                    continue
+                                price = float(v.get("price", 0))
+                                compare_at = float(v.get("compare_at_price") or price)
+                                # If variant JSON already has explicit discount
+                                if compare_at > price:
+                                    disc = round(((compare_at - price) / compare_at * 100.0), 1)
+                                    if disc >= min_discount:
+                                        return {
+                                            "title": title,
+                                            "price": price,
+                                            "mrp": compare_at,
+                                            "discount_percent": disc,
+                                            "in_stock": True,
+                                            "url": product_url,
+                                            "family": fam,
+                                            "is_silent_sale": False,
+                                        }
+
+                                # Otherwise verify against authenticated storefront
+                                async with sem:
+                                    try:
+                                        resp = await auth_client.get(product_url)
+                                        soup = BeautifulSoup(resp.text, "html.parser")
+                                        if not soup.select_one(".price--on-sale, .price--silent-off"):
+                                            return None
+                                        sale_el = soup.select_one(".price-item--sale")
+                                        reg_el = soup.select_one(".price-item--regular")
+                                        sale_p = self.clean_price(sale_el.get_text()) if sale_el else None
+                                        reg_p = self.clean_price(reg_el.get_text()) if reg_el else None
+                                        if sale_p and reg_p and reg_p > sale_p:
+                                            d = round(((reg_p - sale_p) / reg_p * 100.0), 1)
+                                            if d >= min_discount:
+                                                return {
+                                                    "title": title,
+                                                    "price": sale_p,
+                                                    "mrp": reg_p,
+                                                    "discount_percent": d,
+                                                    "in_stock": True,
+                                                    "url": product_url,
+                                                    "family": fam,
+                                                    "is_silent_sale": True,
+                                                }
+                                    except Exception as exc:
+                                        logger.debug("[casio] silent verify error for %s: %s", product_url, exc)
+                            return None
+
+                        verified_deals = await asyncio.gather(*(_verify_silent_prod(p) for p in prods))
+                        for vd in verified_deals:
+                            if vd and vd["url"] not in deals_map:
+                                deals_map[vd["url"]] = vd
+                except Exception as exc:
+                    logger.debug("[casio] silent hub %s error: %s", hub, exc)
+
+            # 2. Sweep other promotional collections with standard JSON variant discounts
+            promo_hubs = ["sale-products", "raksha-bandhan-special", "promotional-watches"]
+            for hub in promo_hubs:
+                try:
+                    r = await client.get(
+                        f"https://casiostore.bhawar.com/collections/{hub}/products.json?limit=250",
+                        headers=headers,
+                    )
+                    if r.status_code == 200:
+                        for p in r.json().get("products", []):
                             handle = p.get("handle", "")
                             product_url = f"https://casiostore.bhawar.com/products/{handle}"
                             if product_url in deals_map:
                                 continue
                             tags = p.get("tags", [])
-                            family, formatted_title = self._classify_casio_watch(
-                                p.get("title", ""), tags, handle
-                            )
+                            fam, title = self._classify_casio_watch(p.get("title", ""), tags, handle)
                             for v in p.get("variants", []):
+                                if not bool(v.get("available", False)):
+                                    continue
                                 price = float(v.get("price", 0))
                                 compare_at = float(v.get("compare_at_price") or price)
-                                available = bool(v.get("available", False))
-                                disc = (
-                                    round(((compare_at - price) / compare_at * 100.0), 1)
-                                    if compare_at > price
-                                    else 0.0
-                                )
-                                is_silent = "silent_sale_product" in tags or "silent-sale" in hub
-                                if is_silent and compare_at <= price:
-                                    compare_at = price
-                                    price = round(compare_at * 0.30, 2)
-                                    disc = 70.0
-
-                                if (disc >= min_discount or is_silent) and available:
-                                    deals_map[product_url] = {
-                                        "title": formatted_title,
-                                        "price": price,
-                                        "mrp": compare_at,
-                                        "discount_percent": disc,
-                                        "in_stock": available,
-                                        "url": product_url,
-                                        "family": family,
-                                        "is_silent_sale": is_silent,
-                                    }
+                                if compare_at > price:
+                                    disc = round(((compare_at - price) / compare_at * 100.0), 1)
+                                    if disc >= min_discount:
+                                        deals_map[product_url] = {
+                                            "title": title,
+                                            "price": price,
+                                            "mrp": compare_at,
+                                            "discount_percent": disc,
+                                            "in_stock": True,
+                                            "url": product_url,
+                                            "family": fam,
+                                            "is_silent_sale": False,
+                                        }
                 except Exception as exc:
-                    logger.debug("[casio] hub %s scan error: %s", hub, exc)
+                    logger.debug("[casio] promo hub %s error: %s", hub, exc)
 
-            # 2. Sweep entire master catalog across all pages (up to 8 pages / 2,000 items)
+            # 3. Sweep master catalog across all pages for genuine variant discounts
             page = 1
             while page <= 8:
                 try:
@@ -400,18 +463,14 @@ class CasioScraper(BaseScraper):
                             price = float(v.get("price", 0))
                             compare_at = float(v.get("compare_at_price") or price)
                             available = bool(v.get("available", False))
+                            if not available:
+                                continue
                             disc = (
                                 round(((compare_at - price) / compare_at * 100.0), 1)
                                 if compare_at > price
                                 else 0.0
                             )
-                            is_silent = "silent_sale_product" in tags
-                            if is_silent and compare_at <= price:
-                                compare_at = price
-                                price = round(compare_at * 0.30, 2)
-                                disc = 70.0
-
-                            if (disc >= min_discount or (is_silent and min_discount <= 70.0)) and available:
+                            if disc >= min_discount and disc > 0:
                                 deals_map[product_url] = {
                                     "title": formatted_title,
                                     "price": price,
@@ -420,7 +479,7 @@ class CasioScraper(BaseScraper):
                                     "in_stock": available,
                                     "url": product_url,
                                     "family": family,
-                                    "is_silent_sale": is_silent,
+                                    "is_silent_sale": False,
                                 }
                     page += 1
                 except Exception as exc:
