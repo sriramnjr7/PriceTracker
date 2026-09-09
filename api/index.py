@@ -84,10 +84,9 @@ async def root(request: Request):
             "setup_webhook": "GET /api/set-webhook",
         },
         "debug_info": {
-            "x_matched_path": request.headers.get("x-matched-path"),
-            "x_vercel_matched_path": request.headers.get("x-vercel-matched-path"),
-            "x_forwarded_uri": request.headers.get("x-forwarded-uri"),
-            "path": request.scope.get("path"),
+            "url": str(request.url),
+            "headers": dict(request.headers),
+            "scope": {k: str(v) for k, v in request.scope.items() if k in ("path", "raw_path", "root_path", "endpoint")},
         },
     }
 
