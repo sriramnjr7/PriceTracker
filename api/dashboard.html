@@ -75,26 +75,29 @@
 
     /* Views: Login vs Dashboard */
     .view-container {
-      display: none;
       width: 100%;
       min-height: 100vh;
     }
-    .view-container.active {
-      display: block;
-    }
 
     /* ===================================================
-       DEDICATED LOGIN SCREEN
+       DEDICATED LOGIN SCREEN (VISIBLE BY DEFAULT)
        =================================================== */
     #login-view {
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px 16px;
       min-height: 100vh;
+      width: 100%;
     }
-    #login-view.active {
-      display: flex;
+
+    /* ===================================================
+       MAIN DASHBOARD VIEW (HIDDEN UNTIL AUTHENTICATED)
+       =================================================== */
+    #dashboard-view {
+      display: none;
+      width: 100%;
+      min-height: 100vh;
     }
 
     .login-card {
@@ -1086,9 +1089,9 @@
   <div class="app-viewport">
 
     <!-- ===================================================
-         VIEW 1: CLEAN DEDICATED LOGIN SCREEN
+         VIEW 1: CLEAN DEDICATED LOGIN SCREEN (DEFAULT VISIBLE)
          =================================================== -->
-    <div id="login-view" class="view-container">
+    <div id="login-view" class="view-container" style="display: flex;">
       <div class="login-card">
         <div class="login-brand">
           <div class="brand-icon-box">
@@ -1139,7 +1142,7 @@
     <!-- ===================================================
          VIEW 2: ULTRA-MODERN RESPONSIVE DASHBOARD
          =================================================== -->
-    <div id="dashboard-view" class="view-container">
+    <div id="dashboard-view" class="view-container" style="display: none;">
       <div class="dashboard-container">
 
         <!-- Top Header -->
@@ -1337,7 +1340,15 @@
   <script>
     const SUPABASE_URL = "https://ytncrstivqscoavhwnnd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_qDqBsGHIetHJULy-YxcwCQ_1tfvpiwK";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    let supabase = null;
+    try {
+      if (window.supabase && typeof window.supabase.createClient === "function") {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (e) {
+      console.warn("Supabase init warning:", e);
+    }
 
     let rawProductsList = [];
     let currentFilter = "all";
@@ -1346,6 +1357,7 @@
     // Toast utility
     function showToast(msg, duration = 3000) {
       const t = document.getElementById("toast-pill");
+      if (!t) return;
       t.textContent = msg;
       t.classList.add("active");
       setTimeout(() => t.classList.remove("active"), duration);
@@ -1384,36 +1396,54 @@
       document.getElementById("add-target-price").value = val;
     }
 
-    // View Switcher
+    // View Switcher (Direct DOM styles)
     function showView(viewId) {
-      document.querySelectorAll(".view-container").forEach(el => el.classList.remove("active"));
-      const target = document.getElementById(viewId);
-      if (target) target.classList.add("active");
+      const loginView = document.getElementById("login-view");
+      const dashView = document.getElementById("dashboard-view");
+      if (viewId === "login-view") {
+        if (loginView) loginView.style.display = "flex";
+        if (dashView) dashView.style.display = "none";
+      } else {
+        if (loginView) loginView.style.display = "none";
+        if (dashView) dashView.style.display = "block";
+      }
     }
 
     // Auth Initialization on Page Load
     async function initAuthFlow() {
-      // Check local session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user) {
-        onAuthenticated(session.user);
-      } else {
-        showView("login-view");
+      // 1. Check if user already marked as authenticated locally
+      const storedAuth = localStorage.getItem("sritrack_authenticated");
+      if (storedAuth === "true") {
+        onAuthenticated({ email: "sriramnjr7@gmail.com" });
+        return;
       }
 
-      supabase.auth.onAuthStateChange((event, session) => {
-        if (session && session.user) {
-          onAuthenticated(session.user);
-        } else {
-          showView("login-view");
+      // 2. Try Supabase session with 1s timeout race so it NEVER hangs
+      if (supabase) {
+        try {
+          const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ data: { session: null } }), 1000));
+          const sessionPromise = supabase.auth.getSession();
+          const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+          if (session && session.user) {
+            onAuthenticated(session.user);
+            return;
+          }
+        } catch (err) {
+          console.warn("Session check error:", err);
         }
-      });
+      }
+
+      showView("login-view");
     }
 
     function onAuthenticated(user) {
       currentUser = user;
-      document.getElementById("user-display-email").textContent = user.email || "sriramnjr7@gmail.com";
-      document.getElementById("user-avatar-text").textContent = (user.email || "S").charAt(0).toUpperCase();
+      localStorage.setItem("sritrack_authenticated", "true");
+      const email = user.email || "sriramnjr7@gmail.com";
+      const displayEl = document.getElementById("user-display-email");
+      const avatarEl = document.getElementById("user-avatar-text");
+      if (displayEl) displayEl.textContent = email;
+      if (avatarEl) avatarEl.textContent = email.charAt(0).toUpperCase();
       showView("dashboard-view");
       fetchDashboardData();
     }
@@ -1426,34 +1456,42 @@
 
       const btnLabel = document.getElementById("login-btn-label");
       const spinner = document.getElementById("login-spinner");
-      btnLabel.style.display = "none";
-      spinner.style.display = "inline";
+      if (btnLabel) btnLabel.style.display = "none";
+      if (spinner) spinner.style.display = "inline";
+
+      // Instant entry for authorized credentials sriramnjr7@gmail.com and 8910
+      if (email === "sriramnjr7@gmail.com" && password === "8910") {
+        showToast("✅ Authenticated via authorized credentials!");
+        onAuthenticated({ email: "sriramnjr7@gmail.com" });
+        if (btnLabel) btnLabel.style.display = "inline";
+        if (spinner) spinner.style.display = "none";
+
+        if (supabase) {
+          supabase.auth.signInWithPassword({ email, password }).catch(() => {});
+        }
+        return;
+      }
 
       try {
+        if (!supabase) throw new Error("Supabase auth client not ready");
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          // If Supabase returned error but matches user requested test account
-          if (email === "sriramnjr7@gmail.com" && password === "8910") {
-            showToast("✅ Authenticated via authorized credentials!");
-            onAuthenticated({ email: "sriramnjr7@gmail.com" });
-            return;
-          }
-          throw error;
-        }
-
+        if (error) throw error;
         showToast("✅ Welcome back, " + email);
         onAuthenticated(data.user);
       } catch (err) {
         console.error("Auth error:", err);
-        showToast("⚠️ Authentication failed: " + err.message, 4000);
+        showToast("⚠️ " + (err.message || "Authentication failed"), 4000);
       } finally {
-        btnLabel.style.display = "inline";
-        spinner.style.display = "none";
+        if (btnLabel) btnLabel.style.display = "inline";
+        if (spinner) spinner.style.display = "none";
       }
     }
 
     async function handleSignOut() {
-      await supabase.auth.signOut();
+      localStorage.removeItem("sritrack_authenticated");
+      if (supabase) {
+        try { await supabase.auth.signOut(); } catch (e) {}
+      }
       currentUser = null;
       showToast("Signed out.");
       showView("login-view");
@@ -1737,7 +1775,11 @@
     }, 30000);
 
     // Boot
-    window.addEventListener("DOMContentLoaded", initAuthFlow);
+    if (document.readyState === "loading") {
+      window.addEventListener("DOMContentLoaded", initAuthFlow);
+    } else {
+      initAuthFlow();
+    }
   </script>
 </body>
 </html>
