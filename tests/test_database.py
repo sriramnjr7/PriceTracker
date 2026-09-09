@@ -159,13 +159,18 @@ async def test_deal_alerts_log_and_deduplication(db):
         platform="amazon",
     )
 
+    # Within default 20m window at same price (500.0) -> should be True (recently notified)
+    assert await db.is_deal_recently_notified(url, current_price=500.0) is True
+    assert await db.is_deal_recently_notified(url, minutes=20, current_price=500.0) is True
+
     # Within 24h at same price (500.0) -> should be True (recently notified)
     assert await db.is_deal_recently_notified(url, hours=24, current_price=500.0) is True
 
     # At higher price (510.0) -> should be True (recently notified)
-    assert await db.is_deal_recently_notified(url, hours=24, current_price=510.0) is True
+    assert await db.is_deal_recently_notified(url, current_price=510.0) is True
 
     # When price drops further by >= ₹2 (e.g. 495.0 < 500.0 - 2.0) -> should return False to allow re-alert
+    assert await db.is_deal_recently_notified(url, minutes=20, current_price=495.0) is False
     assert await db.is_deal_recently_notified(url, hours=24, current_price=495.0) is False
 
 

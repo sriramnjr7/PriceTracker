@@ -118,8 +118,8 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         brand="Casio",
         platforms=["casio", "flipkart"],
         min_discount=70.0,
-        min_price=1500.0,  # Rejects cheap straps & replacement bands
-        min_mrp=4500.0,
+        min_price=None,  # Removed: casiostore.bhawar.com lists only watches
+        min_mrp=None,    # Removed: allows all watches with 70%+ discount regardless of price
         required_keywords=["casio", "g-shock", "gshock", "edifice", "vintage", "enticer"],
         negative_keywords=[
             "strap", "straps", "band", "bands", "resin strap", "silicone strap",

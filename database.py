@@ -260,9 +260,13 @@ class Database:
 
     # -------------------------------------------------------- deal_alerts_log
     async def is_deal_recently_notified(
-        self, product_url: str, hours: int = 24, current_price: Optional[float] = None
+        self,
+        product_url: str,
+        hours: Optional[float] = None,
+        minutes: Optional[int] = None,
+        current_price: Optional[float] = None,
     ) -> bool:
-        """Check if an alert was already dispatched for this URL within the last N hours at this price."""
+        """Check if an alert was already dispatched for this URL within the last N minutes/hours at this price."""
         cursor = await self.conn.execute(
             "SELECT effective_price, price, notified_at FROM deal_alerts_log WHERE product_url = ? "
             "ORDER BY datetime(notified_at) DESC, id DESC LIMIT 1",
@@ -278,10 +282,17 @@ class Database:
             if last_price is not None and current_price < (last_price - 2.0):
                 return False
 
-        # Otherwise check 24-hour window for identical price
+        # Determine interval modifier: defaults to 20 minutes if neither is specified
+        if minutes is not None:
+            modifier = f"-{minutes} minutes"
+        elif hours is not None:
+            modifier = f"-{hours} hours"
+        else:
+            modifier = "-20 minutes"
+
         cursor2 = await self.conn.execute(
             "SELECT id FROM deal_alerts_log WHERE product_url = ? AND datetime(notified_at) >= datetime('now', ?) LIMIT 1",
-            (product_url, f"-{hours} hours"),
+            (product_url, modifier),
         )
         row2 = await cursor2.fetchone()
         return row2 is not None

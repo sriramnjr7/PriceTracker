@@ -203,9 +203,21 @@ class SupabaseDatabase:
 
     # -------------------------------------------------------- deal_alerts_log
     async def is_deal_recently_notified(
-        self, product_url: str, hours: int = 24, current_price: Optional[float] = None
+        self,
+        product_url: str,
+        hours: Optional[float] = None,
+        minutes: Optional[int] = None,
+        current_price: Optional[float] = None,
     ) -> bool:
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        """Check if an alert was already dispatched in Supabase within the last N minutes/hours."""
+        if minutes is not None:
+            delta = timedelta(minutes=minutes)
+        elif hours is not None:
+            delta = timedelta(hours=hours)
+        else:
+            delta = timedelta(minutes=20)  # Default: 20-minute de-duplication window
+
+        cutoff = (datetime.now(timezone.utc) - delta).isoformat()
         url = (
             f"{self.base_rest}/deal_alerts_log?product_url=eq.{product_url}"
             f"&notified_at=gte.{cutoff}&order=notified_at.desc&limit=1"
@@ -218,7 +230,7 @@ class SupabaseDatabase:
                     return False
                 if current_price is not None:
                     last_eff = float(rows[0].get("effective_price") or rows[0].get("price") or 0)
-                    if current_price < last_eff:
+                    if current_price < (last_eff - 2.0):
                         return False
                 return True
         return False

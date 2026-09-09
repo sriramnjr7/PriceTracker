@@ -104,16 +104,28 @@ class Tracker:
             if product.target_price is not None and deal["price"] > product.target_price:
                 continue
 
+            # 20-minute de-duplication check
+            if await self.db.is_deal_recently_notified(deal["url"], minutes=20, current_price=deal["price"]):
+                continue
+
             deal_msg = (
-                f"\U0001F6A8 *{category_name} STEAL DEAL ({deal['discount_percent']:.0f}% OFF!)* \U0001F6A8\n"
-                f"\U0001F4E6 *Watch:* {deal['title']}\n"
-                f"\U0001F4C9 *Deal Price:* \u20B9{deal['price']:g} (MRP: \u20B9{deal['mrp']:g})\n"
-                f"\U0001F3AF *Discount:* {deal['discount_percent']:.1f}% OFF (Target: >={min_discount}%)\n"
-                f"\U0001F6D2 *Buy Now:* {deal['url']}"
+                f"🚨 *{category_name} STEAL DEAL ({deal['discount_percent']:.0f}% OFF!)* 🚨\n"
+                f"📦 *Watch:* {deal['title']}\n"
+                f"📉 *Deal Price:* ₹{deal['price']:g} (MRP: ₹{deal['mrp']:g})\n"
+                f"🎯 *Discount:* {deal['discount_percent']:.1f}% OFF (Target: >={min_discount}%)\n"
+                f"🛒 *Buy Now:* {deal['url']}"
             )
             logger.info("[casio] Found %s%% deal: %s at INR %s", deal['discount_percent'], deal['title'], deal['price'])
             if await self.notifier.send_message(deal_msg):
                 notified_any = True
+                await self.db.log_deal_alert(
+                    product_url=deal["url"],
+                    title=deal["title"],
+                    price=deal["price"],
+                    effective_price=deal["price"],
+                    discount_percent=deal["discount_percent"],
+                    platform="casio",
+                )
 
         if notified_any:
             await self.db.set_last_notified(product.id, deals[0]["price"])

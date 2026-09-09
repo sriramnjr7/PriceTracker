@@ -231,11 +231,11 @@ class StealRadar:
                 if d.get("effective_price", d["price"]) <= rule.max_price
             ]
 
-        # Apply price floor filter if specified (eradicates straps/pins)
+        # Apply price floor filter if specified (bypassed for Casio platform since Bhawar contains only watches)
         if rule.min_price is not None:
             found_deals = [
                 d for d in found_deals
-                if d.get("effective_price", d["price"]) >= rule.min_price
+                if d.get("platform") == "casio" or d.get("effective_price", d["price"]) >= rule.min_price
             ]
 
         return found_deals
@@ -267,8 +267,8 @@ class StealRadar:
             disc = deal.get("discount_percent", 0.0)
             coupon = deal.get("coupon_text")
 
-            # 1. Dynamic price-aware de-duplication cache (allows re-alerting on further drops)
-            if await self.db.is_deal_recently_notified(url, hours=24, current_price=eff_price):
+            # 1. Dynamic price-aware de-duplication cache (20-minute window, allows re-alerting on further drops)
+            if await self.db.is_deal_recently_notified(url, minutes=20, current_price=eff_price):
                 continue
 
             # 2. AI Arbiter: Validate genuine brand & genuine high-value deal (Cloudflare -> Gemini)
