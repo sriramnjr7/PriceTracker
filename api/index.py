@@ -50,12 +50,26 @@ def _now() -> str:
 @app.get("/api/index")
 @app.get("/api/index.py")
 @app.get("/index.py")
-async def root():
+async def root(request: Request):
     """Health check and status dashboard."""
     db = get_database(settings)
     await db.initialize()
     products = await db.get_products(active_only=True)
     await db.close()
+
+    # If Vercel rewrote an endpoint to /api/index.py, inspect original path from headers:
+    orig_path = (
+        request.headers.get("x-vercel-matched-path")
+        or request.headers.get("x-matched-path")
+        or request.headers.get("x-forwarded-uri")
+        or request.headers.get("x-invoke-path")
+        or ""
+    )
+
+    if "cron" in orig_path.lower():
+        return await cron_sweep(request)
+    elif "set-webhook" in orig_path.lower():
+        return await set_telegram_webhook(request)
 
     return {
         "status": "online",
@@ -68,6 +82,12 @@ async def root():
             "telegram_webhook": "POST /api/telegram",
             "cron_deal_scanner": "GET /api/cron",
             "setup_webhook": "GET /api/set-webhook",
+        },
+        "debug_info": {
+            "x_matched_path": request.headers.get("x-matched-path"),
+            "x_vercel_matched_path": request.headers.get("x-vercel-matched-path"),
+            "x_forwarded_uri": request.headers.get("x-forwarded-uri"),
+            "path": request.scope.get("path"),
         },
     }
 
@@ -180,11 +200,16 @@ async def set_telegram_webhook(request: Request, url: Optional[str] = None):
 @app.api_route("/{full_path:path}", methods=["GET", "POST", "HEAD", "OPTIONS"])
 async def catch_all(request: Request, full_path: str):
     """Fallback catch-all route ensuring Vercel rewrites never trigger accidental 404s."""
-    raw_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri") or full_path
+    raw_path = (
+        request.headers.get("x-vercel-matched-path")
+        or request.headers.get("x-matched-path")
+        or request.headers.get("x-forwarded-uri")
+        or full_path
+    )
     clean = raw_path.strip("/").lower()
 
     if clean in ("", "api", "api/", "index", "index.py", "api/index", "api/index.py"):
-        return await root()
+        return await root(request)
     elif "cron" in clean:
         return await cron_sweep(request)
     elif "telegram" in clean:
