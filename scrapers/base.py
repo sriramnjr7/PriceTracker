@@ -243,39 +243,57 @@ class BaseScraper(ABC):
         """Fetch static page with Scrapling (TLS impersonation) or httpx fallback."""
         import os
         is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
-        retries = 1 if is_serverless else self.config.retries
-        timeout_val = 6 if is_serverless else int(self.config.request_timeout)
+        retries = 2 if is_serverless else self.config.retries
+        timeout_val = 15 if is_serverless else int(self.config.request_timeout)
 
-        # 1. Try Scrapling Fetcher if available
+        # 1. Try Scrapling Fetcher with Chrome TLS Impersonation (AGENTS.md specification)
         try:
             from scrapling import Fetcher
             for attempt in range(retries):
                 try:
-                    response = Fetcher.get(url, timeout=timeout_val)
+                    response = Fetcher.get(
+                        url,
+                        impersonate="chrome",
+                        stealthy_headers=True,
+                        timeout=timeout_val,
+                        follow_redirects=True,
+                    )
                     if response.status == 200:
                         body_html = getattr(response, "html_content", "") or (
                             response.body.decode("utf-8", errors="ignore")
                             if hasattr(response, "body")
                             else ""
                         )
-                        if body_html and len(body_html) > 5000:
-                            return body_html
+                        if body_html and len(body_html) > 3000:
+                            # Reject bot challenge / captcha pages
+                            lower_snippet = body_html[:4000].lower()
+                            if not any(cap in lower_snippet for cap in ("api-services-support@amazon.com", "validatecaptcha", "/errors/validatecaptcha")):
+                                return body_html
+                            logger.warning("[%s] Scrapling received captcha challenge (attempt %s/%s)", self.platform, attempt + 1, retries)
                     logger.warning(
                         "[%s] scrapling GET %s -> HTTP %s (attempt %s/%s)",
-                        self.platform, url, response.status, attempt + 1, self.config.retries,
+                        self.platform, url, response.status, attempt + 1, retries,
                     )
                 except Exception as exc:
-                    logger.debug("[%s] scrapling fetch error: %s", self.platform, exc)
+                    logger.warning("[%s] scrapling fetch error: %s", self.platform, exc)
                 await self._polite_delay(backoff=attempt + 1)
-        except (ImportError, AttributeError):
-            pass
+        except (ImportError, AttributeError) as exc:
+            logger.debug("[%s] Scrapling Fetcher unavailable: %s", self.platform, exc)
 
-        # 2. Fallback to standard httpx GET
+        # 2. Fallback to standard httpx GET with realistic browser headers & Google referer
         headers = {
             "User-Agent": self._random_user_agent(),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "en-IN,en;q=0.9,hi;q=0.8",
-            "Cache-Control": "no-cache",
+            "Referer": "https://www.google.com/",
+            "Sec-Ch-Ua": '"Not A(Brand";v="99", "Google Chrome";v="125", "Chromium";v="125"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "cross-site",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
         }
         for attempt in range(retries):
             try:
@@ -283,11 +301,13 @@ class BaseScraper(ABC):
                     follow_redirects=True, timeout=timeout_val
                 ) as client:
                     response = await client.get(url, headers=headers)
-                if response.status_code == 200 and len(response.text) > 5000:
-                    return response.text
+                if response.status_code == 200 and len(response.text) > 3000:
+                    lower_snippet = response.text[:4000].lower()
+                    if not any(cap in lower_snippet for cap in ("api-services-support@amazon.com", "validatecaptcha", "/errors/validatecaptcha")):
+                        return response.text
                 logger.warning(
                     "[%s] static GET %s -> HTTP %s (len=%s, attempt %s/%s)",
-                    self.platform, url, response.status_code, len(response.text), attempt + 1, self.config.retries,
+                    self.platform, url, response.status_code, len(response.text), attempt + 1, retries,
                 )
             except httpx.HTTPError as exc:
                 logger.warning("[%s] static GET failed: %s", self.platform, exc)

@@ -238,13 +238,13 @@ async def api_add_product(payload: AddProductPayload):
     db = get_database(settings)
     await db.initialize()
     try:
-        current_price = target_price
+        current_price = None
         title = extract_fallback_title(raw_url, platform)
 
-        # Fast preview scrape with 5.0s timeout so the web console returns immediately
+        # Fast preview scrape with 10.0s timeout so the web console returns immediately
         try:
             scraper = get_scraper(platform, settings)
-            res = await asyncio.wait_for(scraper.scrape(clean_url), timeout=5.0)
+            res = await asyncio.wait_for(scraper.scrape(clean_url), timeout=10.0)
             if res.price and res.price > 0:
                 current_price = res.price
             if res.title:
@@ -283,9 +283,37 @@ async def check_single_product(product_id: int):
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
 
+        # 1. Scrape live product URL directly
+        scraper = get_scraper(product.platform, settings)
+        try:
+            result = await scraper.scrape(product.url)
+        except Exception as exc:
+            logger.error("Live scrape failed for %s (id=%s): %s", product.url, product_id, exc)
+            raise HTTPException(
+                status_code=502,
+                detail=f"Live scrape failed for {product.platform}: {exc}"
+            )
+
+        # 2. Persist price update and fresh timestamp
+        if result.price is not None:
+            await db.update_price(product.id, result.price, title=result.title or None)
+        elif result.title:
+            await db.update_price(product.id, None, title=result.title)
+        else:
+            await db.update_price(product.id, product.current_price, title=product.title)
+
+        # 3. Check notification threshold
         notifier = Notifier(settings)
         tracker = Tracker(db, notifier, settings)
-        await tracker.check_product(product)
+        if result.price is not None:
+            should_notify, drop_percent = tracker._should_notify(
+                product, product.current_price, result.price
+            )
+            if should_notify:
+                target_text = tracker._target_text(product)
+                old_p = product.current_price or product.initial_price
+                if await notifier.notify(product, old_p, result.price, drop_percent, target_text):
+                    await db.set_last_notified(product.id, result.price)
 
         updated = await db.get_product(product_id)
         return {

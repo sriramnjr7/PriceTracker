@@ -2160,10 +2160,16 @@
         const targetPriceStr = p.target_price ? `₹${Number(p.target_price).toLocaleString('en-IN')}` : "—";
         
         let progressPercent = 0;
-        if (p.initial_price && p.target_price && p.current_price) {
-          const totalDropNeeded = p.initial_price - p.target_price;
-          const currentDrop = p.initial_price - p.current_price;
-          progressPercent = totalDropNeeded > 0 ? Math.min(100, Math.max(0, (currentDrop / totalDropNeeded) * 100)) : 100;
+        if (p.target_price && p.current_price) {
+          if (p.current_price <= p.target_price) {
+            progressPercent = 100;
+          } else if (p.initial_price && p.initial_price > p.target_price) {
+            const totalDropNeeded = p.initial_price - p.target_price;
+            const currentDrop = p.initial_price - p.current_price;
+            progressPercent = currentDrop > 0 ? Math.min(100, Math.max(0, (currentDrop / totalDropNeeded) * 100)) : 0;
+          } else {
+            progressPercent = 0;
+          }
         }
 
         return `
@@ -2273,7 +2279,7 @@
         const res = await fetch(`/api/products/${id}/check`, { method: "POST" });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Check failed");
-        showToast(`Price updated: ₹${data.price}`);
+        showToast(data.price ? `Price verified: ₹${Number(data.price).toLocaleString('en-IN')}` : "Price check completed.");
         fetchDashboardData();
       } catch (err) {
         showToast("⚠️ " + err.message);
