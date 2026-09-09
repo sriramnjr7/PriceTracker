@@ -241,14 +241,20 @@ class BaseScraper(ABC):
     # ------------------------------------------------------------ static fetch
     async def _static_fetch(self, url: str) -> Optional[str]:
         """Fetch static page with Scrapling (TLS impersonation) or httpx fallback."""
-        # 1. Try Scrapling Fetcher with Chrome TLS impersonation if available
+        # 1. Try Scrapling Fetcher if available
         try:
-            from scrapling.fetchers import Fetcher
+            from scrapling import Fetcher
             for attempt in range(self.config.retries):
                 try:
-                    response = Fetcher.fetch(url, impersonate="chrome", timeout=int(self.config.request_timeout))
+                    response = Fetcher.get(url, timeout=int(self.config.request_timeout))
                     if response.status == 200:
-                        return response.text
+                        body_html = getattr(response, "html_content", "") or (
+                            response.body.decode("utf-8", errors="ignore")
+                            if hasattr(response, "body")
+                            else ""
+                        )
+                        if body_html and len(body_html) > 5000:
+                            return body_html
                     logger.warning(
                         "[%s] scrapling GET %s -> HTTP %s (attempt %s/%s)",
                         self.platform, url, response.status, attempt + 1, self.config.retries,
@@ -256,7 +262,7 @@ class BaseScraper(ABC):
                 except Exception as exc:
                     logger.debug("[%s] scrapling fetch error: %s", self.platform, exc)
                 await self._polite_delay(backoff=attempt + 1)
-        except ImportError:
+        except (ImportError, AttributeError):
             pass
 
         # 2. Fallback to standard httpx GET
@@ -272,11 +278,11 @@ class BaseScraper(ABC):
                     follow_redirects=True, timeout=self.config.request_timeout
                 ) as client:
                     response = await client.get(url, headers=headers)
-                if response.status_code == 200:
+                if response.status_code == 200 and len(response.text) > 5000:
                     return response.text
                 logger.warning(
-                    "[%s] static GET %s -> HTTP %s (attempt %s/%s)",
-                    self.platform, url, response.status_code, attempt + 1, self.config.retries,
+                    "[%s] static GET %s -> HTTP %s (len=%s, attempt %s/%s)",
+                    self.platform, url, response.status_code, len(response.text), attempt + 1, self.config.retries,
                 )
             except httpx.HTTPError as exc:
                 logger.warning("[%s] static GET failed: %s", self.platform, exc)
@@ -286,23 +292,29 @@ class BaseScraper(ABC):
     # ---------------------------------------------------------------- JS fetch
     async def _js_fetch(self, url: str) -> Optional[str]:
         """Render page in headless browser using Scrapling StealthyFetcher or Playwright fallback."""
-        # 1. Try Scrapling StealthyFetcher (anti-bot bypass)
+        # 1. Try Scrapling StealthyFetcher (anti-bot bypass) via async_fetch
         try:
-            from scrapling.fetchers import StealthyFetcher
+            from scrapling import StealthyFetcher
             for attempt in range(self.config.retries):
                 try:
-                    response = StealthyFetcher.fetch(
+                    response = await StealthyFetcher.async_fetch(
                         url,
                         headless=self.config.headless,
                         network_idle=True,
                         timeout=int(self.config.request_timeout * 1000),
                     )
                     if response.status == 200:
-                        return response.text
+                        body_html = getattr(response, "html_content", "") or (
+                            response.body.decode("utf-8", errors="ignore")
+                            if hasattr(response, "body")
+                            else ""
+                        )
+                        if body_html and len(body_html) > 5000:
+                            return body_html
                 except Exception as exc:
                     logger.debug("[%s] scrapling stealth fetch error: %s", self.platform, exc)
                 await self._polite_delay(backoff=attempt + 1)
-        except ImportError:
+        except (ImportError, AttributeError):
             pass
 
         # 2. Fallback to native Playwright

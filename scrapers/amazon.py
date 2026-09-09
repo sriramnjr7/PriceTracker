@@ -27,7 +27,7 @@ class AmazonScraper(BaseScraper):
         "span#productTitle",
     )
 
-    price_selectors = (
+    price_selectors: tuple[str, ...] = (
         ".a-price.priceToPay .a-offscreen",
         ".a-price.apex-pricetopay-value .a-offscreen",
         "#corePrice_feature_div .apex-pricetopay-value .a-offscreen",
@@ -36,7 +36,41 @@ class AmazonScraper(BaseScraper):
         "#priceblock_ourprice",
     )
 
-    out_of_stock_keywords = (
+    main_price_containers: tuple[str, ...] = (
+        "#corePriceDisplay_desktop_feature_div",
+        "#corePrice_feature_div",
+        "#apex_desktop",
+        "#corePriceDisplay_mobile_feature_div",
+        "#apex_mobile",
+        "#priceInsideBuyBox_feature_div",
+        "#desktop_buybox",
+        "#mobile_buybox",
+        "#priceblock_dealprice",
+        "#priceblock_ourprice",
+        "#priceblock_saleprice",
+        "#tp_price_block_total_price_ww",
+    )
+
+    unwanted_subselectors: tuple[str, ...] = (
+        "warranty",
+        "protection",
+        "insurance",
+        "accessory",
+        "accessories",
+        "fbt",
+        "sims",
+        "carousel",
+        "sponsored",
+        "emi",
+        "bundle",
+        "tradein",
+        "addon",
+        "a-text-price",
+        "apex-basisprice-value",
+        "apex-basis-price-value",
+    )
+
+    out_of_stock_keywords: tuple[str, ...] = (
         "currently unavailable",
         "temporarily out of stock",
         "out of stock",
@@ -44,26 +78,103 @@ class AmazonScraper(BaseScraper):
     )
 
     def _extract_price(self, soup: BeautifulSoup) -> Optional[float]:
-        """Extract selling price, explicitly excluding .a-text-price (strikethrough MRP/basis price)."""
-        # 1. Primary priceToPay selectors
-        for sel in self.price_selectors:
-            for node in soup.select(sel):
+        """Extract selling price strictly from the primary buybox, avoiding protection plans, warranties, and accessories."""
+        # 1. Authoritative: Schema.org Product JSON-LD
+        import json
+        for script in soup.find_all("script"):
+            stype = script.get("type", "")
+            if "ld+json" in stype or "json" in stype:
+                txt = script.string or script.get_text()
+                if not txt or "offers" not in txt:
+                    continue
+                try:
+                    data = json.loads(txt)
+                    if isinstance(data, list) and data:
+                        data = data[0]
+                    if isinstance(data, dict):
+                        offers = data.get("offers")
+                        if isinstance(offers, dict) and "price" in offers:
+                            val = float(offers["price"])
+                            if val > 0:
+                                return val
+                        elif isinstance(offers, list) and offers:
+                            for off in offers:
+                                if isinstance(off, dict) and "price" in off:
+                                    val = float(off["price"])
+                                    if val > 0:
+                                        return val
+                except Exception:
+                    continue
+
+        # 2. Main BuyBox & Core Price containers
+        for container_sel in self.main_price_containers:
+            container = soup.select_one(container_sel)
+            if not container:
+                continue
+
+            for p_sel in (
+                ".priceToPay .a-offscreen",
+                ".apex-pricetopay-value .a-offscreen",
+                ".priceToPay .a-price-whole",
+                ".apex-pricetopay-value .a-price-whole",
+                ".a-price:not(.a-text-price) .a-offscreen",
+                ".a-price:not(.a-text-price) .a-price-whole",
+                "#priceblock_dealprice",
+                "#priceblock_ourprice",
+                "#priceblock_saleprice",
+                ".a-offscreen",
+            ):
+                for node in container.select(p_sel):
+                    # Ensure node is not inside an accessory, warranty, or strikethrough element
+                    parent = node
+                    is_unwanted = False
+                    for _ in range(5):
+                        parent = parent.parent if parent else None
+                        if not parent:
+                            break
+                        p_cls = " ".join(parent.get("class", [])) if isinstance(parent.get("class"), list) else str(parent.get("class") or "")
+                        p_id = str(parent.get("id") or "")
+                        combined = f"{p_cls} {p_id}".lower()
+                        if any(uw in combined for uw in self.unwanted_subselectors):
+                            is_unwanted = True
+                            break
+                    if is_unwanted:
+                        continue
+
+                    val = self.clean_price(node.get_text(" ", strip=True))
+                    if val is not None and val > 0:
+                        return val
+
+        # 3. Fallback to centerCol or dedicated priceToPay anywhere in page (e.g. minimal test snippets)
+        for p_sel in (
+            "#centerCol .priceToPay .a-offscreen",
+            "#centerCol .apex-pricetopay-value .a-offscreen",
+            ".priceToPay .a-offscreen",
+            ".apex-pricetopay-value .a-offscreen",
+            ".priceToPay .a-price-whole",
+            ".priceToPay",
+        ):
+            for node in soup.select(p_sel):
+                parent = node
+                is_unwanted = False
+                for _ in range(5):
+                    parent = parent.parent if parent else None
+                    if not parent:
+                        break
+                    p_cls = " ".join(parent.get("class", [])) if isinstance(parent.get("class"), list) else str(parent.get("class") or "")
+                    p_id = str(parent.get("id") or "")
+                    combined = f"{p_cls} {p_id}".lower()
+                    if any(uw in combined for uw in self.unwanted_subselectors):
+                        is_unwanted = True
+                        break
+                if is_unwanted:
+                    continue
+
                 val = self.clean_price(node.get_text(" ", strip=True))
                 if val is not None and val > 0:
                     return val
 
-        # 2. General .a-price elements explicitly excluding .a-text-price (MRP/basis price)
-        for node in soup.select("#corePriceDisplay_desktop_feature_div .a-price, #corePrice_feature_div .a-price, #apex_desktop .a-price, .a-price"):
-            cls_list = node.get("class", [])
-            if "a-text-price" in cls_list or "apex-basisprice-value" in cls_list or "apex-basis-price-value" in cls_list:
-                continue
-            off = node.select_one(".a-offscreen")
-            if off:
-                val = self.clean_price(off.get_text(" ", strip=True))
-                if val is not None and val > 0:
-                    return val
-
-        return super()._extract_price(soup)
+        return None
 
     def _extract_stock(self, soup: BeautifulSoup) -> bool:
         """Precise availability check via dedicated #availability node."""
