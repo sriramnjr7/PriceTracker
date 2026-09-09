@@ -58,6 +58,14 @@ class Settings:
         default_factory=lambda: os.getenv("CALLMEBOT_URL", "https://api.callmebot.com/whatsapp.php")
     )
 
+    # --- Casio Bhawar Member Authentication ------------------------------
+    casio_bhawar_email: str = field(
+        default_factory=lambda: os.getenv("CASIO_BHAWAR_EMAIL", "")
+    )
+    casio_bhawar_password: str = field(
+        default_factory=lambda: os.getenv("CASIO_BHAWAR_PASSWORD", "")
+    )
+
     # --- Scheduling ------------------------------------------------------
     # Default: check every 30 minutes.  Shortening this is how you get blocked.
     poll_interval_seconds: int = field(

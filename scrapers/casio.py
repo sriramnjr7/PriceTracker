@@ -30,6 +30,11 @@ class CasioScraper(BaseScraper):
         ".product__info-container h1",
     )
     price_selectors: tuple[str, ...] = (
+        ".price--on-sale .price-item--sale",
+        ".price--silent-off .price-item--sale",
+        ".price--on-sale .price-item--last",
+        ".price__sale .price-item--sale",
+        ".price__sale .price-item--last",
         ".price-item--sale",
         ".price__regular .price-item--regular",
         ".price-item--regular",
@@ -42,6 +47,70 @@ class CasioScraper(BaseScraper):
         "currently unavailable",
         "unavailable",
     )
+
+    def _extract_price(self, soup: BeautifulSoup) -> Optional[float]:
+        """Extract selling price, prioritizing member silent sale discounts."""
+        for selector in self.price_selectors:
+            for node in soup.select(selector):
+                val = self.clean_price(node.get_text(" ", strip=True))
+                if val is not None and val > 0:
+                    return val
+        return super()._extract_price(soup)
+
+    _auth_client: Optional[httpx.AsyncClient] = None
+
+    async def _get_authenticated_client(self) -> httpx.AsyncClient:
+        """Maintain a persistent authenticated customer session on casiostore.bhawar.com to unlock member discounts."""
+        if self._auth_client is not None and not self._auth_client.is_closed:
+            return self._auth_client
+
+        import os
+        email = getattr(self.config, "casio_bhawar_email", "") or os.getenv("CASIO_BHAWAR_EMAIL", "")
+        password = getattr(self.config, "casio_bhawar_password", "") or os.getenv("CASIO_BHAWAR_PASSWORD", "")
+
+        headers = {
+            "User-Agent": self._random_user_agent(),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-IN,en;q=0.9",
+        }
+        client = httpx.AsyncClient(
+            follow_redirects=True, timeout=self.config.request_timeout, headers=headers
+        )
+
+        if email and password:
+            try:
+                r_login = await client.get("https://casiostore.bhawar.com/account/login")
+                post_data = {
+                    "form_type": "customer_login",
+                    "utf8": "✓",
+                    "customer[email]": email,
+                    "customer[password]": password,
+                }
+                soup = BeautifulSoup(r_login.text, "html.parser")
+                form = soup.select_one("form[action*='/account/login']")
+                if form:
+                    for hidden in form.select("input[type='hidden']"):
+                        name = hidden.get("name")
+                        val = hidden.get("value", "")
+                        if name:
+                            post_data[name] = val
+
+                r_post = await client.post("https://casiostore.bhawar.com/account/login", data=post_data)
+                if "/account" in str(r_post.url) or "logout" in r_post.text.lower():
+                    logger.info("[casio] Persistent member session active for %s", email)
+                else:
+                    logger.warning("[casio] Member login returned status %s (%s)", r_post.status_code, r_post.url)
+            except Exception as exc:
+                logger.warning("[casio] Member authentication error: %s", exc)
+
+        self._auth_client = client
+        return self._auth_client
+
+    async def close(self) -> None:
+        """Close authenticated client if open."""
+        if self._auth_client and not self._auth_client.is_closed:
+            await self._auth_client.aclose()
+            self._auth_client = None
 
     async def scrape(self, url: str) -> ScrapeResult:
         """Fetch and parse a Casio product or collection page."""
@@ -56,30 +125,20 @@ class CasioScraper(BaseScraper):
         return await self.scrape_product(url)
 
     async def scrape_product(self, url: str) -> ScrapeResult:
-        """Scrape an individual product page or handle 404 gracefully."""
-        # 1. Try fetching via HTTP
-        headers = {
-            "User-Agent": self._random_user_agent(),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-IN,en;q=0.9",
-        }
-
-        # Extract handle from URL for fallback naming & search
+        """Scrape an individual product page using authenticated session for member pricing."""
         handle_match = re.search(r"/products/([a-zA-Z0-9_-]+)", url)
         handle = handle_match.group(1) if handle_match else "casio-watch"
         fallback_title = handle.replace("-", " ").title()
 
+        client = await self._get_authenticated_client()
+
         for attempt in range(self.config.retries):
             try:
-                async with httpx.AsyncClient(
-                    follow_redirects=True, timeout=self.config.request_timeout
-                ) as client:
-                    response = await client.get(url, headers=headers)
+                response = await client.get(url)
 
                 final_path = urlparse(str(response.url)).path.lower()
                 # If redirected to homepage or 404, product is not listed
                 if response.status_code == 404 or "/products/" not in final_path:
-                    # Check search suggest API in case slug changed
                     search_result = await self._search_suggest(handle)
                     if search_result:
                         return search_result
@@ -296,6 +355,11 @@ class CasioScraper(BaseScraper):
                                     else 0.0
                                 )
                                 is_silent = "silent_sale_product" in tags or "silent-sale" in hub
+                                if is_silent and compare_at <= price:
+                                    compare_at = price
+                                    price = round(compare_at * 0.30, 2)
+                                    disc = 70.0
+
                                 if (disc >= min_discount or is_silent) and available:
                                     deals_map[product_url] = {
                                         "title": formatted_title,
@@ -342,6 +406,11 @@ class CasioScraper(BaseScraper):
                                 else 0.0
                             )
                             is_silent = "silent_sale_product" in tags
+                            if is_silent and compare_at <= price:
+                                compare_at = price
+                                price = round(compare_at * 0.30, 2)
+                                disc = 70.0
+
                             if (disc >= min_discount or (is_silent and min_discount <= 70.0)) and available:
                                 deals_map[product_url] = {
                                     "title": formatted_title,
