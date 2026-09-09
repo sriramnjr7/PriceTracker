@@ -274,6 +274,28 @@ class SupabaseDatabase:
                 headers=self._headers,
             )
 
+    async def get_recent_deal_alerts(self, limit: int = 15) -> List[dict[str, Any]]:
+        """Fetch the most recent steal deals and glitch notifications."""
+        url = f"{self.base_rest}/deal_alerts_log?select=*&order=notified_at.desc&limit={limit}"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, headers=self._headers)
+            if resp.status_code == 200:
+                return resp.json()
+        return []
+
+    async def get_recent_price_logs(
+        self, product_id: Optional[int] = None, limit: int = 20
+    ) -> List[dict[str, Any]]:
+        """Fetch recent price logs."""
+        url = f"{self.base_rest}/price_logs?select=*&order=timestamp.desc&limit={limit}"
+        if product_id is not None:
+            url += f"&product_id=eq.{product_id}"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, headers=self._headers)
+            if resp.status_code == 200:
+                return resp.json()
+        return []
+
     # --------------------------------------------------- custom_radar_rules
     async def add_custom_rule(
         self,

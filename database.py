@@ -193,13 +193,13 @@ class Database:
         """Fetch a single product row or None."""
         cursor = await self.conn.execute("SELECT * FROM products WHERE id = ?", (product_id,))
         row = await cursor.fetchone()
-        return Product.from_row(row) if row else None
+        return _row_to_product(row) if row else None
 
     async def get_product_by_url(self, url: str) -> Optional[Product]:
         """Fetch a single product by URL or None."""
         cursor = await self.conn.execute("SELECT * FROM products WHERE url = ? LIMIT 1", (url,))
         row = await cursor.fetchone()
-        return Product.from_row(row) if row else None
+        return _row_to_product(row) if row else None
 
     async def get_products(self, active_only: bool = False) -> list[Product]:
         query = "SELECT * FROM products"
@@ -321,6 +321,30 @@ class Database:
             (product_url, title, price, effective_price, discount_percent, coupon_text, platform, _now()),
         )
         await self.conn.commit()
+
+    async def get_recent_deal_alerts(self, limit: int = 15) -> list[dict[str, Any]]:
+        cursor = await self.conn.execute(
+            "SELECT * FROM deal_alerts_log ORDER BY datetime(notified_at) DESC, id DESC LIMIT ?",
+            (limit,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def get_recent_price_logs(
+        self, product_id: Optional[int] = None, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        if product_id is not None:
+            cursor = await self.conn.execute(
+                "SELECT * FROM price_logs WHERE product_id = ? ORDER BY datetime(timestamp) DESC, id DESC LIMIT ?",
+                (product_id, limit),
+            )
+        else:
+            cursor = await self.conn.execute(
+                "SELECT * FROM price_logs ORDER BY datetime(timestamp) DESC, id DESC LIMIT ?",
+                (limit,),
+            )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
 
     # ----------------------------------------------------- custom_radar_rules
     async def add_custom_rule(
