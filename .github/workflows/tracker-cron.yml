@@ -1,0 +1,22 @@
+name: PriceTracker 24/7 Periodic Sweep
+
+on:
+  schedule:
+    # Runs every 15 minutes as an automated backup pinger
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping PriceTracker Cron Endpoint
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+        run: |
+          if [ -n "$VERCEL_APP_URL" ]; then
+            echo "Pinging $VERCEL_APP_URL/api/cron..."
+            curl -f -s "$VERCEL_APP_URL/api/cron" || echo "Cron ping returned an error or non-200"
+          else
+            echo "VERCEL_APP_URL secret is not set; skipping ping."
+          fi

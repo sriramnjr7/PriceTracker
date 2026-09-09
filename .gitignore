@@ -1,0 +1,30 @@
+# Environment / secrets - never commit
+.env
+.env*.local
+.env.*
+
+# Local SQLite database & logs
+price_tracker.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.log
+radar_daemon.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Submodules / external packages (installed via pip / requirements.txt)
+Scrapling/
+gstack/
+
+# Vercel & IDE
+.vercel/
+.agents/
