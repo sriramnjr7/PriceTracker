@@ -94,6 +94,55 @@ def get_scraper(platform: str, config=None) -> BaseScraper:
     return cls(config) if config is not None else cls()
 
 
+def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
+    """Strip search tokens, tracking IDs, and affiliate cruft to produce a canonical product URL."""
+    import re
+    from urllib.parse import urlparse
+
+    clean = url.strip()
+    p = platform or detect_platform(clean, safe=True) or ""
+
+    if p == "amazon":
+        # Extract ASIN (10 alphanumeric characters) from /dp/ASIN or /gp/product/ASIN
+        m = re.search(r"/(?:dp|gp/product)/([A-Z0-9]{10})", clean, re.IGNORECASE)
+        if m:
+            asin = m.group(1).upper()
+            host = urlparse(clean).hostname or "www.amazon.in"
+            return f"https://{host}/dp/{asin}"
+    elif p == "casio":
+        # Strip all Shopify search parameters (?_pos=...&_fid=...&_ss=...)
+        return clean.split("?")[0].rstrip("/")
+    elif p == "flipkart":
+        # Keep product path, preserve pid if present
+        base = clean.split("?")[0].rstrip("/")
+        m = re.search(r"[?&]pid=([A-Za-z0-9]+)", clean)
+        if m:
+            return f"{base}?pid={m.group(1)}"
+        return base
+    elif p in ("myntra", "ajio"):
+        return clean.split("?")[0].rstrip("/")
+
+    return clean.split("?")[0] if "?" in clean and any(k in clean for k in ("ref=", "utm_", "dib=")) else clean
+
+
+def extract_fallback_title(url: str, platform: str) -> str:
+    """Generate a clean, human-readable title from URL path slug instead of query parameters."""
+    import re
+    from urllib.parse import urlparse, unquote
+
+    parsed = urlparse(url)
+    segments = [s for s in parsed.path.split("/") if s and s.lower() not in ("dp", "gp", "product", "products", "p", "buy")]
+
+    if segments:
+        candidate = segments[0].replace("-", " ").replace("_", " ")
+        candidate = unquote(candidate).strip()
+        # Ensure it's not just an ASIN or model ID
+        if len(candidate) > 3 and not re.match(r"^[A-Z0-9]{8,12}$", candidate, re.IGNORECASE):
+            return " ".join(w.capitalize() for w in candidate.split())[:80]
+
+    return f"Tracked Product ({platform.title()})"
+
+
 __all__ = [
     "SCRAPERS",
     "BaseScraper",
@@ -102,4 +151,6 @@ __all__ = [
     "detect_platform",
     "resolve_platform",
     "get_scraper",
+    "normalize_product_url",
+    "extract_fallback_title",
 ]

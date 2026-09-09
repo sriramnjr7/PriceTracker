@@ -37,7 +37,7 @@ from config import settings
 from database import get_database
 from notifier import Notifier
 from radar import StealRadar
-from scrapers import get_scraper, resolve_platform
+from scrapers import extract_fallback_title, get_scraper, normalize_product_url, resolve_platform
 from telegram_bot import TelegramAssistant
 from tracker import Tracker
 
@@ -221,35 +221,39 @@ async def get_dashboard_data():
 
 @app.post("/api/products")
 async def api_add_product(payload: AddProductPayload):
-    """Enroll a new URL into 24/7 price tracking."""
-    url = payload.url.strip()
+    """Enroll a new URL into 24/7 price tracking with canonical URL normalization."""
+    import asyncio
+    raw_url = payload.url.strip()
     target_price = payload.target_price
 
-    platform = await resolve_platform(url)
+    platform = await resolve_platform(raw_url)
     if not platform:
         raise HTTPException(
             status_code=400,
             detail="Unsupported URL. Supported: Amazon, Flipkart, Casio Bhawar, Myntra, Ajio, Blinkit, Zepto, BigBasket."
         )
 
+    clean_url = normalize_product_url(raw_url, platform)
+
     db = get_database(settings)
     await db.initialize()
     try:
         current_price = target_price
-        title = url.split("/")[-1][:60] or f"Tracked Product ({platform.title()})"
+        title = extract_fallback_title(raw_url, platform)
 
+        # Fast preview scrape with 5.0s timeout so the web console returns immediately
         try:
             scraper = get_scraper(platform, settings)
-            res = await scraper.scrape(url)
+            res = await asyncio.wait_for(scraper.scrape(clean_url), timeout=5.0)
             if res.price and res.price > 0:
                 current_price = res.price
             if res.title:
                 title = res.title
         except Exception as exc:
-            logger.warning("Scraper inspection error during product add: %s", exc)
+            logger.info("Fast preview scrape deferred for %s: %s", clean_url, exc)
 
         prod_id = await db.add_product(
-            url=url,
+            url=clean_url,
             platform=platform,
             target_price=target_price,
             initial_price=current_price,
@@ -263,6 +267,7 @@ async def api_add_product(payload: AddProductPayload):
             "platform": platform,
             "current_price": current_price,
             "target_price": target_price,
+            "url": clean_url,
         }
     finally:
         await db.close()

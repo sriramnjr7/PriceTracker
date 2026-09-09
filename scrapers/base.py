@@ -241,12 +241,17 @@ class BaseScraper(ABC):
     # ------------------------------------------------------------ static fetch
     async def _static_fetch(self, url: str) -> Optional[str]:
         """Fetch static page with Scrapling (TLS impersonation) or httpx fallback."""
+        import os
+        is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+        retries = 1 if is_serverless else self.config.retries
+        timeout_val = 6 if is_serverless else int(self.config.request_timeout)
+
         # 1. Try Scrapling Fetcher if available
         try:
             from scrapling import Fetcher
-            for attempt in range(self.config.retries):
+            for attempt in range(retries):
                 try:
-                    response = Fetcher.get(url, timeout=int(self.config.request_timeout))
+                    response = Fetcher.get(url, timeout=timeout_val)
                     if response.status == 200:
                         body_html = getattr(response, "html_content", "") or (
                             response.body.decode("utf-8", errors="ignore")
@@ -272,10 +277,10 @@ class BaseScraper(ABC):
             "Accept-Language": "en-IN,en;q=0.9,hi;q=0.8",
             "Cache-Control": "no-cache",
         }
-        for attempt in range(self.config.retries):
+        for attempt in range(retries):
             try:
                 async with httpx.AsyncClient(
-                    follow_redirects=True, timeout=self.config.request_timeout
+                    follow_redirects=True, timeout=timeout_val
                 ) as client:
                     response = await client.get(url, headers=headers)
                 if response.status_code == 200 and len(response.text) > 5000:
@@ -292,6 +297,11 @@ class BaseScraper(ABC):
     # ---------------------------------------------------------------- JS fetch
     async def _js_fetch(self, url: str) -> Optional[str]:
         """Render page in headless browser using Scrapling StealthyFetcher or Playwright fallback."""
+        import os
+        if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            logger.debug("[%s] Skipping headless browser fetch in serverless environment", self.platform)
+            return None
+
         # 1. Try Scrapling StealthyFetcher (anti-bot bypass) via async_fetch
         try:
             from scrapling import StealthyFetcher
@@ -412,5 +422,8 @@ class BaseScraper(ABC):
 
     async def _polite_delay(self, backoff: int = 1) -> None:
         """Sleep a random 2-5s, scaled by retry backoff, to avoid rate limits."""
+        import os
+        if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            return
         low, high = self.config.min_delay_seconds, self.config.max_delay_seconds
         await asyncio.sleep(random.uniform(low, high) * backoff)
