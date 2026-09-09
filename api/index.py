@@ -45,6 +45,11 @@ def _now() -> str:
 
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/")
+@app.get("/api/index")
+@app.get("/api/index.py")
+@app.get("/index.py")
 async def root():
     """Health check and status dashboard."""
     db = get_database(settings)
@@ -67,7 +72,9 @@ async def root():
     }
 
 
+@app.post("/telegram")
 @app.post("/api/telegram")
+@app.post("/api/index.py/telegram")
 async def telegram_webhook(request: Request):
     """Receive and dispatch incoming Telegram messages in real-time via Webhook."""
     try:
@@ -98,7 +105,9 @@ async def telegram_webhook(request: Request):
     return {"ok": True}
 
 
+@app.get("/cron")
 @app.get("/api/cron")
+@app.get("/api/index.py/cron")
 async def cron_sweep(request: Request):
     """Execute scheduled deal hunter & manual product price checking.
 
@@ -136,7 +145,9 @@ async def cron_sweep(request: Request):
     }
 
 
+@app.get("/set-webhook")
 @app.get("/api/set-webhook")
+@app.get("/api/index.py/set-webhook")
 async def set_telegram_webhook(request: Request, url: Optional[str] = None):
     """Register this Vercel deployment URL with Telegram's Bot API."""
     token = settings.telegram_bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -164,3 +175,26 @@ async def set_telegram_webhook(request: Request, url: Optional[str] = None):
         "webhook_url": webhook_url,
         "telegram_response": data,
     }
+
+
+@app.api_route("/{full_path:path}", methods=["GET", "POST", "HEAD", "OPTIONS"])
+async def catch_all(request: Request, full_path: str):
+    """Fallback catch-all route ensuring Vercel rewrites never trigger accidental 404s."""
+    raw_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri") or full_path
+    clean = raw_path.strip("/").lower()
+
+    if clean in ("", "api", "api/", "index", "index.py", "api/index", "api/index.py"):
+        return await root()
+    elif "cron" in clean:
+        return await cron_sweep(request)
+    elif "telegram" in clean:
+        return await telegram_webhook(request)
+    elif "set-webhook" in clean or "set_webhook" in clean:
+        return await set_telegram_webhook(request)
+
+    return JSONResponse(
+        status_code=404,
+        content={"detail": "Not Found", "received_path": full_path, "matched_path": raw_path},
+    )
+
+

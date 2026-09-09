@@ -363,7 +363,7 @@ class StealRadar:
                 )
             )
 
-        print(f"\n🌐 Launching Universal Steal Radar across {len(rules)} active rule categories...\n")
+        logger.info("Launching Universal Steal Radar across %d active rule categories...", len(rules))
 
         for rule in rules:
             if category_filter and category_filter.lower() not in rule.category.lower() and category_filter.lower() not in rule.name.lower():
@@ -376,14 +376,12 @@ class StealRadar:
             if only_platforms and not any(p in only_platforms for p in rule.platforms):
                 continue
 
-            print(f"🔍 Scanning [{rule.category}] {rule.name} (>= {rule.min_discount}% on {', '.join(rule.platforms)})...")
-            
-            alerts_sent = await self.process_and_notify_deals(
-                rule,
-                exclude_platforms=exclude_platforms,
-                only_platforms=only_platforms,
-            )
-            total_alerts += alerts_sent
+            logger.info("Scanning [%s] %s (>= %s%% on %s)...", rule.category, rule.name, rule.min_discount, ", ".join(rule.platforms))
+            alerts = await self.scan_rule(rule, exclude_platforms=exclude_platforms, only_platforms=only_platforms)
+            total_alerts += len(alerts)
 
-        print(f"\n✅ Radar scan complete. Dispatched {total_alerts} new WhatsApp alert(s).\n")
+            # Polite jitter between rule categories to blend in naturally
+            await asyncio.sleep(random.uniform(1.0, 2.5))
+
+        logger.info("Radar scan complete. Dispatched %d new alert(s).", total_alerts)
         return total_alerts
