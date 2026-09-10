@@ -93,11 +93,15 @@ class Tracker:
         min_discount = product.percentage_drop_target or 70.0
 
         deals = await scraper.scan_collection_deals(handle, min_discount=min_discount)
+        category_name = handle.replace("-", " ").title()
+        best_price = min((d["price"] for d in deals), default=product.current_price)
+        active_count = len(deals)
+        updated_title = f"[Category: {category_name}] ({active_count} active deal{'s' if active_count != 1 else ''} currently)"
+        await self.db.update_price(product.id, best_price, title=updated_title)
+
         if not deals:
             logger.info("[casio] Collection %s: 0 deals matching >= %s%% discount", handle, min_discount)
             return False
-
-        category_name = handle.replace("-", " ").upper()
         notified_any = False
         for deal in deals:
             # Check price threshold if set
