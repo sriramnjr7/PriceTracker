@@ -45,7 +45,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("vercel_api")
 
 app = FastAPI(
-    title="SriTrack // Executive PriceTracker Engine",
+    title="PriceTracker // Deal Radar & Executive Tracking Engine",
     description="Autonomous Casio Bhawar + Flipkart deal hunter & Real-time Tracking Dashboard",
     version="2.1.0",
 )
@@ -65,7 +65,7 @@ def get_dashboard_html() -> str:
                 return f.read()
         except Exception as exc:
             logger.error("Error reading dashboard.html: %s", exc)
-    return "<html><body style='background:#060911;color:#fff;font-family:sans-serif;padding:40px;'><h2>SriTrack Engine Online</h2><p>Dashboard template missing or loading...</p></body></html>"
+    return "<html><body style='background:#060911;color:#fff;font-family:sans-serif;padding:40px;'><h2>PriceTracker Engine Online</h2><p>Dashboard template missing or loading...</p></body></html>"
 
 
 def is_browser_request(request: Request) -> bool:
@@ -149,7 +149,7 @@ async def get_status():
     return JSONResponse(
         content={
             "status": "online",
-            "service": "SriTrack Executive Serverless Engine",
+            "service": "PriceTracker Executive Serverless Engine",
             "timestamp": _now(),
             "database": "Supabase PostgreSQL" if os.getenv("SUPABASE_URL") else "SQLite",
             "active_monitored_products": len(products),
