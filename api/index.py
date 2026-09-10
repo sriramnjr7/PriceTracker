@@ -114,6 +114,8 @@ async def root(request: Request):
     # Route based on rewritten target if applicable
     if "cron" in clean:
         return await cron_sweep(request)
+    elif "trigger-runner" in clean or "trigger_runner" in clean:
+        return await trigger_github_runner(request)
     elif "set-webhook" in clean or "set_webhook" in clean:
         return await set_telegram_webhook(request)
     elif "telegram" in clean:
@@ -500,6 +502,74 @@ async def cron_sweep(request: Request):
         await db.close()
 
 
+@app.get("/trigger-runner")
+@app.get("/api/trigger-runner")
+@app.post("/trigger-runner")
+@app.post("/api/trigger-runner")
+async def trigger_github_runner(request: Request):
+    """Zero-overhead runner trigger for cron-job.org or external webhooks.
+    Dispatches GitHub Actions workflow tracker-cron.yml in ~150ms of Fluid CPU time."""
+    cron_secret = os.getenv("CRON_SECRET")
+    if cron_secret:
+        auth_header = request.headers.get("Authorization", "")
+        query_secret = request.query_params.get("secret", "")
+        if auth_header != f"Bearer {cron_secret}" and query_secret != cron_secret:
+            raise HTTPException(status_code=401, detail="Unauthorized trigger request")
+
+    github_token = (
+        os.getenv("GITHUB_TOKEN")
+        or request.query_params.get("token")
+        or request.headers.get("X-GitHub-Token")
+    )
+    repo = os.getenv("GITHUB_REPO", "sriramnjr7/PriceTracker")
+    workflow_id = os.getenv("GITHUB_WORKFLOW", "tracker-cron.yml")
+
+    if not github_token:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "message": "GITHUB_TOKEN not configured in Vercel environment variables.",
+                "hint": "Add GITHUB_TOKEN to Vercel Settings -> Environment Variables, or pass ?token=<PAT>.",
+            },
+        )
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {github_token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "PriceTracker-Vercel-Dispatcher",
+    }
+    url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_id}/dispatches"
+
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        try:
+            resp = await client.post(url, json={"ref": "main"}, headers=headers)
+            if resp.status_code == 204:
+                return {
+                    "status": "success",
+                    "action": "dispatched",
+                    "workflow": workflow_id,
+                    "repo": repo,
+                    "timestamp": _now(),
+                    "note": "GitHub Actions sweep runner has been triggered. Zero Vercel Fluid CPU consumed for scraping!",
+                }
+            else:
+                return JSONResponse(
+                    status_code=resp.status_code,
+                    content={
+                        "status": "github_error",
+                        "code": resp.status_code,
+                        "details": resp.text,
+                    },
+                )
+        except Exception as exc:
+            return JSONResponse(
+                status_code=500,
+                content={"status": "error", "message": f"Failed to dispatch GitHub Action: {exc}"},
+            )
+
+
 @app.get("/set-webhook")
 @app.get("/api/set-webhook")
 @app.get("/api/index.py/set-webhook")
@@ -544,15 +614,19 @@ async def catch_all(request: Request, full_path: str):
     if "telegram" in clean:
         return await telegram_webhook(request)
 
-    # 2. Cron Sweeper
+    # 2. Trigger Runner (GitHub Actions dispatcher)
+    if "trigger-runner" in clean or "trigger_runner" in clean:
+        return await trigger_github_runner(request)
+
+    # 3. Cron Sweeper
     if "cron" in clean:
         return await cron_sweep(request)
 
-    # 3. Setup Webhook
+    # 4. Setup Webhook
     if "set-webhook" in clean or "set_webhook" in clean:
         return await set_telegram_webhook(request)
 
-    # 4. Immediate Sweep
+    # 5. Immediate Sweep
     if clean in ("api/sweep", "sweep"):
         return await manual_deal_sweep()
 
