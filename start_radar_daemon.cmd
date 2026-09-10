@@ -1,14 +1,14 @@
 @echo off
-title SriTrack 24/7 Deal & Price Radar
+title PriceTracker 24/7 Deal & Price Radar
 color 0B
 cls
 
 echo ======================================================================
-echo           SRITRACK 24/7 AUTONOMOUS DEAL & PRICE RADAR
+echo          PRICETRACKER 24/7 AUTONOMOUS DEAL & PRICE RADAR
 echo ======================================================================
 echo  Casio Silent Deals (70%%+ OFF): Every 90 seconds
 echo  G-Shock & Edifice Deals (50%%+): Every 90 seconds
-echo  Tracked Products (Flipkart/Amazon/Zepto): Every 120 seconds
+echo  Tracked Products (Crocs LiteRide 360 / Flipkart / Amazon): Active
 echo  Telegram Bot: Active
 echo ======================================================================
 echo.

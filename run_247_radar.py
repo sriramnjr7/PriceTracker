@@ -107,10 +107,10 @@ async def main():
             casio_interval = min(90, int(arg))
 
     print("\n" + "=" * 70)
-    print("🚀 CASIO (BHAWAR & FLIPKART) & TELEGRAM DEAL HUNTER STARTED")
+    print("🚀 PRICETRACKER 24/7 AUTONOMOUS DEAL & PRICE RADAR STARTED")
     print("🎯 Target 1: Casio Store Bhawar (70%+ Silent Deals & GBD-300 Watcher)")
     print("🎯 Target 2: Flipkart Casio Deals (70%+ Brand Facet)")
-    print("🎯 Target 3: Manual Telegram User Tracked Products")
+    print("🎯 Target 3: Tracked Products (Crocs LiteRide 360 All Variants / User Items)")
     print("📱 Telegram 2-Way Bot: ACTIVE")
     print(f"⏰ Casio Deal Sweep: Every {casio_interval}s | Tracked Items Sweep: Every {manual_interval}s")
     print("=" * 70 + "\n")
