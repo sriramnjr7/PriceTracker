@@ -126,7 +126,8 @@ class SupabaseDatabase:
     async def get_product_by_url(self, url: str) -> Optional[Product]:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
-                f"{self.base_rest}/products?url=eq.{url}&limit=1",
+                f"{self.base_rest}/products",
+                params={"url": f"eq.{url}", "limit": "1"},
                 headers=self._headers,
             )
             if resp.status_code == 200:
@@ -230,12 +231,18 @@ class SupabaseDatabase:
             delta = timedelta(minutes=20)  # Default: 20-minute de-duplication window
 
         cutoff = (datetime.now(timezone.utc) - delta).isoformat()
-        url = (
-            f"{self.base_rest}/deal_alerts_log?product_url=eq.{product_url}"
-            f"&notified_at=gte.{cutoff}&order=notified_at.desc&limit=1"
-        )
+        params = {
+            "product_url": f"eq.{product_url}",
+            "notified_at": f"gte.{cutoff}",
+            "order": "notified_at.desc",
+            "limit": "1",
+        }
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url, headers=self._headers)
+            resp = await client.get(
+                f"{self.base_rest}/deal_alerts_log",
+                params=params,
+                headers=self._headers,
+            )
             if resp.status_code == 200:
                 rows = resp.json()
                 if not rows:
