@@ -147,6 +147,27 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         },
         is_active=True,
     ),
+    # 6c. G-Shock & Edifice 50%+ Drops (Casio Bhawar & Flipkart)
+    RadarRule(
+        name="G-Shock & Edifice 50%+ Drops",
+        category="Watches",
+        query="g-shock edifice",
+        brand="Casio",
+        platforms=["casio", "flipkart"],
+        min_discount=50.0,
+        min_price=None,
+        min_mrp=None,
+        required_keywords=["g-shock", "gshock", "edifice"],
+        negative_keywords=[
+            "strap", "straps", "band", "bands", "resin strap", "silicone strap",
+            "replacement", "belt", "loop", "buckle", "bezel", "adapter", "link",
+            "pin", "spring bar", "chain", "connector", "case cover", "screen protector"
+        ],
+        search_url_template={
+            "casio": "https://casiostore.bhawar.com/collections/g-shock",
+        },
+        is_active=True,
+    ),
 
     # 7. Apple All Products & Gadgets (Deactivated)
     RadarRule(
