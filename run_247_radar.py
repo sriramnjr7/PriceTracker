@@ -99,20 +99,27 @@ async def main():
     tg_bot = TelegramAssistant(settings, db=radar.db)
     await tg_bot.init()
 
+    manual_interval = 120
+    casio_interval = 90
+    for arg in sys.argv[1:]:
+        if arg.isdigit():
+            manual_interval = int(arg)
+            casio_interval = min(90, int(arg))
+
     print("\n" + "=" * 70)
-    print("🚀 CASIO (BHARAWAR & FLIPKART) & TELEGRAM DEAL HUNTER STARTED")
-    print("🎯 Target 1: Casio Store Bhawar (70%+ Clearance & GBD-300 Watcher)")
+    print("🚀 CASIO (BHAWAR & FLIPKART) & TELEGRAM DEAL HUNTER STARTED")
+    print("🎯 Target 1: Casio Store Bhawar (70%+ Silent Deals & GBD-300 Watcher)")
     print("🎯 Target 2: Flipkart Casio Deals (70%+ Brand Facet)")
     print("🎯 Target 3: Manual Telegram User Tracked Products")
-    print("📱 Telegram 2-Way Bot: ACTIVE (@my_steal_radar_bot)")
-    print("⏰ Casio Deal Sweep: Every 90s | Manual Tracking Pass: Every 300s")
+    print("📱 Telegram 2-Way Bot: ACTIVE")
+    print(f"⏰ Casio Deal Sweep: Every {casio_interval}s | Tracked Items Sweep: Every {manual_interval}s")
     print("=" * 70 + "\n")
 
     # Run Casio deals hunter, manual Telegram tracker, and interactive bot listener concurrently
     try:
         await asyncio.gather(
-            casio_deal_radar_loop(radar, interval_seconds=90),
-            manual_tracker_loop(tracker, interval_seconds=300),
+            casio_deal_radar_loop(radar, interval_seconds=casio_interval),
+            manual_tracker_loop(tracker, interval_seconds=manual_interval),
             tg_bot.listen_loop(),
         )
     except (KeyboardInterrupt, SystemExit):
