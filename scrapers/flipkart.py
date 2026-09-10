@@ -297,3 +297,187 @@ class FlipkartScraper(BaseScraper):
             logger.warning("[flipkart] deal scan error for query '%s': %s", query, exc)
 
         return deals
+
+    def _extract_color_from_soup(self, soup: BeautifulSoup) -> str:
+        """Extract explicit color name from JSON-LD schema or Selected Color section."""
+        for s in soup.find_all("script"):
+            txt = s.string or s.get_text() or ""
+            if "color" in txt and "schema.org" in txt:
+                m = re.search(r'"color":\s*"([^"]+)"', txt)
+                if m:
+                    return m.group(1).strip()
+        for node in soup.find_all(string=lambda t: t and "Selected Color" in t):
+            parent = node.parent
+            if parent:
+                txt = parent.get_text(" ", strip=True)
+                m = re.search(r"Selected Color:\s*([^\n<]+)", txt)
+                if m:
+                    return m.group(1).strip()
+        return ""
+
+    def _extract_mrp_from_soup(self, soup: BeautifulSoup) -> Optional[float]:
+        """Extract MRP value from Flipkart DOM."""
+        mrp_selectors = ("div.yRaY8j", "div._2p6XSc", "div._3I9_wc", "div._3auQ3N")
+        for sel in mrp_selectors:
+            node = soup.select_one(sel)
+            if node:
+                val = self.clean_price(node.get_text(" ", strip=True))
+                if val is not None and val > 0:
+                    return val
+        return None
+
+    def _extract_sizes_from_soup(self, soup: BeautifulSoup) -> List[dict[str, Any]]:
+        """Extract all available size buttons and detect whether they are in stock or struck out."""
+        sizes: List[dict[str, Any]] = []
+        for a in soup.find_all("a", href=True):
+            if "swatchAttr=size" in a["href"]:
+                size_val = a.get_text(" ", strip=True)
+                # Strike-through line or disabled overlay indicates sold out
+                has_strike = any("height:1px" in str(d.get("style", "")) for d in a.find_all("div"))
+                has_disabled = any("disabled" in str(c).lower() for c in a.get("class", []))
+                in_stock = not (has_strike or has_disabled)
+                href = a["href"]
+                full_url = "https://www.flipkart.com" + href if href.startswith("/") else href
+                sizes.append({
+                    "size": size_val,
+                    "in_stock": in_stock,
+                    "url": full_url,
+                })
+        return sizes
+
+    def _extract_color_swatches_from_soup(self, soup: BeautifulSoup, current_url: str = "") -> List[dict[str, Any]]:
+        """Extract all color swatches from the Selected Color section and determine out-of-stock state."""
+        swatches: List[dict[str, Any]] = []
+        seen_pids = set()
+
+        curr_pid_match = re.search(r"pid=([A-Z0-9]+)", current_url)
+        curr_pid = curr_pid_match.group(1) if curr_pid_match else ""
+
+        # Identify model keyword from current URL (e.g. 'literide-360' or 'literide')
+        model_kw = ""
+        if "literide-360" in current_url.lower():
+            model_kw = "literide"
+        elif "literide" in current_url.lower():
+            model_kw = "literide"
+
+        for node in soup.find_all(string=lambda t: t and "Selected Color" in t):
+            p = node.parent
+            # Find the closest parent that contains between 1 and 25 product links
+            target_container = None
+            curr = p
+            for _ in range(3):
+                if curr and curr.parent:
+                    curr = curr.parent
+                    p_links = [a for a in curr.find_all("a", href=True) if "/p/" in a["href"] and "swatchAttr=size" not in a["href"]]
+                    if 0 < len(p_links) <= 25:
+                        target_container = curr
+                        break
+
+            container = target_container or p
+            for a in container.find_all("a", href=True):
+                href = a["href"]
+                if "/p/" in href and "swatchAttr=size" not in href:
+                    if model_kw and model_kw not in href.lower():
+                        continue
+
+                    pid_m = re.search(r"pid=([A-Z0-9]+)", href)
+                    pid = pid_m.group(1) if pid_m else ""
+                    if pid and (pid == curr_pid or pid in seen_pids):
+                        continue
+                    if pid:
+                        seen_pids.add(pid)
+
+                    txt = a.get_text(" ", strip=True).lower()
+                    is_oos = "out of stock" in txt
+                    full_url = "https://www.flipkart.com" + href.split("&fm=")[0] if href.startswith("/") else href
+                    swatches.append({
+                        "url": full_url,
+                        "pid": pid,
+                        "is_oos": is_oos,
+                    })
+            if swatches:
+                break
+        return swatches
+
+    async def check_product_variants(self, url: str) -> dict[str, Any]:
+        """Inspect a multi-variant product across all colorways and sizes.
+
+        Efficient: uses Scrapling static fetch (~1s). Only fetches secondary colorway
+        pages if their swatch does not bear the 'Out of stock' badge.
+        """
+        html = await self._static_fetch(url)
+        if not html:
+            html = await self._js_fetch(url)
+
+        if not html:
+            return {
+                "model_title": "",
+                "in_stock": False,
+                "lowest_price": None,
+                "in_stock_variants": [],
+                "total_colors_checked": 0,
+            }
+
+        soup = BeautifulSoup(html, "html.parser")
+        model_title = self._extract_title(soup)
+
+        # 1. Check current page
+        current_sizes = self._extract_sizes_from_soup(soup)
+        current_in_stock_sizes = [s["size"] for s in current_sizes if s["in_stock"]]
+        current_price = self._extract_price(soup)
+        current_mrp = self._extract_mrp_from_soup(soup) or current_price
+        current_color = self._extract_color_from_soup(soup) or "Current Color"
+
+        in_stock_variants: List[dict[str, Any]] = []
+
+        page_in_stock = self._extract_stock(soup) and (len(current_in_stock_sizes) > 0 or not current_sizes)
+        if page_in_stock and current_price is not None and current_price > 0:
+            in_stock_variants.append({
+                "color": current_color,
+                "sizes": current_in_stock_sizes or ["Standard"],
+                "price": current_price,
+                "mrp": current_mrp or current_price,
+                "url": url,
+            })
+
+        # 2. Check all color swatches
+        swatch_links = self._extract_color_swatches_from_soup(soup, current_url=url)
+        total_colors = 1 + len(swatch_links)
+
+        for swatch in swatch_links:
+            if swatch.get("is_oos", False):
+                continue
+
+            swatch_url = swatch["url"]
+            s_html = await self._static_fetch(swatch_url)
+            if not s_html:
+                s_html = await self._js_fetch(swatch_url)
+            if not s_html:
+                continue
+
+            s_soup = BeautifulSoup(s_html, "html.parser")
+            s_color = self._extract_color_from_soup(s_soup) or f"Color ({swatch.get('pid', '')})"
+            s_sizes = self._extract_sizes_from_soup(s_soup)
+            s_in_stock_sizes = [s["size"] for s in s_sizes if s["in_stock"]]
+            s_price = self._extract_price(s_soup)
+            s_mrp = self._extract_mrp_from_soup(s_soup) or s_price
+
+            s_in_stock = self._extract_stock(s_soup) and (len(s_in_stock_sizes) > 0 or not s_sizes)
+            if s_in_stock and s_price is not None and s_price > 0:
+                in_stock_variants.append({
+                    "color": s_color,
+                    "sizes": s_in_stock_sizes or ["Standard"],
+                    "price": s_price,
+                    "mrp": s_mrp or s_price,
+                    "url": swatch_url,
+                })
+
+        lowest_price = min((v["price"] for v in in_stock_variants), default=None)
+
+        return {
+            "model_title": model_title,
+            "in_stock": len(in_stock_variants) > 0,
+            "lowest_price": lowest_price,
+            "in_stock_variants": in_stock_variants,
+            "total_colors_checked": total_colors,
+        }
