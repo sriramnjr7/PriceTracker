@@ -564,26 +564,47 @@ class CasioScraper(BaseScraper):
                                 if clean_link in deals_map:
                                     continue
 
-                                price_el = card.select_one(".price-item--sale, .price__regular .price-item--regular, .price-item")
-                                raw_mrp = 0.0
-                                if price_el:
-                                    price_text = re.sub(r"[^\d.]", "", price_el.get_text(strip=True))
-                                    if price_text:
-                                        try:
-                                            raw_mrp = float(price_text)
-                                        except ValueError:
-                                            pass
+                                # 1. Extract actual selling / deal price
+                                sale_el = card.select_one(
+                                    ".price-item--sale, .price__sale .price-item--sale, .price__sale .price-item--last"
+                                )
+                                # 2. Extract original strikethrough MRP
+                                mrp_el = card.select_one(
+                                    ".price__sale .price-item--regular, s.price-item, .price__regular .price-item--regular, .price-item--regular"
+                                )
 
-                                actual_deal_price = round(raw_mrp * (1.0 - float(d_tier) / 100.0), 2) if raw_mrp > 0 else 0.0
+                                deal_price = self.clean_price(sale_el.get_text(strip=True)) if sale_el else None
+                                mrp_price = self.clean_price(mrp_el.get_text(strip=True)) if mrp_el else None
+
+                                # If no separate sale element, check regular price element
+                                if deal_price is None:
+                                    reg_fallback = card.select_one(".price-item, .price__regular .price-item--regular")
+                                    deal_price = self.clean_price(reg_fallback.get_text(strip=True)) if reg_fallback else None
+
+                                if deal_price is None or deal_price <= 0:
+                                    continue
+
+                                # If MRP wasn't found or is lower than deal price, derive from discount tier
+                                if mrp_price is None or mrp_price <= deal_price:
+                                    if d_tier > 0:
+                                        mrp_price = round(deal_price / (1.0 - float(d_tier) / 100.0), 2)
+                                    else:
+                                        mrp_price = deal_price
+
+                                # Calculate actual discount percentage vs real MRP
+                                if mrp_price and mrp_price > deal_price:
+                                    actual_discount = round(((mrp_price - deal_price) / mrp_price * 100.0), 1)
+                                else:
+                                    actual_discount = float(d_tier)
 
                                 raw_title = model_name or clean_link.split("/products/")[-1].replace("-", " ").title()
                                 family, formatted_title = self._classify_casio_watch(raw_title, handle=clean_link.split("/")[-1])
 
                                 deals_map[clean_link] = {
                                     "title": formatted_title,
-                                    "price": actual_deal_price,
-                                    "mrp": raw_mrp,
-                                    "discount_percent": float(d_tier),
+                                    "price": deal_price,
+                                    "mrp": mrp_price,
+                                    "discount_percent": actual_discount,
                                     "in_stock": True,
                                     "url": clean_link,
                                     "family": family,
