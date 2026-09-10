@@ -367,10 +367,10 @@ class CasioScraper(BaseScraper):
                             resp = await auth_client.get(product_url)
                             soup = BeautifulSoup(resp.text, "html.parser")
                             sale_el = soup.select_one(
-                                ".price-item--sale, .price--on-sale .price-item, .price__sale .price-item, .price--silent-off .price-item"
+                                ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
                             )
                             reg_el = soup.select_one(
-                                ".price-item--regular, .price__regular .price-item, .price-item--last"
+                                ".price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
                             )
                             sale_p = self.clean_price(sale_el.get_text()) if sale_el else None
                             reg_p = self.clean_price(reg_el.get_text()) if reg_el else None
@@ -607,11 +607,17 @@ class CasioScraper(BaseScraper):
                     if not products:
                         break
 
+                    silent_candidates = []
                     for p in products:
                         title = p.get("title", "")
                         handle = p.get("handle", "")
                         tags = p.get("tags", [])
                         product_url = f"https://casiostore.bhawar.com/products/{handle}"
+                        if product_url in deals_map:
+                            continue
+                        if any("silent" in str(t).lower() for t in tags):
+                            silent_candidates.append(p)
+                            continue
                         family, formatted_title = self._classify_casio_watch(title, tags, handle)
                         for v in p.get("variants", []):
                             price = float(v.get("price", 0))
@@ -633,6 +639,48 @@ class CasioScraper(BaseScraper):
                                     "url": product_url,
                                     "family": family,
                                 }
+
+                    if silent_candidates:
+                        auth_client = await self._get_authenticated_client()
+                        sem = asyncio.Semaphore(5)
+
+                        async def _verify_cand(cand):
+                            h = cand.get("handle", "")
+                            p_url = f"https://casiostore.bhawar.com/products/{h}"
+                            f_fam, f_title = self._classify_casio_watch(cand.get("title", ""), cand.get("tags", []), h)
+                            async with sem:
+                                try:
+                                    r_prod = await auth_client.get(p_url)
+                                    s_prod = BeautifulSoup(r_prod.text, "html.parser")
+                                    s_el = s_prod.select_one(
+                                        ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
+                                    )
+                                    r_el = s_prod.select_one(
+                                        ".price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
+                                    )
+                                    s_price = self.clean_price(s_el.get_text()) if s_el else None
+                                    r_price = self.clean_price(r_el.get_text()) if r_el else None
+                                    if s_price and r_price and r_price > s_price:
+                                        disc_val = round(((r_price - s_price) / r_price * 100.0), 1)
+                                        if disc_val >= min_discount:
+                                            return {
+                                                "title": f_title,
+                                                "price": s_price,
+                                                "mrp": r_price,
+                                                "discount_percent": disc_val,
+                                                "in_stock": True,
+                                                "url": p_url,
+                                                "family": f_fam,
+                                                "is_silent_sale": True,
+                                            }
+                                except Exception as exc:
+                                    logger.debug("[casio] silent verify error for %s: %s", p_url, exc)
+                            return None
+
+                        v_deals = await asyncio.gather(*(_verify_cand(c) for c in silent_candidates))
+                        for vd in v_deals:
+                            if vd and vd["url"] not in deals_map:
+                                deals_map[vd["url"]] = vd
                     page += 1
         except Exception as exc:
             logger.warning("[casio] collection JSON scan failed: %s", exc)
