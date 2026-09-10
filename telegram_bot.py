@@ -318,6 +318,10 @@ class TelegramAssistant:
                                             await self.send_reply(chat["id"], f"⚠️ Error processing request: {e}")
 
                                 asyncio.create_task(_safe_dispatch(update["message"]))
+                    elif r.status_code == 409:
+                        logger.info("Telegram Webhook is currently active on Vercel. Local long-polling listener disabled to prevent conflicts (Vercel receives messages).")
+                        self._is_running = False
+                        break
                 except Exception as exc:
                     logger.debug("Telegram polling error: %s", exc)
                     await asyncio.sleep(2)
