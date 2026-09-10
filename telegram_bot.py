@@ -19,7 +19,7 @@ import httpx
 from config import Settings, settings
 from database import Database, Product, get_database
 from gemini_validator import GeminiDealValidator
-from scrapers import get_scraper, detect_platform, resolve_platform
+from scrapers import get_scraper, detect_platform, resolve_platform, normalize_product_url
 
 logger = logging.getLogger("telegram_bot")
 
@@ -40,7 +40,7 @@ class TelegramAssistant:
         await self.db.initialize()
 
     async def send_reply(self, chat_id: str | int, text: str) -> bool:
-        """Send formatted markdown reply to a Telegram chat."""
+        """Send formatted reply to a Telegram chat with plain text fallback."""
         if not self.token:
             return False
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
@@ -53,33 +53,41 @@ class TelegramAssistant:
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.post(url, json=payload)
-            return r.status_code == 200
+            if r.status_code == 200:
+                return True
+            if r.status_code == 400:
+                payload.pop("parse_mode", None)
+                async with httpx.AsyncClient(timeout=15) as client:
+                    r2 = await client.post(url, json=payload)
+                return r2.status_code == 200
+            return False
         except Exception as e:
             logger.error("Error sending Telegram reply: %s", e)
             return False
 
     async def handle_url_tracking(self, chat_id: str | int, url: str, target_price: Optional[float]) -> None:
-        """Handle direct product URL tracking."""
+        """Handle direct product URL tracking with canonical normalization."""
         platform = await resolve_platform(url)
         if not platform:
             await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
             return
 
+        norm_url = normalize_product_url(url, platform)
         await self.send_reply(chat_id, f"🔍 Inspecting product on *{platform.title()}*...")
         try:
             scraper = get_scraper(platform, self.config)
-            res = await scraper.scrape(url)
+            res = await scraper.scrape(norm_url)
             if res.price is None or res.price <= 0:
                 await self.send_reply(chat_id, f"⚠️ Scraper reached *{platform.title()}* but could not extract current price. URL saved for monitoring.")
                 current_price = 0.0
             else:
                 current_price = res.price
 
-            title = res.title or url.split("/")[-1][:40]
+            title = res.title or norm_url.split("/")[-1][:40]
             target = target_price if target_price is not None else round(current_price * 0.8, 2)
 
             prod_id = await self.db.add_product(
-                url=url,
+                url=norm_url,
                 platform=platform,
                 target_price=target,
                 initial_price=current_price,
@@ -100,7 +108,7 @@ class TelegramAssistant:
             await self.send_reply(chat_id, f"❌ Error adding product: {exc}")
 
     async def handle_natural_language_tracking(self, chat_id: str | int, text: str) -> None:
-        """Parse natural language request using AI and search platforms for matching hardware."""
+        """Parse natural language request using AI and search platforms for matching hardware/groceries."""
         await self.send_reply(chat_id, "🤖 *Analyzing request with AI & searching e-commerce platforms...*")
 
         parsed = await self.ai.parse_tracking_intent(text)
@@ -108,24 +116,38 @@ class TelegramAssistant:
         target_price = parsed.get("target_price")
         brand = parsed.get("brand")
 
-        # 1. Search Amazon for the top genuine item
         found_products = []
-        try:
-            amz = get_scraper("amazon", self.config)
-            deals = await amz.scan_deals(query=query, min_discount=10.0, brand=brand)
-            if deals:
-                found_products.extend(deals[:2])
-        except Exception:
-            pass
+        text_lower = text.lower()
 
-        # 2. Search Flipkart if needed
-        try:
-            fk = get_scraper("flipkart", self.config)
-            fk_deals = await fk.scan_deals(query=query, min_discount=10.0, brand=brand)
-            if fk_deals:
-                found_products.extend(fk_deals[:2])
-        except Exception:
-            pass
+        # Check Quick Commerce (Zepto) if specified or grocery tokens
+        if any(w in text_lower for w in ("zepto", "grocery", "milk", "butter", "paneer", "egg", "bread", "quick commerce", "qcommerce")):
+            try:
+                zepto = get_scraper("zepto", self.config)
+                z_deals = await zepto.scan_deals(query=query, min_discount=0.0)
+                if z_deals:
+                    found_products.extend(z_deals[:2])
+            except Exception as e:
+                logger.debug("Zepto NL search error: %s", e)
+
+        # Check Amazon for the top genuine item
+        if not found_products:
+            try:
+                amz = get_scraper("amazon", self.config)
+                deals = await amz.scan_deals(query=query, min_discount=10.0, brand=brand)
+                if deals:
+                    found_products.extend(deals[:2])
+            except Exception:
+                pass
+
+        # Check Flipkart if needed
+        if not found_products:
+            try:
+                fk = get_scraper("flipkart", self.config)
+                fk_deals = await fk.scan_deals(query=query, min_discount=10.0, brand=brand)
+                if fk_deals:
+                    found_products.extend(fk_deals[:2])
+            except Exception:
+                pass
 
         if not found_products:
             # Add as a custom sniper radar rule if no instant search card was returned

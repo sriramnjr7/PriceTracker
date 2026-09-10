@@ -46,8 +46,8 @@ class Tracker:
 
     async def check_product(self, product) -> bool:
         """Scrape + persist one product or collection; send an alert if triggered."""
-        # 1. Specialized handling for Casio Collection deal scans
-        if product.platform == "casio" and "/collections/" in product.url:
+        # 1. Specialized handling for Casio Collection deal scans (only true collection URLs)
+        if product.platform == "casio" and "/collections/" in product.url and "/products/" not in product.url:
             return await self._check_casio_collection(product)
 
         # 2. Standard single product check

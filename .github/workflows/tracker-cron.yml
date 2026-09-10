@@ -1,22 +1,79 @@
 name: PriceTracker 24/7 Periodic Sweep
+run-name: PriceTracker 24/7 Sweep (${{ github.event_name }})
 
 on:
   schedule:
-    # Runs every 15 minutes as an automated backup pinger
-    - cron: '*/15 * * * *'
+    # Runs every 30 minutes (48 runs/day * 30 days = 1,440 runner mins, well within GitHub's 2,000 free minutes)
+    - cron: '*/30 * * * *'
   workflow_dispatch:
+
+concurrency:
+  group: tracker-sweep
+  cancel-in-progress: false
 
 jobs:
   sweep:
     runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 10
     steps:
-      - name: Ping PriceTracker Cron Endpoint
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check Environment Mode
+        id: mode
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          if [ -n "$SUPABASE_URL" ]; then
+            echo "mode=github_runner" >> $GITHUB_OUTPUT
+            echo "Running sweep directly on GitHub Actions (0 Vercel Fluid CPU consumed!)."
+          else
+            echo "mode=vercel_ping" >> $GITHUB_OUTPUT
+            echo "SUPABASE_URL secret not found on GitHub. Falling back to Vercel cron ping."
+          fi
+
+      - name: Set up Python
+        if: steps.mode.outputs.mode == 'github_runner'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        if: steps.mode.outputs.mode == 'github_runner'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Price & Deal Radar Sweep (GitHub Runner - 0 Vercel CPU)
+        if: steps.mode.outputs.mode == 'github_runner'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CASIO_BHAWAR_EMAIL: ${{ secrets.CASIO_BHAWAR_EMAIL }}
+          CASIO_BHAWAR_PASSWORD: ${{ secrets.CASIO_BHAWAR_PASSWORD }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python run_247_radar.py --once
+
+      - name: Fallback Ping PriceTracker Cron Endpoint (Vercel)
+        if: steps.mode.outputs.mode == 'vercel_ping'
         env:
           VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -n "$VERCEL_APP_URL" ]; then
-            echo "Pinging $VERCEL_APP_URL/api/cron..."
-            curl -f -s "$VERCEL_APP_URL/api/cron" || echo "Cron ping returned an error or non-200"
+            echo "Pinging $VERCEL_APP_URL/api/cron?mode=fast..."
+            HEADER=""
+            if [ -n "$CRON_SECRET" ]; then
+              HEADER="-H Authorization: Bearer $CRON_SECRET"
+            fi
+            curl -f -s $HEADER "$VERCEL_APP_URL/api/cron?mode=fast" || echo "Cron ping returned non-200"
+            echo "::warning ::To prevent Vercel Fluid CPU usage, add SUPABASE_URL and SUPABASE_KEY to your GitHub repository secrets so scraping runs 100% on GitHub Actions."
           else
-            echo "VERCEL_APP_URL secret is not set; skipping ping."
+            echo "Neither SUPABASE_URL nor VERCEL_APP_URL secrets are set in GitHub."
           fi
+

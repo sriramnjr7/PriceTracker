@@ -10,7 +10,7 @@ import os
 import sys
 from datetime import datetime
 
-workspace_dir = r"c:\Users\srira\Downloads\Antigravity\PriceTracker"
+workspace_dir = os.path.dirname(os.path.abspath(__file__))
 if workspace_dir not in sys.path:
     sys.path.insert(0, workspace_dir)
 
@@ -67,7 +67,30 @@ async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 300):
         await asyncio.sleep(interval_seconds)
 
 
+async def run_single_pass() -> int:
+    """Execute a single complete sweep (Casio Bhawar + Flipkart deals + manual products)."""
+    print("\n⚡ [PriceTracker] Executing Single Sweep (GitHub Actions / Scheduled Runner)...")
+    radar = StealRadar(settings)
+    await radar.init()
+    try:
+        casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
+        print(f"✅ Deal Radar scan completed: {casio_alerts} deal alert(s) dispatched.")
+
+        tracker = Tracker(radar.db, radar.notifier, settings)
+        tracked_alerts = await tracker.run_once()
+        print(f"✅ Tracked products check completed: {tracked_alerts} alert(s) dispatched.")
+        total = casio_alerts + tracked_alerts
+        print(f"🎯 Total alerts sent: {total}\n")
+        return total
+    finally:
+        await radar.close()
+
+
 async def main():
+    if "--once" in sys.argv:
+        await run_single_pass()
+        return
+
     radar = StealRadar(settings)
     await radar.init()
 

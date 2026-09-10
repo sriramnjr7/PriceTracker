@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import random
 from typing import Any, List, Optional
 
@@ -384,11 +385,17 @@ class StealRadar:
                 continue
 
             logger.info("Scanning [%s] %s (>= %s%% on %s)...", rule.category, rule.name, rule.min_discount, ", ".join(rule.platforms))
-            alerts = await self.scan_rule(rule, exclude_platforms=exclude_platforms, only_platforms=only_platforms)
-            total_alerts += len(alerts)
+            alerts_sent = await self.process_and_notify_deals(
+                rule,
+                exclude_platforms=exclude_platforms,
+                only_platforms=only_platforms,
+            )
+            total_alerts += alerts_sent
 
-            # Polite jitter between rule categories to blend in naturally
-            await asyncio.sleep(random.uniform(1.0, 2.5))
+            # Polite jitter between rule categories to blend in naturally (bypassed in serverless to save CPU)
+            import os
+            if not (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")):
+                await asyncio.sleep(random.uniform(1.0, 2.5))
 
         logger.info("Radar scan complete. Dispatched %d new alert(s).", total_alerts)
         return total_alerts

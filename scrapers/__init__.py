@@ -110,8 +110,21 @@ def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
             host = urlparse(clean).hostname or "www.amazon.in"
             return f"https://{host}/dp/{asin}"
     elif p == "casio":
-        # Strip all Shopify search parameters (?_pos=...&_fid=...&_ss=...)
+        # Canonicalize Shopify product URLs: /collections/.../products/<handle> -> /products/<handle>
+        m = re.search(r"/products/([a-zA-Z0-9_-]+)", clean)
+        if m:
+            return f"https://casiostore.bhawar.com/products/{m.group(1)}"
+        m_col = re.search(r"/collections/([a-zA-Z0-9_-]+)", clean)
+        if m_col:
+            return f"https://casiostore.bhawar.com/collections/{m_col.group(1)}"
         return clean.split("?")[0].rstrip("/")
+    elif p == "zepto":
+        # Standardize zeptonow.com -> zepto.com and strip tracking queries
+        base = clean.split("?")[0].rstrip("/")
+        base = base.replace("zeptonow.com", "zepto.com")
+        if not base.startswith("https://"):
+            base = "https://" + base.lstrip("http://")
+        return base
     elif p == "flipkart":
         # Keep product path, preserve pid if present
         base = clean.split("?")[0].rstrip("/")
@@ -119,7 +132,7 @@ def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
         if m:
             return f"{base}?pid={m.group(1)}"
         return base
-    elif p in ("myntra", "ajio"):
+    elif p in ("myntra", "ajio", "blinkit", "bigbasket", "instamart"):
         return clean.split("?")[0].rstrip("/")
 
     return clean.split("?")[0] if "?" in clean and any(k in clean for k in ("ref=", "utm_", "dib=")) else clean

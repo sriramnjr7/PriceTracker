@@ -41,7 +41,39 @@ class ZeptoScraper(BaseScraper):
     def parse(self, html: str, url: str) -> ScrapeResult:
         soup = BeautifulSoup(html, "html.parser")
         
-        # 1. Try __NEXT_DATA__ JSON
+        # 1. Authoritative: Schema.org Product JSON-LD (used in modern Zepto)
+        for script in soup.find_all("script"):
+            stype = script.get("type", "")
+            if "ld+json" in stype or "json" in stype:
+                txt = script.string or script.get_text()
+                if not txt or "Product" not in txt:
+                    continue
+                try:
+                    data = json.loads(txt)
+                    if isinstance(data, list) and data:
+                        data = data[0]
+                    if isinstance(data, dict) and data.get("@type") == "Product":
+                        name = data.get("name")
+                        offers = data.get("offers", {})
+                        if isinstance(offers, list) and offers:
+                            offers = offers[0]
+                        price_val = offers.get("price") if isinstance(offers, dict) else None
+                        avail = "InStock" in offers.get("availability", "") if isinstance(offers, dict) else True
+                        if name and price_val:
+                            try:
+                                return ScrapeResult(
+                                    title=str(name).strip(),
+                                    price=float(price_val),
+                                    in_stock=avail,
+                                    platform=self.platform,
+                                    url=url,
+                                )
+                            except ValueError:
+                                pass
+                except Exception:
+                    pass
+
+        # 2. Try legacy __NEXT_DATA__ JSON
         next_data_el = soup.find("script", id="__NEXT_DATA__")
         if next_data_el and next_data_el.string:
             try:
@@ -105,10 +137,13 @@ class ZeptoScraper(BaseScraper):
                 await page.wait_for_timeout(2500)
                 
                 # Dismiss location modal if shown
-                btn = await page.query_selector("button:has-text('Select Location'), button:has-text('Enable Location')")
+                btn = await page.query_selector("button:has-text('Select Location'), button:has-text('Enable Location'), button:has-text('Allow')")
                 if btn:
-                    await btn.click()
-                    await page.wait_for_timeout(1500)
+                    try:
+                        await btn.click()
+                        await page.wait_for_timeout(1500)
+                    except Exception:
+                        pass
 
                 await page.goto(url, wait_until="domcontentloaded")
                 await page.wait_for_timeout(3500)
@@ -116,7 +151,9 @@ class ZeptoScraper(BaseScraper):
                 await context.close()
                 await browser.close()
 
-                cards = soup.select("[data-testid*='product-card'], div[class*='ProductCard']")
+                # Robust card detection: include anchors with /pn/
+                cards = soup.select("[data-testid*='product-card'], div[class*='ProductCard'], a[href*='/pn/']")
+                seen_urls = set()
                 for card in cards:
                     card_text = card.get_text(" ", strip=True)
                     if any(neg in card_text.lower() for neg in negative_set):
@@ -140,11 +177,27 @@ class ZeptoScraper(BaseScraper):
                     if disc < min_discount:
                         continue
 
-                    link_el = card.find("a", href=True)
-                    clean_url = ("https://www.zeptonow.com" + link_el["href"].split("?")[0]) if link_el else url
+                    # Correct product link resolution
+                    link_el = card if card.name == "a" else card.find("a", href=True)
+                    if not link_el:
+                        link_el = card.find_parent("a", href=True)
+                    href = link_el["href"] if link_el and link_el.has_attr("href") else ""
+
+                    if href and "/pn/" in href:
+                        clean_url = "https://www.zepto.com" + href.split("?")[0]
+                    else:
+                        continue
+
+                    if clean_url in seen_urls:
+                        continue
+                    seen_urls.add(clean_url)
 
                     title_match = re.search(r"OFF\s+(.+)$", card_text)
-                    title = title_match.group(1).strip() if title_match else card_text[:45]
+                    if title_match:
+                        title = title_match.group(1).strip()
+                    else:
+                        slug_match = re.search(r"/pn/([^/?]+)", clean_url)
+                        title = slug_match.group(1).replace("-", " ").title() if slug_match else card_text[:45]
 
                     deals.append({
                         "title": title,
@@ -157,6 +210,6 @@ class ZeptoScraper(BaseScraper):
                         "in_stock": True,
                     })
         except Exception as exc:
-            pass
+            logger.warning("[zepto] scan_deals error: %s", exc)
 
         return deals

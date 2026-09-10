@@ -123,9 +123,13 @@ async def root(request: Request):
     elif clean == "api/status":
         return await get_status()
 
-    # If requested by a browser or accessing root/dashboard, return HTML
+    # If requested by a browser or accessing root/dashboard, return HTML with CDN caching
     if is_browser_request(request) or not clean or clean in ("dashboard", "index", "index.py", "api", "api/index", "api/index.py"):
-        return HTMLResponse(content=get_dashboard_html(), status_code=200)
+        return HTMLResponse(
+            content=get_dashboard_html(),
+            status_code=200,
+            headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
+        )
 
     return await get_status()
 
@@ -140,22 +144,25 @@ async def get_status():
     finally:
         await db.close()
 
-    return {
-        "status": "online",
-        "service": "SriTrack Executive Serverless Engine",
-        "timestamp": _now(),
-        "database": "Supabase PostgreSQL" if os.getenv("SUPABASE_URL") else "SQLite",
-        "active_monitored_products": len(products),
-        "focus": "Casio Bhawar + Flipkart (>= 70% OFF & GBD-300) + Amazon/Flipkart EDYELL C5S (< ₹1,300)",
-        "endpoints": {
-            "dashboard_ui": "GET /",
-            "dashboard_data": "GET /api/dashboard/data",
-            "add_product": "POST /api/products",
-            "telegram_webhook": "POST /api/telegram",
-            "cron_deal_scanner": "GET /api/cron",
-            "setup_webhook": "GET /api/set-webhook",
+    return JSONResponse(
+        content={
+            "status": "online",
+            "service": "SriTrack Executive Serverless Engine",
+            "timestamp": _now(),
+            "database": "Supabase PostgreSQL" if os.getenv("SUPABASE_URL") else "SQLite",
+            "active_monitored_products": len(products),
+            "focus": "Casio Bhawar + Flipkart (>= 70% OFF & GBD-300) + Amazon/Flipkart EDYELL C5S (< ₹1,300)",
+            "endpoints": {
+                "dashboard_ui": "GET /",
+                "dashboard_data": "GET /api/dashboard/data",
+                "add_product": "POST /api/products",
+                "telegram_webhook": "POST /api/telegram",
+                "cron_deal_scanner": "GET /api/cron",
+                "setup_webhook": "GET /api/set-webhook",
+            },
         },
-    }
+        headers={"Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=60"},
+    )
 
 
 def _format_datetime(dt: Any) -> Optional[str]:
@@ -205,12 +212,15 @@ async def get_dashboard_data():
             for p in products
         ]
 
-        return {
-            "status": "success",
-            "stats": stats,
-            "products": prods_data,
-            "recent_deals": recent_deals,
-        }
+        return JSONResponse(
+            content={
+                "status": "success",
+                "stats": stats,
+                "products": prods_data,
+                "recent_deals": recent_deals,
+            },
+            headers={"Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=60"},
+        )
     finally:
         await db.close()
 
@@ -420,7 +430,7 @@ async def telegram_webhook(request: Request):
 @app.get("/api/cron")
 @app.get("/api/index.py/cron")
 async def cron_sweep(request: Request):
-    """Execute scheduled deal hunter & manual product price checking."""
+    """Execute scheduled deal hunter & manual product price checking with Fluid CPU protection."""
     cron_secret = os.getenv("CRON_SECRET")
     if cron_secret:
         auth_header = request.headers.get("Authorization", "")
@@ -428,26 +438,66 @@ async def cron_sweep(request: Request):
         if auth_header != f"Bearer {cron_secret}" and query_secret != cron_secret:
             raise HTTPException(status_code=401, detail="Unauthorized cron trigger")
 
-    logger.info("Starting /api/cron sweep...")
+    mode = request.query_params.get("mode", "auto")
     db = get_database(settings)
     await db.initialize()
 
-    radar = StealRadar(settings, db=db)
-    await radar.init()
-    casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
+    try:
+        products = await db.get_products(active_only=True)
+        # Vercel Free Plan Guard: If products were checked within the last 20 minutes,
+        # skip expensive scraping to preserve the 4h Fluid CPU limit.
+        if mode != "force":
+            now_ts = datetime.now(timezone.utc)
+            recent_sweep = False
+            for p in products:
+                if p.last_checked:
+                    try:
+                        dt = p.last_checked if isinstance(p.last_checked, datetime) else datetime.fromisoformat(str(p.last_checked).replace("Z", "+00:00"))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        if (now_ts - dt).total_seconds() < 1200:  # 20 minutes
+                            recent_sweep = True
+                            break
+                    except Exception:
+                        pass
 
-    tracker = Tracker(db, radar.notifier, settings)
-    manual_alerts = await tracker.run_once()
+            if recent_sweep:
+                logger.info("Vercel /api/cron: Sweep was already executed recently. Skipping to preserve Fluid CPU.")
+                return {
+                    "status": "skipped",
+                    "reason": "sweep_already_current",
+                    "monitored_products": len(products),
+                    "timestamp": _now(),
+                }
 
-    await radar.close()
+        import asyncio
 
-    return {
-        "status": "success",
-        "timestamp": _now(),
-        "casio_deal_alerts": casio_alerts,
-        "manual_tracked_alerts": manual_alerts,
-        "total_dispatched": casio_alerts + manual_alerts,
-    }
+        async def _run_sweep():
+            radar = StealRadar(settings, db=db)
+            await radar.init()
+            # Fast scan only Casio clearance (lightweight) on serverless
+            casio_alerts = await radar.scan_all(only_platforms=["casio"])
+            tracker = Tracker(db, radar.notifier, settings)
+            manual_alerts = await tracker.run_once()
+            await radar.close()
+            return casio_alerts, manual_alerts
+
+        # Enforce strict 12.0s timeout to protect Fluid CPU
+        try:
+            casio_alerts, manual_alerts = await asyncio.wait_for(_run_sweep(), timeout=12.0)
+        except asyncio.TimeoutError:
+            logger.warning("Vercel cron reached 12s execution limit; stopped to preserve Fluid CPU.")
+            casio_alerts, manual_alerts = 0, 0
+
+        return {
+            "status": "success",
+            "timestamp": _now(),
+            "casio_deal_alerts": casio_alerts,
+            "manual_tracked_alerts": manual_alerts,
+            "total_dispatched": casio_alerts + manual_alerts,
+        }
+    finally:
+        await db.close()
 
 
 @app.get("/set-webhook")

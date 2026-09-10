@@ -2367,12 +2367,19 @@
       }
     });
 
-    // Periodic Background Polling
+    // Periodic Background Polling (Fluid CPU friendly: only polls when tab is visible)
     setInterval(() => {
-      if (currentUser) {
+      if (currentUser && document.visibilityState === "visible") {
         fetchDashboardData();
       }
-    }, 30000);
+    }, 45000);
+
+    // Refresh immediately when user returns to the tab
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && currentUser) {
+        fetchDashboardData();
+      }
+    });
 
     // Boot
     if (document.readyState === "loading") {

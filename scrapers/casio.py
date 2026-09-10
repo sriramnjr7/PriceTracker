@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 from typing import Any, List, Optional
 from urllib.parse import urlparse
@@ -156,6 +157,8 @@ class CasioScraper(BaseScraper):
                 if response.status_code == 200:
                     result = self.parse(response.text, str(response.url))
                     if result.title or result.price:
+                        fam, formatted_title = self._classify_casio_watch(result.title or fallback_title, handle=handle)
+                        result.title = formatted_title
                         return result
 
             except Exception as exc:
@@ -329,7 +332,65 @@ class CasioScraper(BaseScraper):
             sem = asyncio.Semaphore(5)
 
             # Dedicated silent-sale hubs where discounts require customer session verification
-            silent_hubs = ["silent-sale", "silent-sale-products"]
+            silent_hubs = ["silent-sale", "silent-sale-products", "corporate-discount"]
+            
+            async def _verify_silent_prod(p):
+                handle = p.get("handle", "")
+                product_url = f"https://casiostore.bhawar.com/products/{handle}"
+                if product_url in deals_map:
+                    return None
+                tags = p.get("tags", [])
+                fam, title = self._classify_casio_watch(p.get("title", ""), tags, handle)
+                for v in p.get("variants", []):
+                    if not bool(v.get("available", False)):
+                        continue
+                    price = float(v.get("price", 0))
+                    compare_at = float(v.get("compare_at_price") or price)
+                    # If variant JSON already has explicit discount
+                    if compare_at > price:
+                        disc = round(((compare_at - price) / compare_at * 100.0), 1)
+                        if disc >= min_discount:
+                            return {
+                                "title": title,
+                                "price": price,
+                                "mrp": compare_at,
+                                "discount_percent": disc,
+                                "in_stock": True,
+                                "url": product_url,
+                                "family": fam,
+                                "is_silent_sale": False,
+                            }
+
+                    # Otherwise verify against authenticated storefront for silent sale pricing
+                    async with sem:
+                        try:
+                            resp = await auth_client.get(product_url)
+                            soup = BeautifulSoup(resp.text, "html.parser")
+                            sale_el = soup.select_one(
+                                ".price-item--sale, .price--on-sale .price-item, .price__sale .price-item, .price--silent-off .price-item"
+                            )
+                            reg_el = soup.select_one(
+                                ".price-item--regular, .price__regular .price-item, .price-item--last"
+                            )
+                            sale_p = self.clean_price(sale_el.get_text()) if sale_el else None
+                            reg_p = self.clean_price(reg_el.get_text()) if reg_el else None
+                            if sale_p and reg_p and reg_p > sale_p:
+                                d = round(((reg_p - sale_p) / reg_p * 100.0), 1)
+                                if d >= min_discount:
+                                    return {
+                                        "title": title,
+                                        "price": sale_p,
+                                        "mrp": reg_p,
+                                        "discount_percent": d,
+                                        "in_stock": True,
+                                        "url": product_url,
+                                        "family": fam,
+                                        "is_silent_sale": True,
+                                    }
+                        except Exception as exc:
+                            logger.debug("[casio] silent verify error for %s: %s", product_url, exc)
+                return None
+
             for hub in silent_hubs:
                 try:
                     r = await client.get(
@@ -338,61 +399,6 @@ class CasioScraper(BaseScraper):
                     )
                     if r.status_code == 200:
                         prods = r.json().get("products", [])
-                        async def _verify_silent_prod(p):
-                            handle = p.get("handle", "")
-                            product_url = f"https://casiostore.bhawar.com/products/{handle}"
-                            if product_url in deals_map:
-                                return None
-                            tags = p.get("tags", [])
-                            fam, title = self._classify_casio_watch(p.get("title", ""), tags, handle)
-                            for v in p.get("variants", []):
-                                if not bool(v.get("available", False)):
-                                    continue
-                                price = float(v.get("price", 0))
-                                compare_at = float(v.get("compare_at_price") or price)
-                                # If variant JSON already has explicit discount
-                                if compare_at > price:
-                                    disc = round(((compare_at - price) / compare_at * 100.0), 1)
-                                    if disc >= min_discount:
-                                        return {
-                                            "title": title,
-                                            "price": price,
-                                            "mrp": compare_at,
-                                            "discount_percent": disc,
-                                            "in_stock": True,
-                                            "url": product_url,
-                                            "family": fam,
-                                            "is_silent_sale": False,
-                                        }
-
-                                # Otherwise verify against authenticated storefront
-                                async with sem:
-                                    try:
-                                        resp = await auth_client.get(product_url)
-                                        soup = BeautifulSoup(resp.text, "html.parser")
-                                        if not soup.select_one(".price--on-sale, .price--silent-off"):
-                                            return None
-                                        sale_el = soup.select_one(".price-item--sale")
-                                        reg_el = soup.select_one(".price-item--regular")
-                                        sale_p = self.clean_price(sale_el.get_text()) if sale_el else None
-                                        reg_p = self.clean_price(reg_el.get_text()) if reg_el else None
-                                        if sale_p and reg_p and reg_p > sale_p:
-                                            d = round(((reg_p - sale_p) / reg_p * 100.0), 1)
-                                            if d >= min_discount:
-                                                return {
-                                                    "title": title,
-                                                    "price": sale_p,
-                                                    "mrp": reg_p,
-                                                    "discount_percent": d,
-                                                    "in_stock": True,
-                                                    "url": product_url,
-                                                    "family": fam,
-                                                    "is_silent_sale": True,
-                                                }
-                                    except Exception as exc:
-                                        logger.debug("[casio] silent verify error for %s: %s", product_url, exc)
-                            return None
-
                         verified_deals = await asyncio.gather(*(_verify_silent_prod(p) for p in prods))
                         for vd in verified_deals:
                             if vd and vd["url"] not in deals_map:
@@ -400,8 +406,8 @@ class CasioScraper(BaseScraper):
                 except Exception as exc:
                     logger.debug("[casio] silent hub %s error: %s", hub, exc)
 
-            # 2. Sweep other promotional collections with standard JSON variant discounts
-            promo_hubs = ["sale-products", "raksha-bandhan-special", "promotional-watches"]
+            # 2. Sweep other promotional collections with standard JSON variant discounts and silent-sale tags
+            promo_hubs = ["sale-products", "promotional-watches", "casio"]
             for hub in promo_hubs:
                 try:
                     r = await client.get(
@@ -409,12 +415,19 @@ class CasioScraper(BaseScraper):
                         headers=headers,
                     )
                     if r.status_code == 200:
-                        for p in r.json().get("products", []):
+                        prods = r.json().get("products", [])
+                        silent_candidates = []
+                        for p in prods:
                             handle = p.get("handle", "")
                             product_url = f"https://casiostore.bhawar.com/products/{handle}"
                             if product_url in deals_map:
                                 continue
                             tags = p.get("tags", [])
+                            # If tagged for silent sale, queue for storefront check
+                            if any("silent" in str(t).lower() for t in tags):
+                                silent_candidates.append(p)
+                                continue
+
                             fam, title = self._classify_casio_watch(p.get("title", ""), tags, handle)
                             for v in p.get("variants", []):
                                 if not bool(v.get("available", False)):
@@ -434,12 +447,18 @@ class CasioScraper(BaseScraper):
                                             "family": fam,
                                             "is_silent_sale": False,
                                         }
+                        if silent_candidates:
+                            v_deals = await asyncio.gather(*(_verify_silent_prod(p) for p in silent_candidates))
+                            for vd in v_deals:
+                                if vd and vd["url"] not in deals_map:
+                                    deals_map[vd["url"]] = vd
                 except Exception as exc:
                     logger.debug("[casio] promo hub %s error: %s", hub, exc)
 
             # 3. Sweep master catalog across all pages for genuine variant discounts
             page = 1
-            while page <= 8:
+            max_pages = 2 if (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) else 8
+            while page <= max_pages:
                 try:
                     r = await client.get(
                         f"https://casiostore.bhawar.com/collections/all/products.json?limit=250&page={page}",
@@ -450,12 +469,17 @@ class CasioScraper(BaseScraper):
                     prods = r.json().get("products", [])
                     if not prods:
                         break
+                    silent_candidates = []
                     for p in prods:
                         handle = p.get("handle", "")
                         product_url = f"https://casiostore.bhawar.com/products/{handle}"
                         if product_url in deals_map:
                             continue
                         tags = p.get("tags", [])
+                        if any("silent" in str(t).lower() for t in tags):
+                            silent_candidates.append(p)
+                            continue
+
                         family, formatted_title = self._classify_casio_watch(
                             p.get("title", ""), tags, handle
                         )
@@ -481,6 +505,11 @@ class CasioScraper(BaseScraper):
                                     "family": family,
                                     "is_silent_sale": False,
                                 }
+                    if silent_candidates:
+                        v_deals = await asyncio.gather(*(_verify_silent_prod(p) for p in silent_candidates))
+                        for vd in v_deals:
+                            if vd and vd["url"] not in deals_map:
+                                deals_map[vd["url"]] = vd
                     page += 1
                 except Exception as exc:
                     logger.debug("[casio] master catalog page %s scan error: %s", page, exc)

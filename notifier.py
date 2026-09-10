@@ -59,7 +59,7 @@ class Notifier:
         return url
 
     async def send_telegram(self, text: str) -> bool:
-        """Dispatch instant alert via Telegram Bot API."""
+        """Dispatch instant alert via Telegram Bot API with plain text fallback."""
         token = self.config.telegram_bot_token
         chat_id = self.config.telegram_chat_id
         if not token or not chat_id:
@@ -78,6 +78,16 @@ class Notifier:
             if resp.status_code == 200:
                 logger.info("Telegram alert dispatched to chat %s", chat_id)
                 return True
+            elif resp.status_code == 400:
+                # Markdown entity parse error (e.g. unescaped underscores/brackets in URL/title)
+                logger.warning("Telegram Markdown parse error, retrying plain text: %s", resp.text)
+                payload.pop("parse_mode", None)
+                async with httpx.AsyncClient(timeout=20) as client:
+                    resp2 = await client.post(url, json=payload)
+                if resp2.status_code == 200:
+                    logger.info("Telegram plain text alert dispatched to chat %s", chat_id)
+                    return True
+                logger.error("Telegram plain text retry failed (HTTP %s): %s", resp2.status_code, resp2.text)
             else:
                 logger.error("Telegram API returned HTTP %s: %s", resp.status_code, resp.text)
         except Exception as exc:
