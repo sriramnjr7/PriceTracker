@@ -114,6 +114,35 @@ class CasioScraper(BaseScraper):
             await self._auth_client.aclose()
             self._auth_client = None
 
+    async def _safe_get(
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        headers: Optional[dict[str, str]] = None,
+        max_retries: int = 3,
+    ) -> Optional[httpx.Response]:
+        """Safely fetch a URL with automatic HTTP 429 rate limit backoff and retry handling."""
+        import random
+        for attempt in range(max_retries):
+            try:
+                r = await client.get(url, headers=headers)
+                if r.status_code == 429:
+                    retry_after = int(r.headers.get("Retry-After", "5"))
+                    logger.warning(
+                        "[casio] 429 Too Many Requests on %s. Backing off %ds (attempt %d/%d)...",
+                        url,
+                        retry_after,
+                        attempt + 1,
+                        max_retries,
+                    )
+                    await asyncio.sleep(retry_after + random.uniform(0.5, 1.5))
+                    continue
+                return r
+            except Exception as exc:
+                logger.debug("[casio] request error on %s: %s", url, exc)
+                await asyncio.sleep(1.0)
+        return None
+
     async def scrape(self, url: str) -> ScrapeResult:
         """Fetch and parse a Casio product or collection page."""
         parsed = urlparse(url)
@@ -393,11 +422,12 @@ class CasioScraper(BaseScraper):
 
             for hub in silent_hubs:
                 try:
-                    r = await client.get(
+                    r = await self._safe_get(
+                        client,
                         f"https://casiostore.bhawar.com/collections/{hub}/products.json?limit=250",
                         headers=headers,
                     )
-                    if r.status_code == 200:
+                    if r and r.status_code == 200:
                         prods = r.json().get("products", [])
                         verified_deals = await asyncio.gather(*(_verify_silent_prod(p) for p in prods))
                         for vd in verified_deals:
@@ -410,11 +440,12 @@ class CasioScraper(BaseScraper):
             promo_hubs = ["sale-products", "promotional-watches", "casio"]
             for hub in promo_hubs:
                 try:
-                    r = await client.get(
+                    r = await self._safe_get(
+                        client,
                         f"https://casiostore.bhawar.com/collections/{hub}/products.json?limit=250",
                         headers=headers,
                     )
-                    if r.status_code == 200:
+                    if r and r.status_code == 200:
                         prods = r.json().get("products", [])
                         silent_candidates = []
                         for p in prods:
@@ -460,11 +491,12 @@ class CasioScraper(BaseScraper):
             max_pages = 2 if (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) else 8
             while page <= max_pages:
                 try:
-                    r = await client.get(
+                    r = await self._safe_get(
+                        client,
                         f"https://casiostore.bhawar.com/collections/all/products.json?limit=250&page={page}",
                         headers=headers,
                     )
-                    if r.status_code != 200:
+                    if not r or r.status_code != 200:
                         break
                     prods = r.json().get("products", [])
                     if not prods:
@@ -520,109 +552,32 @@ class CasioScraper(BaseScraper):
     async def scan_collection_deals(
         self, collection_handle: str = "g-shock", min_discount: float = 0.0
     ) -> List[dict[str, Any]]:
-        """Fetch all products in a collection via filter tags, catalog sweep, or paginated JSON."""
+        """Fetch all products in a collection via paginated JSON with automatic 429 backoff."""
         # If user asks for master catalog or broad casio collections, use catalog sweep
         if collection_handle.lower() in ("all", "master", "catalog", "casio-all-watches", "casio"):
             return await self.scan_catalog_deals(min_discount=min_discount)
 
         deals_map: dict[str, dict[str, Any]] = {}
-        int_disc = int(min_discount)
+        headers = {
+            "User-Agent": self._random_user_agent(),
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-IN,en;q=0.9",
+        }
 
-        headers = {"User-Agent": self._random_user_agent()}
-
-        # 1. Method A: Check Shopify Metafield Filter Tags (90%, 80%, 70%, 60%, 50%, 40%, 30%)
-        filter_urls = []
-        for d_tier in range(90, int_disc - 10, -10):
-            if d_tier >= int_disc:
-                filter_urls.append(
-                    (d_tier, f"https://casiostore.bhawar.com/collections/{collection_handle}?filter.p.m.cobrsw.meta_92={d_tier}%25+Off+Or+More")
-                )
-
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                for d_tier, f_url in filter_urls:
-                    try:
-                        r = await client.get(f_url, headers=headers)
-                        if r.status_code == 200:
-                            soup = BeautifulSoup(r.text, "html.parser")
-                            cards = soup.select("ul#product-grid li.grid__item, .card-wrapper")
-                            for card in cards:
-                                model_link = None
-                                model_name = None
-                                for a in card.find_all("a", href=True):
-                                    href = a["href"]
-                                    txt = a.get_text(" ", strip=True)
-                                    if "/products/" in href:
-                                        if not model_link:
-                                            model_link = f"https://casiostore.bhawar.com{href}" if href.startswith("/") else href
-                                        if txt and len(txt) > 2 and "wishlist" not in txt.lower():
-                                            model_name = txt
-                                if not model_link:
-                                    continue
-
-                                clean_link = model_link.split("?")[0]
-                                if clean_link in deals_map:
-                                    continue
-
-                                # 1. Extract actual selling / deal price
-                                sale_el = card.select_one(
-                                    ".price-item--sale, .price__sale .price-item--sale, .price__sale .price-item--last"
-                                )
-                                # 2. Extract original strikethrough MRP
-                                mrp_el = card.select_one(
-                                    ".price__sale .price-item--regular, s.price-item, .price__regular .price-item--regular, .price-item--regular"
-                                )
-
-                                deal_price = self.clean_price(sale_el.get_text(strip=True)) if sale_el else None
-                                mrp_price = self.clean_price(mrp_el.get_text(strip=True)) if mrp_el else None
-
-                                # If no separate sale element, check regular price element
-                                if deal_price is None:
-                                    reg_fallback = card.select_one(".price-item, .price__regular .price-item--regular")
-                                    deal_price = self.clean_price(reg_fallback.get_text(strip=True)) if reg_fallback else None
-
-                                if deal_price is None or deal_price <= 0:
-                                    continue
-
-                                # If MRP wasn't found or is lower than deal price, derive from discount tier
-                                if mrp_price is None or mrp_price <= deal_price:
-                                    if d_tier > 0:
-                                        mrp_price = round(deal_price / (1.0 - float(d_tier) / 100.0), 2)
-                                    else:
-                                        mrp_price = deal_price
-
-                                # Calculate actual discount percentage vs real MRP
-                                if mrp_price and mrp_price > deal_price:
-                                    actual_discount = round(((mrp_price - deal_price) / mrp_price * 100.0), 1)
-                                else:
-                                    actual_discount = float(d_tier)
-
-                                raw_title = model_name or clean_link.split("/products/")[-1].replace("-", " ").title()
-                                family, formatted_title = self._classify_casio_watch(raw_title, handle=clean_link.split("/")[-1])
-
-                                deals_map[clean_link] = {
-                                    "title": formatted_title,
-                                    "price": deal_price,
-                                    "mrp": mrp_price,
-                                    "discount_percent": actual_discount,
-                                    "in_stock": True,
-                                    "url": clean_link,
-                                    "family": family,
-                                }
-                    except Exception as exc:
-                        logger.debug("[casio] filter tag scan %s error: %s", f_url, exc)
-        except Exception as exc:
-            logger.debug("[casio] filter tag client error: %s", exc)
-
-        # 2. Method B: Paginated JSON scanning for mathematical compare_at discounts
+        # Scan collection via official Shopify products.json endpoint (limit=250 covers entire collection in 1 request)
         page = 1
+        max_pages = 4
         try:
-            async with httpx.AsyncClient(timeout=20) as client:
-                while page <= 5:
+            async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+                while page <= max_pages:
                     json_url = f"https://casiostore.bhawar.com/collections/{collection_handle}/products.json?limit=250&page={page}"
-                    r = await client.get(json_url, headers=headers)
-                    if r.status_code != 200:
+
+                    # Fetch with automatic 429 backoff
+                    r = await self._safe_get(client, json_url, headers=headers)
+
+                    if not r or r.status_code != 200:
                         break
+
                     data = r.json()
                     products = data.get("products", [])
                     if not products:
@@ -663,37 +618,41 @@ class CasioScraper(BaseScraper):
 
                     if silent_candidates:
                         auth_client = await self._get_authenticated_client()
-                        sem = asyncio.Semaphore(5)
+                        sem = asyncio.Semaphore(2)
 
                         async def _verify_cand(cand):
                             h = cand.get("handle", "")
                             p_url = f"https://casiostore.bhawar.com/products/{h}"
-                            f_fam, f_title = self._classify_casio_watch(cand.get("title", ""), cand.get("tags", []), h)
+                            f_fam, f_title = self._classify_casio_watch(
+                                cand.get("title", ""), cand.get("tags", []), h
+                            )
                             async with sem:
                                 try:
+                                    await asyncio.sleep(0.3)
                                     r_prod = await auth_client.get(p_url)
-                                    s_prod = BeautifulSoup(r_prod.text, "html.parser")
-                                    s_el = s_prod.select_one(
-                                        ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
-                                    )
-                                    r_el = s_prod.select_one(
-                                        ".price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
-                                    )
-                                    s_price = self.clean_price(s_el.get_text()) if s_el else None
-                                    r_price = self.clean_price(r_el.get_text()) if r_el else None
-                                    if s_price and r_price and r_price > s_price:
-                                        disc_val = round(((r_price - s_price) / r_price * 100.0), 1)
-                                        if disc_val >= min_discount:
-                                            return {
-                                                "title": f_title,
-                                                "price": s_price,
-                                                "mrp": r_price,
-                                                "discount_percent": disc_val,
-                                                "in_stock": True,
-                                                "url": p_url,
-                                                "family": f_fam,
-                                                "is_silent_sale": True,
-                                            }
+                                    if r_prod.status_code == 200:
+                                        s_prod = BeautifulSoup(r_prod.text, "html.parser")
+                                        s_el = s_prod.select_one(
+                                            ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
+                                        )
+                                        r_el = s_prod.select_one(
+                                            ".price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
+                                        )
+                                        s_price = self.clean_price(s_el.get_text()) if s_el else None
+                                        r_price = self.clean_price(r_el.get_text()) if r_el else None
+                                        if s_price and r_price and r_price > s_price:
+                                            disc_val = round(((r_price - s_price) / r_price * 100.0), 1)
+                                            if disc_val >= min_discount:
+                                                return {
+                                                    "title": f_title,
+                                                    "price": s_price,
+                                                    "mrp": r_price,
+                                                    "discount_percent": disc_val,
+                                                    "in_stock": True,
+                                                    "url": p_url,
+                                                    "family": f_fam,
+                                                    "is_silent_sale": True,
+                                                }
                                 except Exception as exc:
                                     logger.debug("[casio] silent verify error for %s: %s", p_url, exc)
                             return None
@@ -702,7 +661,10 @@ class CasioScraper(BaseScraper):
                         for vd in v_deals:
                             if vd and vd["url"] not in deals_map:
                                 deals_map[vd["url"]] = vd
+
                     page += 1
+                    if len(products) >= 250:
+                        await asyncio.sleep(random.uniform(0.8, 1.5))
         except Exception as exc:
             logger.warning("[casio] collection JSON scan failed: %s", exc)
 

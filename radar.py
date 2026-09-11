@@ -180,6 +180,7 @@ class StealRadar:
                                 for handle in handles_to_scan:
                                     collection_deals = await casio_scraper.scan_collection_deals(handle, min_discount=rule.min_discount)
                                     deals.extend(collection_deals)
+                                    await asyncio.sleep(random.uniform(1.0, 2.0))
 
                     for d in deals:
                         d["effective_price"] = d["price"]
