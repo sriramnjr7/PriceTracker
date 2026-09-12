@@ -83,8 +83,8 @@ class Settings:
     database_path: str = field(default_factory=lambda: os.getenv("DATABASE_PATH", "price_tracker.db"))
 
     # --- HTTP / scraping -------------------------------------------------
-    request_timeout: float = field(default_factory=lambda: float(os.getenv("REQUEST_TIMEOUT", "30")))
-    retries: int = field(default_factory=lambda: int(os.getenv("RETRIES", "3")))
+    request_timeout: float = field(default_factory=lambda: float(os.getenv("REQUEST_TIMEOUT", "12")))
+    retries: int = field(default_factory=lambda: int(os.getenv("RETRIES", "2")))
     # Random delay between sequential requests (seconds) to stay under rate limits.
     min_delay_seconds: float = field(default_factory=lambda: float(os.getenv("MIN_DELAY_SECONDS", "2")))
     max_delay_seconds: float = field(default_factory=lambda: float(os.getenv("MAX_DELAY_SECONDS", "5")))

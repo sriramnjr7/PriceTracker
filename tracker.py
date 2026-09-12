@@ -15,6 +15,7 @@ Alert logic (``_should_notify``):
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -33,16 +34,24 @@ class Tracker:
         self.config = config
 
     async def run_once(self) -> int:
-        """Check every active product once. Returns how many alerts were sent."""
+        """Check active products concurrently with rate-limiting (max 3 at a time)."""
         products = await self.db.get_products(active_only=True)
         if not products:
             logger.info("No active products tracked.")
             return 0
-        sent = 0
-        for product in products:
-            if await self.check_product(product):
-                sent += 1
-        return sent
+
+        sem = asyncio.Semaphore(3)
+
+        async def _safe_check(p) -> bool:
+            async with sem:
+                try:
+                    return await self.check_product(p)
+                except Exception as exc:
+                    logger.warning("Error checking product %s: %s", getattr(p, "id", "?"), exc)
+                    return False
+
+        results = await asyncio.gather(*(_safe_check(p) for p in products), return_exceptions=False)
+        return sum(1 for r in results if r)
 
     async def check_product(self, product) -> bool:
         """Scrape + persist one product or collection; send an alert if triggered."""
