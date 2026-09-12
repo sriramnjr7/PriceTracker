@@ -86,9 +86,49 @@ async def run_single_pass() -> int:
         await radar.close()
 
 
+async def run_repeating_sweep(repeats: int = 3, interval_seconds: int = 110) -> int:
+    """Execute multiple consecutive sweeps within a single runner invocation (e.g. 3 passes every ~2 mins)."""
+    total_alerts = 0
+    radar = StealRadar(settings)
+    await radar.init()
+    try:
+        tracker = Tracker(radar.db, radar.notifier, settings)
+        for i in range(1, repeats + 1):
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"\n[{now_str}] ⚡ [PriceTracker Runner] Starting Pass {i}/{repeats}...")
+            try:
+                casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
+                print(f"[{now_str}] ✅ Deal Radar scan: {casio_alerts} deal alert(s).")
+                tracked_alerts = await tracker.run_once()
+                print(f"[{now_str}] ✅ Tracked items check: {tracked_alerts} alert(s).")
+                total_alerts += casio_alerts + tracked_alerts
+            except Exception as exc:
+                logger.error("Error during runner pass #%s: %s", i, exc)
+
+            if i < repeats:
+                print(f"⏳ Sleeping {interval_seconds}s until next pass in this runner...")
+                await asyncio.sleep(interval_seconds)
+
+        print(f"\n🎯 [PriceTracker Runner] All {repeats} passes completed. Total alerts sent: {total_alerts}\n")
+        return total_alerts
+    finally:
+        await radar.close()
+
+
 async def main():
     if "--once" in sys.argv:
         await run_single_pass()
+        return
+
+    if "--repeat" in sys.argv or "--interval" in sys.argv:
+        repeats = 3
+        interval = 110
+        for i, arg in enumerate(sys.argv):
+            if arg == "--repeat" and i + 1 < len(sys.argv) and sys.argv[i + 1].isdigit():
+                repeats = int(sys.argv[i + 1])
+            elif arg == "--interval" and i + 1 < len(sys.argv) and sys.argv[i + 1].isdigit():
+                interval = int(sys.argv[i + 1])
+        await run_repeating_sweep(repeats=repeats, interval_seconds=interval)
         return
 
     radar = StealRadar(settings)
