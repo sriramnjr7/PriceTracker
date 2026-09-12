@@ -7,7 +7,8 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 
 strScriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 If Not fso.FileExists(strScriptDir & "\run_247_radar.py") Then
-    strScriptDir = "c:\Users\srira\Downloads\Antigravity\PriceTracker"
+    MsgBox "Error: run_247_radar.py was not found in the script directory!", 16, "SriTrack Daemon Error"
+    WScript.Quit 1
 End If
 
 WshShell.CurrentDirectory = strScriptDir

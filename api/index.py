@@ -96,6 +96,30 @@ class AddProductPayload(BaseModel):
     target_price: float
 
 
+class LoginPayload(BaseModel):
+    email: Optional[str] = None
+    password: str
+
+
+@app.post("/api/auth/login")
+@app.post("/auth/login")
+async def api_auth_login(payload: LoginPayload):
+    """Authenticate dashboard users server-side with constant-time comparison."""
+    import hmac
+
+    expected_pwd = getattr(settings, "dashboard_password", None) or os.getenv("DASHBOARD_PASSWORD", "8910")
+    submitted_pwd = (payload.password or "").strip()
+
+    if not hmac.compare_digest(submitted_pwd.encode("utf-8"), expected_pwd.strip().encode("utf-8")):
+        raise HTTPException(status_code=401, detail="Invalid credentials. Please verify your password.")
+
+    user_email = (payload.email or "").strip() or getattr(settings, "dashboard_email", None) or os.getenv("DASHBOARD_EMAIL", "sriramnjr7@gmail.com")
+    return {
+        "ok": True,
+        "email": user_email,
+    }
+
+
 # ==========================================
 # CORE DASHBOARD & STATUS ROUTES
 # ==========================================

@@ -75,6 +75,10 @@ class Settings:
         default_factory=lambda: int(os.getenv("SCHEDULER_JITTER_SECONDS", "30"))
     )
 
+    # --- Dashboard Authentication ----------------------------------------
+    dashboard_password: str = field(default_factory=lambda: os.getenv("DASHBOARD_PASSWORD", "8910"))
+    dashboard_email: str = field(default_factory=lambda: os.getenv("DASHBOARD_EMAIL", "admin@pricetracker.local"))
+
     # --- Storage ---------------------------------------------------------
     database_path: str = field(default_factory=lambda: os.getenv("DATABASE_PATH", "price_tracker.db"))
 

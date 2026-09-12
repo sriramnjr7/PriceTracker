@@ -15,7 +15,9 @@ echo.
 
 cd /d "%~dp0"
 if not exist "run_247_radar.py" (
-    cd /d "c:\Users\srira\Downloads\Antigravity\PriceTracker"
+    echo [ERROR] run_247_radar.py was not found in the current directory!
+    pause
+    exit /b 1
 )
 
 echo Checking Python environment...

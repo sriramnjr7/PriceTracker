@@ -11,7 +11,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* ==========================================================================
        DESIGN SYSTEM TOKENS (Modern SaaS: Linear / Vercel / Raycast Aesthetic)
@@ -1607,9 +1606,9 @@
           <!-- User Identity & Sign Out -->
           <div class="sidebar-footer">
             <div class="user-profile-meta">
-              <div class="user-avatar-initial" id="user-avatar-text">S</div>
+              <div class="user-avatar-initial" id="user-avatar-text">A</div>
               <div class="user-identity-text">
-                <span class="user-identity-email" id="user-display-email">sriramnjr7@gmail.com</span>
+                <span class="user-identity-email" id="user-display-email">Admin</span>
                 <span class="user-identity-role">Administrator</span>
               </div>
             </div>
@@ -1872,18 +1871,6 @@
        APPLICATION LOGIC & API INTEGRATIONS (Preserved Exactly)
        ======================================================================== -->
   <script>
-    const SUPABASE_URL = "https://ytncrstivqscoavhwnnd.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_qDqBsGHIetHJULy-YxcwCQ_1tfvpiwK";
-    
-    let supabaseClient = null;
-    try {
-      if (window.supabase && typeof window.supabase.createClient === "function") {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      }
-    } catch (e) {
-      console.warn("Supabase init warning:", e);
-    }
-
     let rawProductsList = [];
     let currentFilter = "all";
     let currentUser = null;
@@ -1959,25 +1946,11 @@
     // Auth Initialization on Page Load
     async function initAuthFlow() {
       const storedAuth = localStorage.getItem("sritrack_authenticated");
+      const storedEmail = localStorage.getItem("sritrack_user_email");
       if (storedAuth === "true") {
-        onAuthenticated({ email: "sriramnjr7@gmail.com" });
+        onAuthenticated({ email: storedEmail || "Admin" });
         return;
       }
-
-      if (supabaseClient) {
-        try {
-          const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ data: { session: null } }), 1000));
-          const sessionPromise = supabaseClient.auth.getSession();
-          const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
-          if (session && session.user) {
-            onAuthenticated(session.user);
-            return;
-          }
-        } catch (err) {
-          console.warn("Session check warning:", err);
-        }
-      }
-
       showView("login-view");
     }
 
@@ -1985,8 +1958,11 @@
       currentUser = user;
       try {
         localStorage.setItem("sritrack_authenticated", "true");
+        if (user && user.email) {
+          localStorage.setItem("sritrack_user_email", user.email);
+        }
       } catch (e) {}
-      const email = (user && user.email) ? user.email : "sriramnjr7@gmail.com";
+      const email = (user && user.email) ? user.email : "Admin";
       const displayEl = document.getElementById("user-display-email");
       const avatarEl = document.getElementById("user-avatar-text");
       if (displayEl) displayEl.textContent = email;
@@ -1995,7 +1971,7 @@
       fetchDashboardData();
     }
 
-    // Login Form Submit Handler
+    // Login Form Submit Handler (Server-Side Authenticated via /api/auth/login)
     async function handleAuthLogin(e) {
       if (e) e.preventDefault();
       const emailInput = document.getElementById("login-email");
@@ -2003,33 +1979,28 @@
       const email = emailInput ? emailInput.value.trim() : "";
       const password = pwdInput ? pwdInput.value.trim() : "";
 
+      if (!password) {
+        showToast("Please enter your dashboard password.");
+        return;
+      }
+
       const btnLabel = document.getElementById("login-btn-label");
       const spinner = document.getElementById("login-spinner");
       if (btnLabel) btnLabel.style.display = "none";
       if (spinner) spinner.style.display = "inline";
 
-      const cleanEmail = email.toLowerCase();
-      if (
-        (cleanEmail === "sriramnjr7@gmail.com" || cleanEmail === "sriramnjr7") &&
-        password === "8910"
-      ) {
-        showToast("Authenticated successfully.");
-        onAuthenticated({ email: "sriramnjr7@gmail.com" });
-        if (btnLabel) btnLabel.style.display = "inline";
-        if (spinner) spinner.style.display = "none";
-
-        if (supabaseClient) {
-          supabaseClient.auth.signInWithPassword({ email: "sriramnjr7@gmail.com", password }).catch(() => {});
-        }
-        return;
-      }
-
       try {
-        if (!supabaseClient) throw new Error("Invalid credentials. Please verify your email and password.");
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        showToast("Welcome back, " + email);
-        onAuthenticated(data.user);
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Authentication failed.");
+        }
+        showToast("Authenticated successfully.");
+        onAuthenticated({ email: data.email || email || "Admin" });
       } catch (err) {
         console.error("Auth error:", err);
         showToast("⚠️ " + (err.message || "Authentication failed."));
@@ -2042,10 +2013,8 @@
     async function handleSignOut() {
       try {
         localStorage.removeItem("sritrack_authenticated");
+        localStorage.removeItem("sritrack_user_email");
       } catch (e) {}
-      if (supabaseClient) {
-        try { await supabaseClient.auth.signOut(); } catch (e) {}
-      }
       currentUser = null;
       showToast("Signed out.");
       showView("login-view");
