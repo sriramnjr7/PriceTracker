@@ -3,13 +3,13 @@ run-name: PriceTracker 24/7 Sweep (${{ github.event_name }})
 
 on:
   schedule:
-    # Runs every 10 minutes on GitHub's free runners (100% free & unlimited on public repositories)
-    - cron: '*/10 * * * *'
+    # Runs every 5 minutes on GitHub's free runners (100% free & unlimited on public repositories)
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 concurrency:
   group: tracker-sweep
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   sweep:
