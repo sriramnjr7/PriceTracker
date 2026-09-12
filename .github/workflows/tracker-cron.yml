@@ -15,7 +15,7 @@ jobs:
   sweep:
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Price & Deal Radar Sweep (Every ~2 mins inside 5-min runner)
+      - name: Run Price & Deal Radar Sweep (100% GitHub Runner - 0 Vercel Fluid CPU)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -41,4 +41,4 @@ jobs:
           CASIO_BHAWAR_PASSWORD: ${{ secrets.CASIO_BHAWAR_PASSWORD }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python run_247_radar.py --repeat 3 --interval 110
+          python run_247_radar.py --once
