@@ -28,3 +28,4 @@ gstack/
 # Vercel & IDE
 .vercel/
 .agents/
+scratch/

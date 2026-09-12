@@ -9,13 +9,13 @@ on:
 
 concurrency:
   group: tracker-sweep
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   sweep:
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,6 +33,7 @@ jobs:
 
       - name: Run Price & Deal Radar Sweep (100% GitHub Runner - 0 Vercel Fluid CPU)
         env:
+          PYTHONUNBUFFERED: "1"
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

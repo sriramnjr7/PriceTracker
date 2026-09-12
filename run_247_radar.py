@@ -73,12 +73,27 @@ async def run_single_pass() -> int:
     radar = StealRadar(settings)
     await radar.init()
     try:
-        casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
-        print(f"✅ Deal Radar scan completed: {casio_alerts} deal alert(s) dispatched.")
+        try:
+            casio_alerts = await asyncio.wait_for(
+                radar.scan_all(only_platforms=["casio", "flipkart"]),
+                timeout=90.0,
+            )
+            print(f"✅ Deal Radar scan completed: {casio_alerts} deal alert(s) dispatched.")
+        except asyncio.TimeoutError:
+            print("⚠️ Deal Radar scan timed out after 90s — continuing to tracked products.")
+            casio_alerts = 0
 
         tracker = Tracker(radar.db, radar.notifier, settings)
-        tracked_alerts = await tracker.run_once()
-        print(f"✅ Tracked products check completed: {tracked_alerts} alert(s) dispatched.")
+        try:
+            tracked_alerts = await asyncio.wait_for(
+                tracker.run_once(),
+                timeout=120.0,
+            )
+            print(f"✅ Tracked products check completed: {tracked_alerts} alert(s) dispatched.")
+        except asyncio.TimeoutError:
+            print("⚠️ Tracked products check timed out after 120s.")
+            tracked_alerts = 0
+
         total = casio_alerts + tracked_alerts
         print(f"🎯 Total alerts sent: {total}\n")
         return total

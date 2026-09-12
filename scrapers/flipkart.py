@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from typing import Any, List, Optional
 from urllib.parse import quote_plus
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class FlipkartScraper(BaseScraper):
     platform = "flipkart"
-    prefer_js = True
+    prefer_js = False
 
     title_selectors = (
         "span.VU-ZEz",
@@ -108,6 +109,10 @@ class FlipkartScraper(BaseScraper):
 
     async def _js_fetch(self, url: str) -> Optional[str]:
         """Render Flipkart page with Playwright, handling short links and Hyperlocal Minutes unwrapping."""
+        if os.getenv("CI") or os.getenv("GITHUB_ACTIONS") or os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            logger.debug("[flipkart] Skipping Playwright fetch in CI/serverless environment")
+            return None
+
         for attempt in range(self.config.retries):
             try:
                 from playwright.async_api import async_playwright
@@ -179,29 +184,45 @@ class FlipkartScraper(BaseScraper):
         deals: List[dict[str, Any]] = []
         negative_set = [k.lower() for k in (negative_keywords or [])]
 
+        html = await self._static_fetch(url)
+        cards = []
+        if html:
+            soup = BeautifulSoup(html, "html.parser")
+            cards = soup.select("div[data-id]")
+
+        if not cards and not (os.getenv("CI") or os.getenv("GITHUB_ACTIONS") or os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")):
+            try:
+                async with async_playwright() as p:
+                    try:
+                        browser = await p.chromium.launch(
+                            channel="chrome",
+                            headless=self.config.headless,
+                            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+                        )
+                    except Exception:
+                        browser = await p.chromium.launch(
+                            headless=self.config.headless,
+                            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+                        )
+                    context = await browser.new_context(
+                        user_agent=self._random_user_agent(),
+                        locale="en-IN",
+                        timezone_id="Asia/Kolkata",
+                    )
+                    page = await context.new_page()
+                    await page.goto(url, wait_until="domcontentloaded", timeout=25000)
+                    await page.wait_for_timeout(2000)
+                    html = await page.content()
+                    await context.close()
+                    await browser.close()
+
+                    soup = BeautifulSoup(html, "html.parser")
+                    cards = soup.select("div[data-id]")
+            except Exception as pw_exc:
+                logger.debug("[flipkart] Playwright search fallback error: %s", pw_exc)
+
         try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(
-                    channel="chrome",
-                    headless=self.config.headless,
-                    args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
-                )
-                context = await browser.new_context(
-                    user_agent=self._random_user_agent(),
-                    locale="en-IN",
-                    timezone_id="Asia/Kolkata",
-                )
-                page = await context.new_page()
-                await page.goto(url, wait_until="domcontentloaded", timeout=25000)
-                await page.wait_for_timeout(3000)
-                html = await page.content()
-                await context.close()
-                await browser.close()
-
-                soup = BeautifulSoup(html, "html.parser")
-                cards = soup.select("div[data-id]")
-
-                for card in cards:
+            for card in cards:
                     # 0. Extract product_id (stable identifier)
                     product_id = card.get("data-id", "")
 

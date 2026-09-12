@@ -318,8 +318,8 @@ class BaseScraper(ABC):
     async def _js_fetch(self, url: str) -> Optional[str]:
         """Render page in headless browser using Scrapling StealthyFetcher or Playwright fallback."""
         import os
-        if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
-            logger.debug("[%s] Skipping headless browser fetch in serverless environment", self.platform)
+        if os.getenv("CI") or os.getenv("GITHUB_ACTIONS") or os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            logger.debug("[%s] Skipping headless browser fetch in CI/serverless environment", self.platform)
             return None
 
         # 1. Try Scrapling StealthyFetcher (anti-bot bypass) via async_fetch
