@@ -77,27 +77,36 @@ class Tracker:
 
         if result.price is None or not result.in_stock:
             # Item is unlisted / out of stock / 404
-            if result.title:
-                await self.db.update_price(product.id, None, title=result.title)
+            title_to_set = result.title or None
+            await self.db.update_price(product.id, None, title=title_to_set)
             return False
-
-        await self.db.update_price(product.id, result.price, title=result.title or None)
 
         should_notify, drop_percent = self._should_notify(
             product, product.current_price, result.price
         )
+        await self.db.update_price(product.id, result.price, title=result.title or None)
+
         if not should_notify:
             return False
 
+        is_restock = product.current_price is None
         target_text = self._target_text(product)
         old_price: Optional[float] = (
             product.current_price if product.current_price is not None else product.initial_price
         )
-        if await self.notifier.notify(product, old_price, result.price, drop_percent, target_text):
+        if await self.notifier.notify(
+            product, old_price, result.price, drop_percent, target_text, is_restock=is_restock
+        ):
             await self.db.set_last_notified(product.id, result.price)
-            logger.info("Alert sent for product %s at INR %s", product.id, result.price)
+            logger.info(
+                "Alert sent for product %s at INR %s (restock=%s)",
+                product.id,
+                result.price,
+                is_restock,
+            )
             return True
         return False
+
 
     async def _check_casio_collection(self, product) -> bool:
         """Scan a Casio collection for deals matching target discount or target price."""
@@ -255,11 +264,22 @@ class Tracker:
         if not triggered:
             return False, drop_percent
 
-        # Anti-spam: don't re-alert at the same or a higher price.
+        # 1. Back-in-stock alert: Product was previously out-of-stock (old_price is None)
+        # and has now returned to stock at or below target threshold.
+        if old_price is None:
+            return True, drop_percent
+
+        # 2. Recovery from non-deal price: If price was previously above target (regular price),
+        # this is a fresh drop back into target range, not a bounce within the deal.
+        if product.target_price is not None and old_price > product.target_price:
+            return True, drop_percent
+
+        # 3. Anti-spam: don't re-alert at the same or a higher price within the same deal window.
         last_notified = product.last_notified_price
         if last_notified is not None and new_price >= last_notified:
             return False, drop_percent
         return True, drop_percent
+
 
     async def run_forever(self) -> None:
         """Start the APScheduler loop and poll at the configured interval."""

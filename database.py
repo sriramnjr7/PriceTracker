@@ -241,15 +241,16 @@ class Database:
         else:
             if title:
                 await self.conn.execute(
-                    "UPDATE products SET title = ?, last_checked = ? WHERE id = ?",
+                    "UPDATE products SET title = ?, last_checked = ?, current_price = NULL, last_notified_price = NULL WHERE id = ?",
                     (title, ts, product_id),
                 )
             else:
                 await self.conn.execute(
-                    "UPDATE products SET last_checked = ? WHERE id = ?",
+                    "UPDATE products SET last_checked = ?, current_price = NULL, last_notified_price = NULL WHERE id = ?",
                     (ts, product_id),
                 )
         await self.conn.commit()
+
 
     async def set_last_notified(self, product_id: int, price: float) -> None:
         await self.conn.execute(

@@ -113,25 +113,28 @@ class StealRadar:
                     from scrapers.casio import CasioScraper
                     casio_scraper = CasioScraper(self.config)
                     
-                    # 1. Direct product tracking via exact URL
-                    custom_url = rule.search_url_template.get("casio") if rule.search_url_template else None
-                    if custom_url and "/products/" in custom_url:
-                        result = await casio_scraper.scrape(custom_url)
-                        if result and result.in_stock and result.price is not None:
-                            if rule.max_price is not None and result.price > rule.max_price:
-                                deals = []
-                            else:
-                                deals = [{
+                    # 1. Direct product tracking via exact URL(s)
+                    custom_url_raw = rule.search_url_template.get("casio") if rule.search_url_template else None
+                    if custom_url_raw and "/products/" in custom_url_raw:
+                        deals = []
+                        target_urls = [u.strip() for u in custom_url_raw.split(",") if u.strip()]
+                        for custom_url in target_urls:
+                            result = await casio_scraper.scrape(custom_url)
+                            if result and result.in_stock and result.price is not None:
+                                if rule.max_price is not None and result.price > rule.max_price:
+                                    continue
+                                mrp = rule.min_mrp or (result.price if rule.max_price is None else 12995.0)
+                                disc = round(((mrp - result.price) / mrp * 100.0), 1) if mrp > result.price else 0.0
+                                deals.append({
                                     "title": result.title,
                                     "price": result.price,
-                                    "mrp": result.price,  # We don't have explicit MRP from single scrape result
-                                    "discount_percent": 0.0,
+                                    "mrp": mrp,
+                                    "discount_percent": disc,
                                     "url": result.url,
                                     "in_stock": result.in_stock,
-                                }]
-                        else:
-                            deals = []
+                                })
                     else:
+
                         # 2. Collection & Catalog scanning
                         q_lower = rule.query.lower()
                         # If query is general "casio watch", "casio", or general watches, sweep master catalog

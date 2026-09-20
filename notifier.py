@@ -28,17 +28,26 @@ def build_message(
     drop_percent: Optional[float],
     target_text: str,
     buy_url: str,
+    is_restock: bool = False,
 ) -> str:
     """Render the standard alert template (markdown bold + emoji)."""
-    drop_line = f"({drop_percent:.0f}% OFF!)" if drop_percent else ""
+    if is_restock:
+        header = "🚨 *BACK IN STOCK / STEAL DEAL ALERT!* 🚨"
+        old_part = f" (Previous: {_fmt_price(old_price)})" if old_price else ""
+        price_line = f"💰 *In-Stock Deal Price:* {_fmt_price(new_price)}{old_part}\n"
+    else:
+        header = "🚨 *PRICE DROP ALERT!* 🚨"
+        drop_line = f"({drop_percent:.0f}% OFF!)" if drop_percent else ""
+        price_line = f"📉 *Old Price:* {_fmt_price(old_price)} ➡️ *New Price:* {_fmt_price(new_price)} {drop_line}\n"
+
     return (
-        "🚨 *PRICE DROP ALERT!* 🚨\n"
+        f"{header}\n"
         f"📦 *Product:* {title}\n"
-        f"📉 *Old Price:* {_fmt_price(old_price)} ➡️ "
-        f"*New Price:* {_fmt_price(new_price)} {drop_line}\n"
+        f"{price_line}"
         f"🎯 *Target:* {target_text}\n"
         f"🛒 *Buy Now:* {buy_url}"
     )
+
 
 
 class Notifier:
@@ -125,6 +134,7 @@ class Notifier:
         new_price: float,
         drop_percent: Optional[float],
         target_text: str,
+        is_restock: bool = False,
     ) -> bool:
         """Build + send an alert for a product whose threshold was hit."""
         buy_url = await self.shorten_url(product.url)
@@ -135,5 +145,6 @@ class Notifier:
             drop_percent=drop_percent,
             target_text=target_text,
             buy_url=buy_url,
+            is_restock=is_restock,
         )
         return await self.send_message(message)

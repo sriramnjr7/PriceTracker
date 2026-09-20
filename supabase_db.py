@@ -185,7 +185,11 @@ class SupabaseDatabase:
                     headers=self._headers,
                 )
             else:
-                payload = {"last_checked": ts}
+                payload = {
+                    "last_checked": ts,
+                    "current_price": None,
+                    "last_notified_price": None,
+                }
                 if title:
                     payload["title"] = title
                 await client.patch(
@@ -193,6 +197,7 @@ class SupabaseDatabase:
                     json=payload,
                     headers=self._headers,
                 )
+
 
     async def set_last_notified(self, product_id: int, price: float) -> None:
         payload = {"last_notified_price": price}

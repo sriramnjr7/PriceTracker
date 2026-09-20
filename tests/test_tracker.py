@@ -75,6 +75,15 @@ def test_should_notify_antispam_new_low():
     should_new_low, _ = Tracker._should_notify(p, old_price=750, new_price=700)
     assert should_new_low is True
 
+    # 1. Restock alert: was out-of-stock (old_price=None), comes in-stock at 750 (even if last_notified was 750) -> MUST alert!
+    should_restock, _ = Tracker._should_notify(p, old_price=None, new_price=750)
+    assert should_restock is True
+
+    # 2. Recovery from non-deal price: price was back at MRP 1000 (> target 800), then dropped to 750 -> MUST alert!
+    should_recovery, _ = Tracker._should_notify(p, old_price=1000, new_price=750)
+    assert should_recovery is True
+
+
 
 @pytest.mark.asyncio
 async def test_check_product_standard_flow(mock_db, mock_notifier):

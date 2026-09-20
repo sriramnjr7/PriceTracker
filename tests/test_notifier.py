@@ -32,6 +32,23 @@ def test_build_message():
     assert "https://amazon.in/dp/123" in msg
 
 
+def test_build_message_restock():
+    msg = build_message(
+        title="Casio G-Shock GBD-300-9",
+        old_price=None,
+        new_price=3899.0,
+        drop_percent=0.0,
+        target_text="₹4000",
+        buy_url="https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-9dr-watch",
+        is_restock=True,
+    )
+    assert "BACK IN STOCK / STEAL DEAL ALERT!" in msg
+    assert "Casio G-Shock GBD-300-9" in msg
+    assert "₹3899" in msg
+    assert "₹4000" in msg
+
+
+
 @pytest.mark.asyncio
 async def test_shorten_url_success():
     notifier = Notifier()
