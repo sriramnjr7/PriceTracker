@@ -77,14 +77,15 @@ class TelegramAssistant:
         try:
             scraper = get_scraper(platform, self.config)
             res = await scraper.scrape(norm_url)
-            if res.price is None or res.price <= 0:
-                await self.send_reply(chat_id, f"⚠️ Scraper reached *{platform.title()}* but could not extract current price. URL saved for monitoring.")
-                current_price = 0.0
+            is_out_of_stock = (res.price is None or res.price <= 0 or not res.in_stock)
+            title = res.title or norm_url.split("/")[-1][:40]
+
+            if is_out_of_stock:
+                current_price = None
+                target = target_price
             else:
                 current_price = res.price
-
-            title = res.title or norm_url.split("/")[-1][:40]
-            target = target_price if target_price is not None else round(current_price * 0.8, 2)
+                target = target_price if target_price is not None else round(current_price * 0.8, 2)
 
             prod_id = await self.db.add_product(
                 url=norm_url,
@@ -93,16 +94,30 @@ class TelegramAssistant:
                 initial_price=current_price,
                 title=title,
             )
-            await self.send_reply(
-                chat_id,
-                f"✅ *Tracking Added Successfully!*\n\n"
-                f"🆔 *ID:* #{prod_id}\n"
-                f"📦 *Product:* {title}\n"
-                f"🏪 *Platform:* {platform.title()}\n"
-                f"💰 *Current Price:* ₹{current_price:g}\n"
-                f"🎯 *Alert Target:* ₹{target:g}\n\n"
-                f"You will receive an instant alert when the price drops to or below your target!"
-            )
+
+            if is_out_of_stock:
+                target_display = f"₹{target:g}" if target else "Any Restock"
+                await self.send_reply(
+                    chat_id,
+                    f"✅ *Restock Tracker Added!*\n\n"
+                    f"🆔 *ID:* #{prod_id}\n"
+                    f"📦 *Product:* {title}\n"
+                    f"🏪 *Platform:* {platform.title()}\n"
+                    f"📊 *Status:* 🔴 *Currently Out of Stock*\n"
+                    f"🎯 *Target:* {target_display}\n\n"
+                    f"🔔 You will receive an instant Telegram alert the moment this item returns to stock!"
+                )
+            else:
+                await self.send_reply(
+                    chat_id,
+                    f"✅ *Tracking Added Successfully!*\n\n"
+                    f"🆔 *ID:* #{prod_id}\n"
+                    f"📦 *Product:* {title}\n"
+                    f"🏪 *Platform:* {platform.title()}\n"
+                    f"💰 *Current Price:* ₹{current_price:g}\n"
+                    f"🎯 *Alert Target:* ₹{target:g}\n\n"
+                    f"You will receive an instant alert when the price drops to or below your target!"
+                )
         except Exception as exc:
             logger.error("Error adding product from Telegram: %s", exc)
             await self.send_reply(chat_id, f"❌ Error adding product: {exc}")

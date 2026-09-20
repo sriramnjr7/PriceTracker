@@ -20,7 +20,7 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -387,6 +387,97 @@ async def delete_single_product(product_id: int):
     try:
         success = await db.remove_product(product_id)
         return {"status": "success", "id": product_id, "deleted": success}
+    finally:
+        await db.close()
+
+
+@app.get("/api/products/{product_id}/history")
+async def get_product_price_history(product_id: int, range: str = "weekly"):
+    """Fetch structured price history with timeframe filtering (hourly, weekly, monthly, yearly)."""
+    db = get_database(settings)
+    await db.initialize()
+    try:
+        product = await db.get_product(product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        raw_logs = await db.price_history(product_id, limit=500)
+        # raw_logs is [(price, timestamp), ...] newest first
+        now = datetime.now(timezone.utc)
+        range_lower = (range or "weekly").lower()
+
+        if range_lower in ("hourly", "24h", "day"):
+            cutoff = now - timedelta(hours=24)
+            date_fmt = "%H:%M"
+        elif range_lower in ("monthly", "30d", "month"):
+            cutoff = now - timedelta(days=30)
+            date_fmt = "%b %d"
+        elif range_lower in ("yearly", "1y", "year", "all"):
+            cutoff = now - timedelta(days=365)
+            date_fmt = "%b %Y"
+        else:  # default weekly / 7d
+            cutoff = now - timedelta(days=7)
+            date_fmt = "%a %H:%M"
+
+        points = []
+        for price, ts_str in reversed(raw_logs):
+            try:
+                clean_ts = ts_str.replace("Z", "+00:00")
+                if "+" not in clean_ts and "-" not in clean_ts[10:]:
+                    dt = datetime.fromisoformat(clean_ts).replace(tzinfo=timezone.utc)
+                else:
+                    dt = datetime.fromisoformat(clean_ts)
+            except Exception:
+                continue
+
+            if dt >= cutoff:
+                points.append({
+                    "timestamp": dt.isoformat(),
+                    "price": float(price),
+                    "formatted_time": dt.strftime(date_fmt),
+                })
+
+        # If points are sparse, add fallback points so the line chart renders cleanly
+        if not points:
+            if product.initial_price:
+                points.append({
+                    "timestamp": (now - timedelta(hours=6)).isoformat(),
+                    "price": float(product.initial_price),
+                    "formatted_time": (now - timedelta(hours=6)).strftime(date_fmt),
+                })
+            if product.current_price:
+                points.append({
+                    "timestamp": now.isoformat(),
+                    "price": float(product.current_price),
+                    "formatted_time": now.strftime(date_fmt),
+                })
+        elif len(points) == 1:
+            earlier = now - timedelta(hours=3)
+            points.insert(0, {
+                "timestamp": earlier.isoformat(),
+                "price": points[0]["price"],
+                "formatted_time": earlier.strftime(date_fmt),
+            })
+
+        prices = [p["price"] for p in points if p.get("price") is not None]
+        min_p = min(prices) if prices else product.current_price
+        max_p = max(prices) if prices else product.current_price
+
+        return {
+            "status": "success",
+            "product_id": product_id,
+            "title": product.title,
+            "platform": product.platform,
+            "url": product.url,
+            "range": range_lower,
+            "current_price": product.current_price,
+            "target_price": product.target_price,
+            "initial_price": product.initial_price,
+            "min_price": min_p,
+            "max_price": max_p,
+            "total_points": len(points),
+            "points": points,
+        }
     finally:
         await db.close()
 

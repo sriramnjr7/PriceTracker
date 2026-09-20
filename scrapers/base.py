@@ -105,9 +105,16 @@ class BaseScraper(ABC):
                     "in stock" if result.in_stock else "out of stock",
                 )
                 return result
+            if result.title and (result.in_stock is False or result.price is None):
+                logger.info(
+                    "[%s] %s -> Out of stock / unlisted price",
+                    self.platform,
+                    result.title[:60],
+                )
+                return result
             errors.append(f"{strategy}: price/title missing")
         raise ScrapeError(
-            f"{self.platform}: could not extract price for {url} ({'; '.join(errors)})"
+            f"{self.platform}: could not extract product info for {url} ({'; '.join(errors)})"
         )
 
     # ---------------------------------------------------------------- parsing

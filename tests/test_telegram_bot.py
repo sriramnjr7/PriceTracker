@@ -141,3 +141,34 @@ async def test_handle_natural_language_tracking(bot, mock_db):
             title="Apple iPhone 15 128GB Black",
         )
         assert any("Auto-Discovered & Tracking Active" in str(call) for call in bot.send_reply.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_handle_url_tracking_out_of_stock(bot, mock_db):
+    """Ensure out-of-stock items across platforms are added for restock alerts."""
+    mock_scraper = MagicMock()
+    mock_scraper.scrape = AsyncMock(return_value=ScrapeResult(
+        title="Casio G-Shock GBD-300-9DR (Sold Out)",
+        price=None,
+        in_stock=False,
+        platform="casio",
+        url="https://casiostore.bhawar.com/products/gbd-300-9dr",
+    ))
+
+    with patch("telegram_bot.get_scraper", return_value=mock_scraper):
+        await bot.handle_url_tracking(
+            chat_id=123,
+            url="https://casiostore.bhawar.com/products/gbd-300-9dr",
+            target_price=4000.0,
+        )
+        mock_db.add_product.assert_called_with(
+            url="https://casiostore.bhawar.com/products/gbd-300-9dr",
+            platform="casio",
+            target_price=4000.0,
+            initial_price=None,
+            title="Casio G-Shock GBD-300-9DR (Sold Out)",
+        )
+        replies = [str(call) for call in bot.send_reply.call_args_list]
+        assert any("Restock Tracker Added" in r for r in replies)
+        assert any("Currently Out of Stock" in r for r in replies)
+

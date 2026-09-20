@@ -247,3 +247,30 @@ async def test_casio_search_suggest_model_validation():
         assert "GBD-300" in res2.title
         assert res2.price == 12995.0
 
+
+@pytest.mark.asyncio
+async def test_scrape_out_of_stock_returns_valid_result():
+    """Verify that scrape() returns a valid ScrapeResult for out of stock products instead of crashing."""
+    scraper = AmazonScraper(Settings())
+    html_out_of_stock = """
+    <html>
+      <head><title>Test Out of Stock Wireless Mouse</title></head>
+      <body>
+        <span id="productTitle">Logitech MX Master 3S Wireless Mouse</span>
+        <div id="availability">
+          <span class="a-size-medium a-color-price">Currently unavailable.</span>
+          <span>We don't know when or if this item will be back in stock.</span>
+        </div>
+      </body>
+    </html>
+    """
+
+    with patch.object(scraper, "_static_fetch", new_callable=AsyncMock) as mock_fetch:
+        mock_fetch.return_value = html_out_of_stock
+        result = await scraper.scrape("https://www.amazon.in/dp/B0B4")
+        assert result.title == "Logitech MX Master 3S Wireless Mouse"
+        assert result.price is None
+        assert result.in_stock is False
+        assert result.platform == "amazon"
+
+
