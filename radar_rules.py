@@ -145,7 +145,7 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         negative_keywords=["strap", "band", "bezel", "protector"],
         search_url_template={
             "casio": (
-                "https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-1dr-watch,"
+                "https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-1dr-black-digital-mens-watch,"
                 "https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-7dr-watch,"
                 "https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-9dr-watch"
             ),

@@ -168,12 +168,8 @@ class CasioScraper(BaseScraper):
                 response = await client.get(url)
 
                 final_path = urlparse(str(response.url)).path.lower()
-                # If redirected to homepage or 404, product is not listed
+                # If redirected to homepage or 404, product is not listed / out of stock
                 if response.status_code == 404 or "/products/" not in final_path:
-                    search_result = await self._search_suggest(handle)
-                    if search_result:
-                        return search_result
-
                     logger.info("[casio] Product %s is unlisted/redirected (%s)", handle, response.url)
                     return ScrapeResult(
                         title=fallback_title,
@@ -188,6 +184,28 @@ class CasioScraper(BaseScraper):
                     if result.title or result.price:
                         fam, formatted_title = self._classify_casio_watch(result.title or fallback_title, handle=handle)
                         result.title = formatted_title
+
+                        # Authoritative stock verification via Shopify's .js endpoint
+                        if result.in_stock and handle:
+                            try:
+                                js_url = f"https://casiostore.bhawar.com/products/{handle}.js"
+                                r_js = await client.get(js_url)
+                                if r_js.status_code == 200:
+                                    js_data = r_js.json()
+                                    is_avail = bool(js_data.get("available", False))
+                                    has_avail_variant = any(
+                                        bool(v.get("available", False))
+                                        for v in js_data.get("variants", [])
+                                    )
+                                    if not is_avail and not has_avail_variant:
+                                        logger.info(
+                                            "[casio] Shopify .js reports %s is sold out; overriding in_stock=False",
+                                            handle,
+                                        )
+                                        result.in_stock = False
+                            except Exception as js_err:
+                                logger.debug("[casio] Shopify .js check error for %s: %s", handle, js_err)
+
                         return result
 
             except Exception as exc:
@@ -632,6 +650,9 @@ class CasioScraper(BaseScraper):
                                     r_prod = await auth_client.get(p_url)
                                     if r_prod.status_code == 200:
                                         s_prod = BeautifulSoup(r_prod.text, "html.parser")
+                                        # Strict stock check: If the item is sold out, skip immediately
+                                        if not self._extract_stock(s_prod):
+                                            return None
                                         s_el = s_prod.select_one(
                                             ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
                                         )
@@ -671,11 +692,32 @@ class CasioScraper(BaseScraper):
         return list(deals_map.values())
 
     def _extract_stock(self, soup: BeautifulSoup) -> bool:
-        """Check for Add to Cart or Sold Out button."""
-        for button in soup.find_all(["button", "input", "span"]):
+        """Check for Add to Cart or Sold Out button with high precision."""
+        # 1. First priority: Target the canonical Shopify Product Form submit button
+        add_btn = soup.select_one(
+            'button[name="add"], .product-form__submit, button[id*="ProductSubmitButton"], button.product__submit__add, button[data-main-add-to-cart-btn], .sticky-add-btn'
+        )
+        if add_btn:
+            is_disabled = add_btn.has_attr("disabled") or "disabled" in add_btn.get("class", [])
+            btn_text = add_btn.get_text(" ", strip=True).lower()
+            if is_disabled or any(kw in btn_text for kw in self.out_of_stock_keywords):
+                return False
+            if "add to cart" in btn_text or "buy now" in btn_text:
+                return True
+
+        # 2. Check for explicit out-of-stock badges / messages inside product info container
+        prod_container = soup.select_one(".product__info-container, .product-single, .product")
+        if prod_container:
+            c_text = prod_container.get_text(" ", strip=True).lower()
+            if any(kw in c_text for kw in self.out_of_stock_keywords):
+                return False
+
+        # 3. Fallback to scanning buttons only (not arbitrary span/input tags)
+        for button in soup.find_all("button"):
             text = button.get_text(" ", strip=True).lower()
             if any(kw in text for kw in self.out_of_stock_keywords):
                 return False
             if "add to cart" in text or "buy now" in text:
                 return True
+
         return super()._extract_stock(soup)
