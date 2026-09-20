@@ -23,7 +23,7 @@ import sys
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import httpx
 from pydantic import BaseModel
@@ -136,7 +136,13 @@ async def root(request: Request):
     clean = extract_path(request)
 
     # Route based on rewritten target if applicable
-    if "cron" in clean:
+    if "history" in clean:
+        match = re.search(r"products/(\d+)/history", clean)
+        if match:
+            prod_id = int(match.group(1))
+            rng = request.query_params.get("range") or request.query_params.get("timeframe") or "weekly"
+            return await get_product_price_history(prod_id, timeframe=rng)
+    elif "cron" in clean:
         return await cron_sweep(request)
     elif "trigger-runner" in clean or "trigger_runner" in clean:
         return await trigger_github_runner(request)
@@ -148,6 +154,14 @@ async def root(request: Request):
         return await get_dashboard_data()
     elif clean == "api/status":
         return await get_status()
+    elif "sweep" in clean and request.method == "POST":
+        return await manual_deal_sweep()
+    elif re.search(r"products/(\d+)/check", clean) and request.method == "POST":
+        match = re.search(r"products/(\d+)/check", clean)
+        return await check_single_product(int(match.group(1)))
+    elif re.search(r"products/(\d+)/toggle", clean) and request.method == "POST":
+        match = re.search(r"products/(\d+)/toggle", clean)
+        return await toggle_single_product(int(match.group(1)))
 
     # If requested by a browser or accessing root/dashboard, return HTML with CDN caching
     if is_browser_request(request) or not clean or clean in ("dashboard", "index", "index.py", "api", "api/index", "api/index.py"):
@@ -392,7 +406,10 @@ async def delete_single_product(product_id: int):
 
 
 @app.get("/api/products/{product_id}/history")
-async def get_product_price_history(product_id: int, range: str = "weekly"):
+@app.get("/products/{product_id}/history")
+@app.get("/api/index.py/products/{product_id}/history")
+@app.get("/api/index.py/api/products/{product_id}/history")
+async def get_product_price_history(product_id: int, timeframe: str = Query(default="weekly", alias="range")):
     """Fetch structured price history with timeframe filtering (hourly, weekly, monthly, yearly)."""
     db = get_database(settings)
     await db.initialize()
@@ -404,7 +421,7 @@ async def get_product_price_history(product_id: int, range: str = "weekly"):
         raw_logs = await db.price_history(product_id, limit=500)
         # raw_logs is [(price, timestamp), ...] newest first
         now = datetime.now(timezone.utc)
-        range_lower = (range or "weekly").lower()
+        range_lower = (timeframe or "weekly").lower()
 
         if range_lower in ("hourly", "24h", "day"):
             cutoff = now - timedelta(hours=24)
@@ -437,18 +454,36 @@ async def get_product_price_history(product_id: int, range: str = "weekly"):
                     "formatted_time": dt.strftime(date_fmt),
                 })
 
-        # If points are sparse, add fallback points so the line chart renders cleanly
+        # If strict cutoff produced no points but raw logs exist, fallback to all available logs
+        if not points and raw_logs:
+            for price, ts_str in reversed(raw_logs):
+                try:
+                    clean_ts = ts_str.replace("Z", "+00:00")
+                    if "+" not in clean_ts and "-" not in clean_ts[10:]:
+                        dt = datetime.fromisoformat(clean_ts).replace(tzinfo=timezone.utc)
+                    else:
+                        dt = datetime.fromisoformat(clean_ts)
+                    points.append({
+                        "timestamp": dt.isoformat(),
+                        "price": float(price),
+                        "formatted_time": dt.strftime(date_fmt),
+                    })
+                except Exception:
+                    continue
+
+        # If points are still empty, use product's recorded prices
         if not points:
-            if product.initial_price:
+            ref_price = product.current_price or product.initial_price
+            if ref_price:
+                earlier = now - timedelta(days=7 if "week" in range_lower else 1)
                 points.append({
-                    "timestamp": (now - timedelta(hours=6)).isoformat(),
-                    "price": float(product.initial_price),
-                    "formatted_time": (now - timedelta(hours=6)).strftime(date_fmt),
+                    "timestamp": earlier.isoformat(),
+                    "price": float(ref_price),
+                    "formatted_time": earlier.strftime(date_fmt),
                 })
-            if product.current_price:
                 points.append({
                     "timestamp": now.isoformat(),
-                    "price": float(product.current_price),
+                    "price": float(ref_price),
                     "formatted_time": now.strftime(date_fmt),
                 })
         elif len(points) == 1:
@@ -459,25 +494,39 @@ async def get_product_price_history(product_id: int, range: str = "weekly"):
                 "formatted_time": earlier.strftime(date_fmt),
             })
 
-        prices = [p["price"] for p in points if p.get("price") is not None]
-        min_p = min(prices) if prices else product.current_price
-        max_p = max(prices) if prices else product.current_price
+        # Downsample evenly to at most 60 points if history is very dense
+        if len(points) > 60:
+            step = len(points) / 58.0
+            downsampled = [points[0]]
+            for i in range(1, 57):
+                idx = int(i * step)
+                if 0 <= idx < len(points) and points[idx] not in downsampled:
+                    downsampled.append(points[idx])
+            if points[-1] not in downsampled:
+                downsampled.append(points[-1])
+            points = downsampled
 
-        return {
-            "status": "success",
-            "product_id": product_id,
-            "title": product.title,
-            "platform": product.platform,
-            "url": product.url,
-            "range": range_lower,
-            "current_price": product.current_price,
-            "target_price": product.target_price,
-            "initial_price": product.initial_price,
-            "min_price": min_p,
-            "max_price": max_p,
-            "total_points": len(points),
-            "points": points,
-        }
+        prices = [p["price"] for p in points if p.get("price") is not None]
+        min_p = min(prices) if prices else (product.current_price or product.initial_price)
+        max_p = max(prices) if prices else (product.current_price or product.initial_price)
+
+        return JSONResponse(
+            content={
+                "status": "success",
+                "product_id": product_id,
+                "title": product.title,
+                "platform": product.platform,
+                "url": product.url,
+                "range": range_lower,
+                "current_price": product.current_price,
+                "target_price": product.target_price,
+                "initial_price": product.initial_price,
+                "min_price": min_p,
+                "max_price": max_p,
+                "total_points": len(points),
+                "points": points,
+            }
+        )
     finally:
         await db.close()
 

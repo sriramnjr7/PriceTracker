@@ -2524,6 +2524,32 @@
       currentChartProductId = productId;
       const modal = document.getElementById("price-history-modal");
       if (modal) modal.classList.add("is-open");
+
+      // Instant pre-population from cached rawProductsList
+      const p = (typeof rawProductsList !== "undefined" && Array.isArray(rawProductsList))
+        ? rawProductsList.find(x => Number(x.id) === Number(productId))
+        : null;
+      if (p) {
+        const titleEl = document.getElementById("history-modal-title");
+        const platformEl = document.getElementById("chart-modal-platform");
+        const currEl = document.getElementById("chart-stat-current");
+        const tgtEl = document.getElementById("chart-stat-target");
+        if (titleEl) titleEl.textContent = p.title || "Product Price History";
+        if (platformEl) {
+          const plat = (p.platform || "Retailer").toLowerCase();
+          platformEl.textContent = plat;
+          platformEl.className = `platform-badge ${plat.includes("casio") ? "badge-casio" : plat.includes("flipkart") ? "badge-flipkart" : "badge-amazon"}`;
+        }
+        if (currEl) {
+          currEl.textContent = (p.current_price && p.current_price > 0)
+            ? `₹${Number(p.current_price).toLocaleString('en-IN')}`
+            : "Out of Stock";
+        }
+        if (tgtEl) {
+          tgtEl.textContent = p.target_price ? `₹${Number(p.target_price).toLocaleString('en-IN')}` : "—";
+        }
+      }
+
       await loadPriceHistoryData(productId, currentChartTimeframe);
     }
 
@@ -2609,6 +2635,29 @@
       const labels = points.map(p => p.formatted_time || p.timestamp);
       const prices = points.map(p => p.price);
 
+      // Smart Y-axis margin scaling for single-value or tight price bands
+      const validPrices = prices.filter(p => typeof p === "number" && !isNaN(p));
+      const allVals = [...validPrices];
+      if (data.target_price && !isNaN(Number(data.target_price))) {
+        allVals.push(Number(data.target_price));
+      }
+
+      let yMin = undefined;
+      let yMax = undefined;
+      if (allVals.length > 0) {
+        const minVal = Math.min(...allVals);
+        const maxVal = Math.max(...allVals);
+        if (minVal === maxVal) {
+          const pad = minVal > 0 ? minVal * 0.12 : 500;
+          yMin = Math.max(0, Math.floor(minVal - pad));
+          yMax = Math.ceil(maxVal + pad);
+        } else {
+          const pad = (maxVal - minVal) * 0.15;
+          yMin = Math.max(0, Math.floor(minVal - pad));
+          yMax = Math.ceil(maxVal + pad);
+        }
+      }
+
       const ctx = canvas.getContext("2d");
       const gradient = ctx.createLinearGradient(0, 0, 0, 240);
       gradient.addColorStop(0, "rgba(59, 130, 246, 0.35)");
@@ -2626,7 +2675,7 @@
           pointBackgroundColor: "#3b82f6",
           pointBorderColor: "#ffffff",
           pointBorderWidth: 1.5,
-          pointRadius: points.length > 25 ? 2 : 4,
+          pointRadius: points.length > 30 ? 2 : 4,
           pointHoverRadius: 6,
         }
       ];
@@ -2635,7 +2684,7 @@
       if (data.target_price && points.length > 0) {
         datasets.push({
           label: `Target Floor (₹${Number(data.target_price).toLocaleString('en-IN')})`,
-          data: Array(points.length).fill(data.target_price),
+          data: Array(points.length).fill(Number(data.target_price)),
           borderColor: "#10b981",
           borderWidth: 1.5,
           borderDash: [5, 4],
@@ -2697,6 +2746,8 @@
               }
             },
             y: {
+              suggestedMin: yMin,
+              suggestedMax: yMax,
               grid: {
                 color: "rgba(255, 255, 255, 0.06)",
                 drawBorder: false,
