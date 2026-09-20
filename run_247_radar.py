@@ -96,6 +96,14 @@ async def run_single_pass() -> int:
 
         total = casio_alerts + tracked_alerts
         print(f"🎯 Total alerts sent: {total}\n")
+
+        # Check and dispatch periodic Telegram heartbeat if due
+        try:
+            from heartbeat import check_and_send_heartbeat
+            await check_and_send_heartbeat(radar.db, radar.notifier, settings)
+        except Exception as hb_exc:
+            logger.debug("Heartbeat check error: %s", hb_exc)
+
         return total
     finally:
         await radar.close()
@@ -117,8 +125,16 @@ async def run_repeating_sweep(repeats: int = 3, interval_seconds: int = 110) -> 
                 tracked_alerts = await tracker.run_once()
                 print(f"[{now_str}] ✅ Tracked items check: {tracked_alerts} alert(s).")
                 total_alerts += casio_alerts + tracked_alerts
+                
+                # Check periodic heartbeat
+                try:
+                    from heartbeat import check_and_send_heartbeat
+                    await check_and_send_heartbeat(radar.db, radar.notifier, settings)
+                except Exception as hb_exc:
+                    logger.debug("Heartbeat check error: %s", hb_exc)
             except Exception as exc:
                 logger.error("Error during runner pass #%s: %s", i, exc)
+
 
             if i < repeats:
                 print(f"⏳ Sleeping {interval_seconds}s until next pass in this runner...")

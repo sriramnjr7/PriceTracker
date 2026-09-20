@@ -261,17 +261,15 @@ class TelegramAssistant:
             await self.handle_command_remove(chat_id, text)
             return
 
-        # 4. /status
-        if text.startswith("/status"):
-            await self.send_reply(
-                chat_id,
-                "📡 *24/7 Radar Status: ACTIVE & MONITORING*\n\n"
-                "🤖 *AI Arbiter 1:* Cloudflare DeepSeek R1 (Primary)\n"
-                "🤖 *AI Arbiter 2:* Google Gemini 3.5 Flash Lite (Fallback)\n"
-                "🎯 *Categories Monitored:* 13 Universal Categories (Apple, Samsung, Nothing, Realme, Casio, Crocs, Quick Commerce)\n"
-                "⏰ *Sweep Cycle:* Every 5 minutes"
-            )
+        # 4. /status, /ping, /heartbeat
+        if text.startswith(("/status", "/ping", "/heartbeat")):
+            prods = await self.db.get_products(active_only=True)
+            from heartbeat import build_heartbeat_message
+            interval_h = getattr(self.config, "heartbeat_interval_hours", 12.0)
+            hb_msg = build_heartbeat_message(active_count=len(prods), heartbeat_interval_hours=interval_h)
+            await self.send_reply(chat_id, hb_msg)
             return
+
 
         # 5. Direct URL check
         url_match = re.search(r"(https?://[^\s]+)", text)

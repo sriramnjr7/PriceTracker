@@ -98,6 +98,15 @@ class Settings:
     default_pincode: str = field(default_factory=lambda: os.getenv("DEFAULT_PINCODE", "560103"))
     backup_pincode: str = field(default_factory=lambda: os.getenv("BACKUP_PINCODE", "635109"))
 
+    # --- Link Optimization & Heartbeat Monitor ---------------------------
+    # By default, use direct product links to eliminate redirect latency & enable instant app opening
+    use_url_shortener: bool = field(default_factory=lambda: _env_bool("USE_URL_SHORTENER", False))
+    # Periodic Telegram heartbeat message interval in hours (e.g. 1, 12, 24)
+    heartbeat_interval_hours: float = field(
+        default_factory=lambda: float(os.getenv("HEARTBEAT_INTERVAL_HOURS", "12"))
+    )
+
+
     pincode_map: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "560103": {"lat": 12.9298, "lon": 77.6848, "city": "Bengaluru", "pincode": "560103"},

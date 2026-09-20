@@ -137,7 +137,11 @@ class Notifier:
         is_restock: bool = False,
     ) -> bool:
         """Build + send an alert for a product whose threshold was hit."""
-        buy_url = await self.shorten_url(product.url)
+        if getattr(self.config, "use_url_shortener", False):
+            buy_url = await self.shorten_url(product.url)
+        else:
+            buy_url = product.url
+
         message = build_message(
             title=product.title or product.url,
             old_price=old_price if old_price is not None else product.initial_price,
