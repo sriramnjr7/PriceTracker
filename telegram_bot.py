@@ -19,7 +19,14 @@ import httpx
 from config import Settings, settings
 from database import Database, Product, get_database
 from gemini_validator import GeminiDealValidator
-from scrapers import get_scraper, detect_platform, resolve_platform, normalize_product_url
+from scrapers import (
+    get_scraper,
+    detect_platform,
+    resolve_platform,
+    resolve_platform_and_url,
+    normalize_product_url,
+    extract_fallback_title,
+)
 
 logger = logging.getLogger("telegram_bot")
 
@@ -67,18 +74,87 @@ class TelegramAssistant:
 
     async def handle_url_tracking(self, chat_id: str | int, url: str, target_price: Optional[float]) -> None:
         """Handle direct product URL tracking with canonical normalization."""
-        platform = await resolve_platform(url)
+        platform, resolved_url = await resolve_platform_and_url(url)
         if not platform:
             await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
             return
 
-        norm_url = normalize_product_url(url, platform)
+        norm_url = normalize_product_url(resolved_url, platform)
+
+        # Check if already tracked in DB to avoid duplicate insertion or redundant scraping
+        try:
+            products = await self.db.get_products(active_only=False)
+            existing = next((p for p in products if p.url == norm_url), None)
+        except Exception:
+            existing = None
+
+        if existing:
+            if target_price is not None and target_price != existing.target_price:
+                await self.db.add_product(
+                    url=norm_url,
+                    platform=platform,
+                    target_price=target_price,
+                    initial_price=existing.initial_price,
+                    title=existing.title,
+                )
+                curr_display = f"₹{existing.current_price:g}" if existing.current_price else "Pending check"
+                await self.send_reply(
+                    chat_id,
+                    f"🎯 *Target Price Updated!*\n\n"
+                    f"🆔 *ID:* #{existing.id}\n"
+                    f"📦 *Product:* {existing.title}\n"
+                    f"🏪 *Platform:* {platform.title()}\n"
+                    f"💰 *Current Price:* {curr_display}\n"
+                    f"🎯 *New Target:* ₹{target_price:g}\n\n"
+                    f"Your alert target has been successfully updated!"
+                )
+                return
+            else:
+                curr_display = f"₹{existing.current_price:g}" if existing.current_price else "Pending check"
+                target_display = f"₹{existing.target_price:g}" if existing.target_price else "Auto"
+                await self.send_reply(
+                    chat_id,
+                    f"ℹ️ *Already Tracked!*\n\n"
+                    f"🆔 *ID:* #{existing.id}\n"
+                    f"📦 *Product:* {existing.title}\n"
+                    f"🏪 *Platform:* {platform.title()}\n"
+                    f"💰 *Current Price:* {curr_display}\n"
+                    f"🎯 *Alert Target:* {target_display}\n\n"
+                    f"This product is already active in your radar!"
+                )
+                return
+
         await self.send_reply(chat_id, f"🔍 Inspecting product on *{platform.title()}*...")
         try:
             scraper = get_scraper(platform, self.config)
-            res = await scraper.scrape(norm_url)
+            # Bound scraping to 6.0 seconds so serverless / webhook never exceeds timeout
+            try:
+                res = await asyncio.wait_for(scraper.scrape(norm_url), timeout=6.0)
+            except (asyncio.TimeoutError, Exception) as scrape_exc:
+                logger.warning("[%s] Initial fast scrape timed out or failed (%s); queueing background verification", platform, scrape_exc)
+                fallback_title = extract_fallback_title(norm_url, platform)
+                target = target_price or 1.0
+                prod_id = await self.db.add_product(
+                    url=norm_url,
+                    platform=platform,
+                    target_price=target,
+                    initial_price=None,
+                    title=fallback_title,
+                )
+                target_display = f"₹{target:g}" if target_price else "Auto (on first price check)"
+                await self.send_reply(
+                    chat_id,
+                    f"✅ *Tracking Added!*\n\n"
+                    f"🆔 *ID:* #{prod_id}\n"
+                    f"📦 *Product:* {fallback_title}\n"
+                    f"🏪 *Platform:* {platform.title()}\n"
+                    f"🎯 *Alert Target:* {target_display}\n\n"
+                    f"⏳ *Note:* The retailer page is taking longer to verify. Product has been registered and live price verification will complete in the background shortly!"
+                )
+                return
+
             is_out_of_stock = (res.price is None or res.price <= 0 or not res.in_stock)
-            title = res.title or norm_url.split("/")[-1][:40]
+            title = res.title or extract_fallback_title(norm_url, platform)
 
             if is_out_of_stock:
                 current_price = None

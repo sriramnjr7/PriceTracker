@@ -172,3 +172,105 @@ async def test_handle_url_tracking_out_of_stock(bot, mock_db):
         assert any("Restock Tracker Added" in r for r in replies)
         assert any("Currently Out of Stock" in r for r in replies)
 
+
+@pytest.mark.asyncio
+async def test_handle_url_tracking_shortlink_expansion(bot, mock_db):
+    """Ensure shortlinks (e.g. amzn.in/d/...) are resolved and canonicalized."""
+    mock_scraper = MagicMock()
+    mock_scraper.scrape = AsyncMock(return_value=ScrapeResult(
+        title="Crucial Basics 8GB DDR4-3200 SODIMM",
+        price=6299.0,
+        in_stock=True,
+        platform="amazon",
+        url="https://www.amazon.in/dp/B0CWLSP9FG",
+    ))
+
+    with patch("telegram_bot.resolve_platform_and_url", AsyncMock(return_value=("amazon", "https://www.amazon.in/dp/B0CWLSP9FG?ref=xyz"))), \
+         patch("telegram_bot.get_scraper", return_value=mock_scraper):
+        await bot.handle_url_tracking(
+            chat_id=123,
+            url="https://amzn.in/d/0297KXsv",
+            target_price=5000.0,
+        )
+        mock_db.add_product.assert_called_with(
+            url="https://www.amazon.in/dp/B0CWLSP9FG",
+            platform="amazon",
+            target_price=5000.0,
+            initial_price=6299.0,
+            title="Crucial Basics 8GB DDR4-3200 SODIMM",
+        )
+        replies = [str(call) for call in bot.send_reply.call_args_list]
+        assert any("Tracking Added Successfully" in r for r in replies)
+
+
+@pytest.mark.asyncio
+async def test_handle_url_tracking_duplicate_detected(bot, mock_db):
+    """Ensure already tracked products are not re-scraped or duplicated."""
+    mock_db.get_products = AsyncMock(return_value=[
+        Product(
+            id=10,
+            url="https://www.amazon.in/dp/B0CWLSP9FG",
+            platform="amazon",
+            title="Crucial Basics 8GB DDR4-3200 SODIMM",
+            initial_price=6299.0,
+            current_price=6299.0,
+            target_price=5000.0,
+            percentage_drop_target=None,
+            last_checked=None,
+            is_active=True,
+            last_notified_price=None,
+        )
+    ])
+
+    mock_scraper = MagicMock()
+    mock_scraper.scrape = AsyncMock()
+
+    with patch("telegram_bot.get_scraper", return_value=mock_scraper):
+        await bot.handle_url_tracking(
+            chat_id=123,
+            url="https://www.amazon.in/dp/B0CWLSP9FG",
+            target_price=None,
+        )
+        # Scraper should NOT be called since it is already tracked
+        assert not mock_scraper.scrape.called
+        replies = [str(call) for call in bot.send_reply.call_args_list]
+        assert any("Already Tracked" in r for r in replies)
+
+
+@pytest.mark.asyncio
+async def test_handle_url_tracking_timeout_fallback(bot, mock_db):
+    """Ensure slow retailer responses fall back gracefully without blocking or failing."""
+    mock_scraper = MagicMock()
+    async def slow_scrape(url):
+        import asyncio
+        await asyncio.sleep(10.0)
+        return None
+    mock_scraper.scrape = slow_scrape
+
+    with patch("telegram_bot.get_scraper", return_value=mock_scraper):
+        await bot.handle_url_tracking(
+            chat_id=123,
+            url="https://www.amazon.in/dp/B0CWLSP9FG",
+            target_price=4500.0,
+        )
+        mock_db.add_product.assert_called_with(
+            url="https://www.amazon.in/dp/B0CWLSP9FG",
+            platform="amazon",
+            target_price=4500.0,
+            initial_price=None,
+            title="Tracked Product (Amazon)",
+        )
+        replies = [str(call) for call in bot.send_reply.call_args_list]
+        assert any("Tracking Added" in r for r in replies)
+        assert any("background shortly" in r for r in replies)
+
+
+def test_telegram_webhook_deduplication():
+    """Ensure duplicate update_ids are caught and ignored."""
+    from api.index import _record_and_check_duplicate, _PROCESSED_UPDATES
+    _PROCESSED_UPDATES.clear()
+    assert _record_and_check_duplicate(1001) is False
+    assert _record_and_check_duplicate(1001) is True
+    assert _record_and_check_duplicate(1002) is False
+
+

@@ -55,6 +55,32 @@ HOST_MAP = {
 }
 
 
+SHORTLINK_DOMAINS = (
+    "amzn.in",
+    "amzn.to",
+    "fkrt.co",
+    "fkrt.it",
+    "myntr.it",
+    "ajio.page.link",
+    "bit.ly",
+    "tinyurl.com",
+    "t.co",
+)
+
+
+def is_shortlink(url: str) -> bool:
+    """Return True if URL is a known redirector/shortlink service or short pattern."""
+    import re
+    host = (urlparse(url).hostname or "").lower()
+    if any(host == d or host.endswith("." + d) for d in SHORTLINK_DOMAINS):
+        return True
+    if "dl.flipkart.com" in host and "/s/" in url:
+        return True
+    if "amazon" in host and re.search(r"/d/[a-zA-Z0-9]+", url):
+        return True
+    return False
+
+
 def detect_platform(url: str, safe: bool = False) -> Optional[str]:
     """Map a URL's hostname to a platform slug, or raise ValueError (or return None if safe=True)."""
     host = (urlparse(url).hostname or "").lower()
@@ -68,19 +94,45 @@ def detect_platform(url: str, safe: bool = False) -> Optional[str]:
     )
 
 
-async def resolve_platform(url: str) -> Optional[str]:
-    """Detect platform, following redirects for short links (amzn.in, fkrt.co...)."""
-    plat = detect_platform(url, safe=True)
+async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
+    """Detect platform and expand any shortlinks to their final canonical destination URL."""
+    clean = url.strip()
+    if is_shortlink(clean):
+        try:
+            async with httpx.AsyncClient(
+                follow_redirects=True,
+                timeout=5.0,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            ) as client:
+                resp = await client.get(clean)
+                final_url = str(resp.url)
+                plat = detect_platform(final_url, safe=True)
+                if plat:
+                    return plat, final_url
+        except Exception:
+            pass
+
+    plat = detect_platform(clean, safe=True)
     if plat:
-        return plat
+        return plat, clean
+
     try:
         async with httpx.AsyncClient(
-            follow_redirects=True, timeout=15, headers={"User-Agent": "Mozilla/5.0"}
+            follow_redirects=True,
+            timeout=5.0,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         ) as client:
-            response = await client.get(url)
-            return detect_platform(str(response.url), safe=True)
+            resp = await client.get(clean)
+            final_url = str(resp.url)
+            return detect_platform(final_url, safe=True), final_url
     except Exception:
-        return None
+        return None, clean
+
+
+async def resolve_platform(url: str) -> Optional[str]:
+    """Detect platform, following redirects for short links (amzn.in, fkrt.co...)."""
+    plat, _ = await resolve_platform_and_url(url)
+    return plat
 
 
 def get_scraper(platform: str, config=None) -> BaseScraper:
@@ -128,6 +180,8 @@ def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
     elif p == "flipkart":
         # Keep product path, preserve pid if present
         base = clean.split("?")[0].rstrip("/")
+        if "dl.flipkart.com/dl/" in base:
+            base = base.replace("dl.flipkart.com/dl/", "www.flipkart.com/")
         m = re.search(r"[?&]pid=([A-Za-z0-9]+)", clean)
         if m:
             return f"{base}?pid={m.group(1)}"
@@ -163,6 +217,7 @@ __all__ = [
     "ScrapeResult",
     "detect_platform",
     "resolve_platform",
+    "resolve_platform_and_url",
     "get_scraper",
     "normalize_product_url",
     "extract_fallback_title",

@@ -45,6 +45,30 @@ async def test_auth_login_default_email_fallback():
 
 
 @pytest.mark.asyncio
+async def test_auth_login_vercel_rewrites():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # 1. Via _vercel_path query param
+        resp = await client.post(
+            "/api/index.py?_vercel_path=api/auth/login",
+            json={"email": "custom@example.com", "password": settings.dashboard_password}
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+        assert resp.json()["email"] == "custom@example.com"
+
+        # 2. Via x-vercel-matched-path header
+        resp2 = await client.post(
+            "/api/index.py",
+            headers={"x-vercel-matched-path": "/api/auth/login"},
+            json={"email": "custom@example.com", "password": settings.dashboard_password}
+        )
+        assert resp2.status_code == 200
+        assert resp2.json()["ok"] is True
+
+
+
+@pytest.mark.asyncio
 async def test_product_price_history_endpoint():
     from unittest.mock import patch, AsyncMock, MagicMock
     from database import Product

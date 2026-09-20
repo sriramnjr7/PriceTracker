@@ -124,19 +124,27 @@ async def api_auth_login(payload: LoginPayload):
 # CORE DASHBOARD & STATUS ROUTES
 # ==========================================
 
-@app.get("/")
-@app.get("/dashboard")
-@app.get("/api")
-@app.get("/api/")
-@app.get("/api/index")
-@app.get("/api/index.py")
-@app.get("/index.py")
+@app.api_route("/", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/dashboard", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/api", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/api/", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/api/index", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/api/index.py", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/index.py", methods=["GET", "POST", "HEAD", "OPTIONS"])
 async def root(request: Request):
     """Serve Dashboard HTML to browsers or status JSON to API callers."""
     clean = extract_path(request)
+    method = request.method.upper()
 
     # Route based on rewritten target if applicable
-    if "history" in clean:
+    if "auth" in clean:
+        if method == "POST":
+            data = await request.json()
+            payload = LoginPayload(**data)
+            return await api_auth_login(payload)
+        elif method == "OPTIONS":
+            return JSONResponse(content={"ok": True})
+    elif "history" in clean:
         match = re.search(r"products/(\d+)/history", clean)
         if match:
             prod_id = int(match.group(1))
@@ -154,14 +162,20 @@ async def root(request: Request):
         return await get_dashboard_data()
     elif clean == "api/status":
         return await get_status()
-    elif "sweep" in clean and request.method == "POST":
+    elif "sweep" in clean and method == "POST":
         return await manual_deal_sweep()
-    elif re.search(r"products/(\d+)/check", clean) and request.method == "POST":
+    elif re.search(r"products/(\d+)/check", clean) and method == "POST":
         match = re.search(r"products/(\d+)/check", clean)
         return await check_single_product(int(match.group(1)))
-    elif re.search(r"products/(\d+)/toggle", clean) and request.method == "POST":
+    elif re.search(r"products/(\d+)/toggle", clean) and method == "POST":
         match = re.search(r"products/(\d+)/toggle", clean)
         return await toggle_single_product(int(match.group(1)))
+    elif clean in ("api/products", "products"):
+        if method == "POST":
+            data = await request.json()
+            payload = AddProductPayload(**data)
+            return await api_add_product(payload)
+        return await get_dashboard_data()
 
     # If requested by a browser or accessing root/dashboard, return HTML with CDN caching
     if is_browser_request(request) or not clean or clean in ("dashboard", "index", "index.py", "api", "api/index", "api/index.py"):
@@ -559,6 +573,25 @@ async def manual_deal_sweep():
 # TELEGRAM & CRON SWEEPER
 # ==========================================
 
+_PROCESSED_UPDATES: set[int] = set()
+_PROCESSED_UPDATES_ORDER: list[int] = []
+_MAX_PROCESSED_CACHE = 1000
+
+
+def _record_and_check_duplicate(update_id: Optional[int]) -> bool:
+    """Return True if update_id was already processed, else record it in a sliding window cache."""
+    if update_id is None:
+        return False
+    if update_id in _PROCESSED_UPDATES:
+        return True
+    _PROCESSED_UPDATES.add(update_id)
+    _PROCESSED_UPDATES_ORDER.append(update_id)
+    if len(_PROCESSED_UPDATES_ORDER) > _MAX_PROCESSED_CACHE:
+        oldest = _PROCESSED_UPDATES_ORDER.pop(0)
+        _PROCESSED_UPDATES.discard(oldest)
+    return False
+
+
 @app.post("/telegram")
 @app.post("/api/telegram")
 @app.post("/api/index.py/telegram")
@@ -569,26 +602,41 @@ async def telegram_webhook(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
+    update_id = update.get("update_id")
+    if _record_and_check_duplicate(update_id):
+        logger.info("Ignoring duplicate Telegram update_id %s", update_id)
+        return {"ok": True, "note": "duplicate update skipped"}
+
     message = update.get("message")
     if not message:
         return {"ok": True, "note": "No message field in update"}
 
-    logger.info("Received Telegram message: %s", message.get("text", "")[:40])
+    logger.info("Received Telegram message (update_id=%s): %s", update_id, message.get("text", "")[:40])
 
     db = get_database(settings)
     await db.initialize()
     assistant = TelegramAssistant(settings, db=db)
 
     try:
-        await assistant.handle_message(message)
+        # Strict 9.0s timeout guarantees Vercel NEVER returns a 504 Gateway Timeout (maxDuration is 15s)
+        await asyncio.wait_for(assistant.handle_message(message), timeout=9.0)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "Telegram webhook processing timed out after 9.0s for update_id %s; returning 200 OK to prevent Telegram retry loop",
+            update_id,
+        )
     except Exception as exc:
         logger.error("Error processing Telegram message: %s", exc)
         chat = message.get("chat", {})
         if chat.get("id"):
-            await assistant.send_reply(chat["id"], f"⚠️ Error processing request: {exc}")
+            try:
+                await assistant.send_reply(chat["id"], f"⚠️ Error processing request: {exc}")
+            except Exception:
+                pass
     finally:
         await db.close()
 
+    # ALWAYS return 200 OK so Telegram acknowledges the update and never enters a retry loop
     return {"ok": True}
 
 
@@ -773,6 +821,15 @@ async def catch_all(request: Request, full_path: str):
     """Fallback router ensuring Vercel rewrites dispatch to the right handler."""
     clean = extract_path(request, full_path)
     method = request.method.upper()
+
+    # 0. Auth Login
+    if "auth" in clean:
+        if method == "POST":
+            data = await request.json()
+            payload = LoginPayload(**data)
+            return await api_auth_login(payload)
+        elif method == "OPTIONS":
+            return JSONResponse(content={"ok": True})
 
     # 1. Telegram Webhook
     if "telegram" in clean:
