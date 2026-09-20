@@ -67,7 +67,18 @@ class Tracker:
         ):
             return await self._check_flipkart_variants(product)
 
-        # 3. Standard single product check
+        # 3. Specialized handling for Casio Myntra Catalog sweeps
+        if product.platform == "myntra" and ("/watches" in product.url or "category: casio" in (product.title or "").lower()):
+            return await self._check_myntra_casio(product)
+
+        # 4. Specialized handling for Casio Flipkart Catalog sweeps
+        if product.platform == "flipkart" and (
+            "category: casio" in (product.title or "").lower()
+            or ("casio" in product.url.lower() and "/watches" in product.url)
+        ):
+            return await self._check_flipkart_casio(product)
+
+        # 5. Standard single product check
         try:
             scraper = get_scraper(product.platform, self.config)
             result = await scraper.scrape(product.url)
@@ -158,6 +169,120 @@ class Tracker:
                 )
 
         if notified_any:
+            await self.db.set_last_notified(product.id, deals[0]["price"])
+        return notified_any
+
+    async def _check_myntra_casio(self, product) -> bool:
+        """Scan Myntra for genuine Casio deals matching target discount (>= 60%)."""
+        scraper = get_scraper("myntra", self.config)
+        min_discount = product.percentage_drop_target or 60.0
+
+        deals = await scraper.scan_deals(
+            query="watches",
+            min_discount=min_discount,
+            custom_url=product.url,
+            brand="Casio",
+        )
+        best_price = min((d["price"] for d in deals), default=None)
+
+        if deals:
+            best_deal = max(deals, key=lambda d: d.get("discount_percent", 0))
+            clean_name = best_deal["title"][:35]
+            updated_title = f"[Category: Casio Myntra] Best: {clean_name} ({best_deal['discount_percent']:.0f}% OFF)"
+            await self.db.update_price(product.id, best_price, title=updated_title)
+        else:
+            updated_title = "[Category: Casio Myntra] (0 active deals currently)"
+            await self.db.update_price(product.id, None, title=updated_title)
+
+        if not deals:
+            logger.info("[myntra] 0 Casio deals matching >= %s%% discount", min_discount)
+            return False
+
+        notified_any = False
+        for deal in deals:
+            if product.target_price is not None and deal["price"] > product.target_price:
+                continue
+
+            if await self.db.is_deal_recently_notified(deal["url"], minutes=20, current_price=deal["price"]):
+                continue
+
+            deal_msg = (
+                f"🚨 *Casio Myntra STEAL DEAL ({deal['discount_percent']:.0f}% OFF!)* 🚨\n"
+                f"📦 *Watch:* {deal['title']}\n"
+                f"📉 *Deal Price:* ₹{deal['price']:g} (MRP: ₹{deal['mrp']:g})\n"
+                f"🎯 *Discount:* {deal['discount_percent']:.1f}% OFF (Target: >={min_discount}%)\n"
+                f"🛒 *Buy Now:* {deal['url']}"
+            )
+            logger.info("[myntra] Found %s%% Casio deal: %s at INR %s", deal["discount_percent"], deal["title"], deal["price"])
+            if await self.notifier.send_message(deal_msg):
+                notified_any = True
+                await self.db.log_deal_alert(
+                    product_url=deal["url"],
+                    title=deal["title"],
+                    price=deal["price"],
+                    effective_price=deal["price"],
+                    discount_percent=deal["discount_percent"],
+                    platform="myntra",
+                )
+
+        if notified_any and deals:
+            await self.db.set_last_notified(product.id, deals[0]["price"])
+        return notified_any
+
+    async def _check_flipkart_casio(self, product) -> bool:
+        """Scan Flipkart for genuine Casio deals matching target discount (>= 60%)."""
+        scraper = get_scraper("flipkart", self.config)
+        min_discount = product.percentage_drop_target or 60.0
+
+        deals = await scraper.scan_deals(
+            query="watches",
+            min_discount=min_discount,
+            custom_url=product.url,
+            brand="Casio",
+        )
+        best_price = min((d["price"] for d in deals), default=None)
+
+        if deals:
+            best_deal = max(deals, key=lambda d: d.get("discount_percent", 0))
+            clean_name = best_deal["title"][:35]
+            updated_title = f"[Category: Casio Flipkart] Best: {clean_name} ({best_deal['discount_percent']:.0f}% OFF)"
+            await self.db.update_price(product.id, best_price, title=updated_title)
+        else:
+            updated_title = "[Category: Casio Flipkart] (0 active deals currently)"
+            await self.db.update_price(product.id, None, title=updated_title)
+
+        if not deals:
+            logger.info("[flipkart] 0 Casio deals matching >= %s%% discount", min_discount)
+            return False
+
+        notified_any = False
+        for deal in deals:
+            if product.target_price is not None and deal["price"] > product.target_price:
+                continue
+
+            if await self.db.is_deal_recently_notified(deal["url"], minutes=20, current_price=deal["price"]):
+                continue
+
+            deal_msg = (
+                f"🚨 *Casio Flipkart STEAL DEAL ({deal['discount_percent']:.0f}% OFF!)* 🚨\n"
+                f"📦 *Watch:* {deal['title']}\n"
+                f"📉 *Deal Price:* ₹{deal['price']:g} (MRP: ₹{deal['mrp']:g})\n"
+                f"🎯 *Discount:* {deal['discount_percent']:.1f}% OFF (Target: >={min_discount}%)\n"
+                f"🛒 *Buy Now:* {deal['url']}"
+            )
+            logger.info("[flipkart] Found %s%% Casio deal: %s at INR %s", deal["discount_percent"], deal["title"], deal["price"])
+            if await self.notifier.send_message(deal_msg):
+                notified_any = True
+                await self.db.log_deal_alert(
+                    product_url=deal["url"],
+                    title=deal["title"],
+                    price=deal["price"],
+                    effective_price=deal["price"],
+                    discount_percent=deal["discount_percent"],
+                    platform="flipkart",
+                )
+
+        if notified_any and deals:
             await self.db.set_last_notified(product.id, deals[0]["price"])
         return notified_any
 

@@ -41,7 +41,7 @@ async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 90):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"\n[{now_str}] ⚡ Starting Casio (Bhawar & Flipkart 70%+ / G300) Scan #{cycle_count}...")
         try:
-            alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
+            alerts = await radar.scan_all(only_platforms=["casio", "flipkart", "myntra"])
             print(f"[{now_str}] ✅ Casio Scan #{cycle_count} completed. ({alerts} alert(s) dispatched)")
         except Exception as exc:
             logger.error("Error during Casio scan #%s: %s", cycle_count, exc)
@@ -75,7 +75,7 @@ async def run_single_pass() -> int:
     try:
         try:
             casio_alerts = await asyncio.wait_for(
-                radar.scan_all(only_platforms=["casio", "flipkart"]),
+                radar.scan_all(only_platforms=["casio", "flipkart", "myntra"]),
                 timeout=90.0,
             )
             print(f"✅ Deal Radar scan completed: {casio_alerts} deal alert(s) dispatched.")

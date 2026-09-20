@@ -15,6 +15,8 @@ def mock_db():
     db.get_products = AsyncMock()
     db.update_price = AsyncMock()
     db.set_last_notified = AsyncMock()
+    db.is_deal_recently_notified = AsyncMock(return_value=False)
+    db.log_deal_alert = AsyncMock()
     return db
 
 
@@ -22,8 +24,10 @@ def mock_db():
 def mock_notifier():
     notifier = MagicMock(spec=Notifier)
     notifier.notify = AsyncMock(return_value=True)
+    notifier.send_message = AsyncMock(return_value=True)
     notifier.send_whatsapp = AsyncMock(return_value=True)
     return notifier
+
 
 
 def test_target_text_formatting():
@@ -131,3 +135,90 @@ async def test_run_once_aggregates_alerts(mock_db, mock_notifier):
     with patch.object(tracker, "check_product", side_effect=[True, False]):
         total_alerts = await tracker.run_once()
         assert total_alerts == 1
+
+
+@pytest.mark.asyncio
+async def test_check_myntra_casio_deals(mock_db, mock_notifier):
+    tracker = Tracker(mock_db, mock_notifier)
+    prod = Product(
+        id=36,
+        url="https://www.myntra.com/watches?f=Brand%3ACASIO",
+        platform="myntra",
+        title="[Category: Casio Myntra] Monitoring",
+        initial_price=1000.0,
+        current_price=1000.0,
+        target_price=None,
+        percentage_drop_target=60.0,
+        last_checked=None,
+        is_active=True,
+        last_notified_price=None,
+    )
+
+    fake_deals = [
+        {
+            "title": "Casio Vintage Silver A168W",
+            "price": 1195.0,
+            "mrp": 2995.0,
+            "discount_percent": 60.1,
+            "url": "https://www.myntra.com/watches/casio/a168w/buy",
+            "in_stock": True,
+            "scraped_brand": "Casio",
+        }
+    ]
+
+    mock_scraper = MagicMock()
+    mock_scraper.scan_deals = AsyncMock(return_value=fake_deals)
+
+    with patch("tracker.get_scraper", return_value=mock_scraper):
+        alerted = await tracker.check_product(prod)
+        assert alerted is True
+        mock_db.update_price.assert_called_once()
+        args, kwargs = mock_db.update_price.call_args
+        assert args[0] == 36
+        assert args[1] == 1195.0
+        assert "Best: Casio Vintage Silver A168W" in kwargs["title"]
+        mock_notifier.send_message.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_check_flipkart_casio_deals(mock_db, mock_notifier):
+    tracker = Tracker(mock_db, mock_notifier)
+    prod = Product(
+        id=37,
+        url="https://www.flipkart.com/watches/~cs-casio/pr?sid=r18,f13",
+        platform="flipkart",
+        title="[Category: Casio Flipkart] Monitoring",
+        initial_price=2000.0,
+        current_price=2000.0,
+        target_price=None,
+        percentage_drop_target=60.0,
+        last_checked=None,
+        is_active=True,
+        last_notified_price=None,
+    )
+
+    fake_deals = [
+        {
+            "title": "Casio G-Shock GA-2100 Black Carbon",
+            "price": 3999.0,
+            "mrp": 9995.0,
+            "discount_percent": 60.0,
+            "url": "https://www.flipkart.com/casio-g-shock/p/itm123",
+            "in_stock": True,
+            "scraped_brand": "Casio",
+        }
+    ]
+
+    mock_scraper = MagicMock()
+    mock_scraper.scan_deals = AsyncMock(return_value=fake_deals)
+
+    with patch("tracker.get_scraper", return_value=mock_scraper):
+        alerted = await tracker.check_product(prod)
+        assert alerted is True
+        mock_db.update_price.assert_called_once()
+        args, kwargs = mock_db.update_price.call_args
+        assert args[0] == 37
+        assert args[1] == 3999.0
+        assert "Best: Casio G-Shock GA-2100" in kwargs["title"]
+        mock_notifier.send_message.assert_called_once()
+

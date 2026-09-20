@@ -271,6 +271,27 @@ class FlipkartScraper(BaseScraper):
                                     scraped_brand = txt
                                     break
 
+                    # Strict Brand Enforcement: Discard sponsored non-brand cards (e.g. Guess / Tommy Hilfiger on Casio pages)
+                    if brand:
+                        target_brand = brand.lower().strip()
+                        card_text = card.get_text(" ", strip=True).lower()
+                        brand_match = (
+                            (scraped_brand and target_brand in scraped_brand.lower())
+                            or target_brand in title_lower
+                            or target_brand in card_text
+                            or (
+                                target_brand == "casio"
+                                and any(
+                                    k in title_lower or k in card_text
+                                    for k in ["g-shock", "gshock", "edifice", "baby-g", "vintage"]
+                                )
+                            )
+                        )
+                        if not brand_match:
+                            continue
+                        if not scraped_brand:
+                            scraped_brand = brand.title() if brand else None
+
                     # 3. Extract Price & MRP
                     prices = []
                     for el in card.find_all(True):

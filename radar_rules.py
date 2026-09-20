@@ -279,4 +279,32 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         negative_keywords=["case", "cover", "pouch", "strap", "cable only", "adapter", "protector", "skin"],
         is_active=False,
     ),
+
+    # 14. Casio Myntra 60%+ Steal Deals
+    RadarRule(
+        name="Casio Myntra 60%+ Steal Deals",
+        category="Watches",
+        query="casio watches",
+        brand="Casio",
+        platforms=["myntra"],
+        min_discount=60.0,
+        search_url_template={"myntra": "https://www.myntra.com/watches?f=Brand%3ACASIO"},
+        required_keywords=["casio", "g-shock", "gshock", "edifice", "vintage", "baby-g"],
+        negative_keywords=["strap", "band", "bezel", "protector", "film"],
+        is_active=True,
+    ),
+
+    # 15. Casio Flipkart 60%+ Steal Deals
+    RadarRule(
+        name="Casio Flipkart 60%+ Steal Deals",
+        category="Watches",
+        query="casio watches",
+        brand="Casio",
+        platforms=["flipkart"],
+        min_discount=60.0,
+        search_url_template={"flipkart": "https://www.flipkart.com/watches/~cs-fd7790a150c832e3c1dfaa90be003c4c/pr?sid=r18%2Cf13&marketplace=FLIPKART&restrictLocale=true&BU=Mixed&p%5B%5D=facets.brand%255B%255D%3DCASIO"},
+        required_keywords=["casio", "g-shock", "gshock", "edifice", "vintage", "baby-g"],
+        negative_keywords=["strap", "band", "bezel", "protector", "film"],
+        is_active=True,
+    ),
 ]

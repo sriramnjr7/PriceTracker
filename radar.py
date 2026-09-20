@@ -72,6 +72,12 @@ class StealRadar:
                 elif platform == "flipkart":
                     scraper = get_scraper("flipkart", self.config)
                     custom_url = rule.search_url_template.get("flipkart") if rule.search_url_template else None
+                    if rule.brand and rule.brand.lower() == "casio":
+                        fk_item = await self.db.get_product_by_url("https://www.flipkart.com/watches/~cs-fd7790a150c832e3c1dfaa90be003c4c/pr?sid=r18%2Cf13&marketplace=FLIPKART&restrictLocale=true&BU=Mixed&p%5B%5D=facets.brand%255B%255D%3DCASIO")
+                        if fk_item and not fk_item.is_active:
+                            logger.info("[radar] Skipping Casio Flipkart sweep: [Category: Casio Flipkart] is PAUSED in dashboard.")
+                            continue
+
                     deals = await scraper.scan_deals(
                         query=rule.query,
                         min_discount=rule.min_discount,
@@ -86,6 +92,12 @@ class StealRadar:
                 elif platform == "myntra":
                     scraper = get_scraper("myntra", self.config)
                     custom_url = rule.search_url_template.get("myntra") if rule.search_url_template else None
+                    if rule.brand and rule.brand.lower() == "casio":
+                        myntra_item = await self.db.get_product_by_url("https://www.myntra.com/watches?f=Brand%3ACASIO")
+                        if myntra_item and not myntra_item.is_active:
+                            logger.info("[radar] Skipping Casio Myntra sweep: [Category: Casio Myntra] is PAUSED in dashboard.")
+                            continue
+
                     deals = await scraper.scan_deals(
                         query=rule.query,
                         min_discount=rule.min_discount,
@@ -93,6 +105,7 @@ class StealRadar:
                         min_mrp=rule.min_mrp,
                         negative_keywords=rule.negative_keywords,
                         custom_url=custom_url,
+                        brand=rule.brand,
                     )
                     found_deals.extend(deals)
 

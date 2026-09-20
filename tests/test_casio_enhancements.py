@@ -124,3 +124,103 @@ async def test_casio_scrape_product_shopify_js_crosscheck(casio_scraper):
         assert result.price == 3899.0
         assert result.in_stock is False
 
+
+@pytest.mark.asyncio
+async def test_myntra_casio_deals_filtering():
+    """Verify Myntra deal scanner extracts Casio watches and filters by min_discount."""
+    from scrapers.myntra import MyntraScraper
+    from unittest.mock import patch, MagicMock
+
+    scraper = MyntraScraper(Settings())
+    import json
+    payload = {
+        "searchData": {
+            "results": {
+                "products": [
+                    {
+                        "brand": "Casio",
+                        "product": "Vintage Digital Watch A168W",
+                        "price": 1200,
+                        "mrp": 3000,
+                        "discount": 60,
+                        "landingPageUrl": "watches/casio/vintage-123/buy",
+                        "inventoryInfo": [{"available": True}],
+                    },
+                    {
+                        "brand": "Casio",
+                        "product": "Enticer Analog Watch",
+                        "price": 2800,
+                        "mrp": 3500,
+                        "discount": 20,
+                        "landingPageUrl": "watches/casio/enticer-456/buy",
+                        "inventoryInfo": [{"available": True}],
+                    },
+                    {
+                        "brand": "Titan",
+                        "product": "Titan Neo Watch",
+                        "price": 1000,
+                        "mrp": 4000,
+                        "discount": 75,
+                        "landingPageUrl": "watches/titan/neo-789/buy",
+                        "inventoryInfo": [{"available": True}],
+                    },
+                ]
+            }
+        }
+    }
+    fake_html = f"<html><body><script>window.__myx = {json.dumps(payload)};</script></body></html>"
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = fake_html
+
+    with patch("curl_cffi.requests.get", return_value=mock_resp):
+        deals = await scraper.scan_deals(
+            "https://www.myntra.com/watches?f=Brand%3ACASIO",
+            min_discount=60.0,
+            brand="Casio"
+        )
+        # Should include Casio 60% off, but exclude Casio 20% off and Titan
+        assert len(deals) == 1
+        assert deals[0]["scraped_brand"] == "Casio"
+        assert deals[0]["discount_percent"] == 60.0
+        assert deals[0]["price"] == 1200.0
+
+
+@pytest.mark.asyncio
+async def test_flipkart_casio_deals_sponsored_filtering():
+    """Verify Flipkart deal scanner strictly excludes sponsored non-Casio cards."""
+    from scrapers.flipkart import FlipkartScraper
+    from unittest.mock import patch, AsyncMock
+
+    scraper = FlipkartScraper(Settings())
+    fake_html = """
+    <div class="cPHDOP">
+      <div data-id="WAT1">
+        <a class="WKTcLC" href="/guess-watch/p/itm1">GUESS</a>
+        <a class="WKTcLC" href="/guess-watch/p/itm1">Analog Watch - For Men</a>
+        <div class="Nx9bqj">₹3,999</div>
+        <div class="yRaY8j">₹10,000</div>
+        <div class="UkUFwK"><span>60% off</span></div>
+      </div>
+      <div data-id="WAT2">
+        <a class="WKTcLC" href="/casio-g-shock/p/itm2">CASIO</a>
+        <a class="WKTcLC" href="/casio-g-shock/p/itm2">G-Shock GA-2100 Black Analog-Digital Watch</a>
+        <div class="Nx9bqj">₹3,999</div>
+        <div class="yRaY8j">₹9,995</div>
+        <div class="UkUFwK"><span>60% off</span></div>
+      </div>
+    </div>
+    """
+
+    with patch.object(scraper, "_static_fetch", new_callable=AsyncMock) as mock_fetch:
+        mock_fetch.return_value = fake_html
+        deals = await scraper.scan_deals(
+            "https://www.flipkart.com/watches/~cs-casio/pr?sid=r18,f13",
+            min_discount=60.0,
+            brand="Casio"
+        )
+        assert len(deals) == 1
+        assert deals[0]["scraped_brand"] == "Casio"
+        assert "G-Shock" in deals[0]["title"]
+        assert deals[0]["discount_percent"] == 60.0

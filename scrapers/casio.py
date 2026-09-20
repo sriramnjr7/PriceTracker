@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 import re
 from typing import Any, List, Optional
 from urllib.parse import urlparse
@@ -66,7 +67,6 @@ class CasioScraper(BaseScraper):
         if self._auth_client is not None and not self._auth_client.is_closed:
             return self._auth_client
 
-        import os
         email = getattr(self.config, "casio_bhawar_email", "") or os.getenv("CASIO_BHAWAR_EMAIL", "")
         password = getattr(self.config, "casio_bhawar_password", "") or os.getenv("CASIO_BHAWAR_PASSWORD", "")
 
@@ -122,7 +122,6 @@ class CasioScraper(BaseScraper):
         max_retries: int = 3,
     ) -> Optional[httpx.Response]:
         """Safely fetch a URL with automatic HTTP 429 rate limit backoff and retry handling."""
-        import random
         for attempt in range(max_retries):
             try:
                 r = await client.get(url, headers=headers)

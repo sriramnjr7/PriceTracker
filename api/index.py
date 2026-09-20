@@ -399,7 +399,7 @@ async def manual_deal_sweep():
     try:
         radar = StealRadar(settings, db=db)
         await radar.init()
-        casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
+        casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart", "myntra"])
 
         tracker = Tracker(db, radar.notifier, settings)
         manual_alerts = await tracker.run_once()
