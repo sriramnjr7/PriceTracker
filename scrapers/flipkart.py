@@ -53,50 +53,146 @@ class FlipkartScraper(BaseScraper):
         "temporarily unavailable",
     )
 
-    def _extract_stock(self, soup: BeautifulSoup) -> bool:
-        banner = soup.select_one(".z3htrc")
-        if banner is not None:
-            text = banner.get_text(" ", strip=True).lower()
-            if "unavailable" in text or "out of stock" in text:
-                return False
-        return super()._extract_stock(soup)
-
-    def _extract_price(self, soup: BeautifulSoup) -> Optional[float]:
-        """Extract primary product price using Schema.org JSON-LD, standard selectors, and dynamic fallbacks."""
-        # 1. Authoritative: Schema.org Product JSON-LD (immune to recommendation carousels and bank offer tags)
+    def _extract_title(self, soup: BeautifulSoup) -> str:
+        """Extract clean product title from Schema.org JSON-LD or primary heading."""
+        # 1. Authoritative Schema.org Product JSON-LD (Unabbreviated, no "... more")
         for script in soup.find_all("script"):
             stype = script.get("type", "")
-            if "ld+json" in stype or "json" in stype:
-                txt = script.string or script.get_text()
-                if not txt or "offers" not in txt:
-                    continue
+            sid = script.get("id", "")
+            txt = script.string or script.get_text() or ""
+            if sid == "jsonLD" or "ld+json" in stype or ("@type" in txt and "Product" in txt and "name" in txt):
                 try:
-                    data = json.loads(txt)
-                    if isinstance(data, list) and data:
-                        data = data[0]
-                    if isinstance(data, dict):
-                        offers = data.get("offers")
-                        if isinstance(offers, dict) and "price" in offers:
-                            val = float(offers["price"])
-                            if val > 0:
-                                return val
-                        elif isinstance(offers, list) and offers:
-                            for off in offers:
-                                if isinstance(off, dict) and "price" in off:
-                                    val = float(off["price"])
-                                    if val > 0:
-                                        return val
+                    start = txt.find("{") if (txt.find("{") < txt.find("[") and txt.find("{") != -1) or txt.find("[") == -1 else txt.find("[")
+                    end = max(txt.rfind("}"), txt.rfind("]"))
+                    if start != -1 and end != -1:
+                        data = json.loads(txt[start:end+1])
+                        if isinstance(data, list) and data:
+                            data = data[0]
+                        if isinstance(data, dict) and data.get("name"):
+                            clean = str(data["name"]).strip()
+                            if clean:
+                                return clean
+                except Exception:
+                    pass
+
+        # 2. CSS Selectors (with "... more" cleanup)
+        for selector in self.title_selectors:
+            node = soup.select_one(selector)
+            if node:
+                text = node.get_text(" ", strip=True)
+                if text:
+                    text = re.sub(r"\s*\.\.\.\s*more$", "", text, flags=re.I).strip()
+                    return text
+
+        # 3. Fallback to HTML Title tag
+        if soup.title:
+            t = soup.title.get_text(" ", strip=True)
+            t = t.split(" - Buy")[0].split(" Price in India")[0].strip()
+            return re.sub(r"\s*\.\.\.\s*more$", "", t, flags=re.I).strip()
+
+        return ""
+
+    def _extract_stock(self, soup: BeautifulSoup) -> bool:
+        """Precise availability check via Schema.org offers, INITIAL_STATE, and explicit buy-box indicators."""
+        # 1. Authoritative Schema.org availability
+        for script in soup.find_all("script"):
+            stype = script.get("type", "")
+            sid = script.get("id", "")
+            txt = script.string or script.get_text() or ""
+            if sid == "jsonLD" or "ld+json" in stype or ("@type" in txt and "Product" in txt and "offers" in txt):
+                try:
+                    start = txt.find("{") if (txt.find("{") < txt.find("[") and txt.find("{") != -1) or txt.find("[") == -1 else txt.find("[")
+                    end = max(txt.rfind("}"), txt.rfind("]"))
+                    if start != -1 and end != -1:
+                        data = json.loads(txt[start:end+1])
+                        if isinstance(data, list) and data:
+                            data = data[0]
+                        if isinstance(data, dict):
+                            offers = data.get("offers")
+                            if isinstance(offers, dict) and "availability" in offers:
+                                avail = str(offers["availability"]).lower()
+                                if "outofstock" in avail or "soldout" in avail or "discontinued" in avail:
+                                    return False
+                                if "instock" in avail:
+                                    return True
+                except Exception:
+                    pass
+
+        # 2. window.__INITIAL_STATE__ availability
+        for script in soup.find_all("script"):
+            txt = script.string or script.get_text() or ""
+            if "__INITIAL_STATE__" in txt:
+                if '"isAvailable":false' in txt or '"productAvailability":"OUT_OF_STOCK"' in txt:
+                    return False
+                if '"isAvailable":true' in txt or '"productAvailability":"IN_STOCK"' in txt:
+                    return True
+
+        # 3. Explicit UI Out of Stock Badges & Banners (Do NOT scan full body to avoid customer review false positives)
+        stock_badge = soup.select_one(".z3htrc, ._16FRp0, ._3xgQrA, div._1V3wBu")
+        if stock_badge:
+            b_txt = stock_badge.get_text(" ", strip=True).lower()
+            if any(bad in b_txt for bad in ("currently unavailable", "out of stock", "sold out", "temporarily unavailable")):
+                return False
+
+        # 4. Check for active Buy Now / Add to Cart action buttons
+        for btn in soup.find_all(["button", "a"]):
+            b_txt = btn.get_text(" ", strip=True).lower()
+            if any(k in b_txt for k in ("buy now", "add to cart")):
+                return True
+
+        return True
+
+    def _extract_price(self, soup: BeautifulSoup) -> Optional[float]:
+        """Extract primary product price using Schema.org JSON-LD, __INITIAL_STATE__, standard selectors, and dynamic fallbacks."""
+        # 1. Authoritative: Schema.org Product JSON-LD (Search all scripts without strict type constraints)
+        for script in soup.find_all("script"):
+            stype = script.get("type", "")
+            sid = script.get("id", "")
+            txt = script.string or script.get_text() or ""
+            if sid == "jsonLD" or "ld+json" in stype or ("@type" in txt and "Product" in txt and "offers" in txt):
+                try:
+                    start = txt.find("{") if (txt.find("{") < txt.find("[") and txt.find("{") != -1) or txt.find("[") == -1 else txt.find("[")
+                    end = max(txt.rfind("}"), txt.rfind("]"))
+                    if start != -1 and end != -1:
+                        data = json.loads(txt[start:end+1])
+                        if isinstance(data, list) and data:
+                            data = data[0]
+                        if isinstance(data, dict):
+                            offers = data.get("offers")
+                            if isinstance(offers, dict) and "price" in offers:
+                                val = float(offers["price"])
+                                if val > 0:
+                                    return val
+                            elif isinstance(offers, list) and offers:
+                                for off in offers:
+                                    if isinstance(off, dict) and "price" in off:
+                                        val = float(off["price"])
+                                        if val > 0:
+                                            return val
                 except Exception:
                     continue
 
-        # 2. Standard CSS Selectors
+        # 2. window.__INITIAL_STATE__ JSON extraction
+        for script in soup.find_all("script"):
+            txt = script.string or script.get_text() or ""
+            if "__INITIAL_STATE__" in txt:
+                m = re.search(r'"(?:finalPrice|specialPrice|price)":\s*(\d+)', txt)
+                if m:
+                    try:
+                        val = float(m.group(1))
+                        if val > 0:
+                            return val
+                    except ValueError:
+                        pass
+
+        # 3. Standard CSS Selectors
         for sel in self.price_selectors:
             for node in soup.select(sel):
                 val = self.clean_price(node.get_text(" ", strip=True))
                 if val is not None and val > 0:
                     return val
 
-        # 3. Universal fallback for dynamic hashed React/Next.js utility classes
+        # 4. Universal fallback for dynamic hashed React/Next.js utility classes
         for el in soup.find_all(True):
             if el.name in ("script", "style", "meta", "link", "noscript"):
                 continue
@@ -106,6 +202,63 @@ class FlipkartScraper(BaseScraper):
                 if val is not None and val > 0:
                     return val
         return None
+
+    async def _static_fetch(self, url: str) -> Optional[str]:
+        """Fetch Flipkart page using mobile Android SSR impersonation (curated to guarantee full JSON-LD & buy-box)."""
+        from curl_cffi import requests as cffi_requests
+        mobile_headers = {
+            "User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-IN,en;q=0.9",
+            "Sec-Ch-Ua-Mobile": "?1",
+            "Sec-Ch-Ua-Platform": '"Android"',
+        }
+        desktop_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-IN,en;q=0.9",
+        }
+
+        # 1. Try Mobile User Agent with curl_cffi Chrome impersonation (Guaranteed SSR on Flipkart)
+        for attempt in range(self.config.retries):
+            try:
+                r = cffi_requests.get(
+                    url,
+                    headers=mobile_headers,
+                    impersonate="chrome124",
+                    allow_redirects=True,
+                    timeout=int(self.config.request_timeout),
+                )
+                if r.status_code == 200 and len(r.text) > 3000:
+                    if "jsonLD" in r.text or "offers" in r.text or "__INITIAL_STATE__" in r.text or "Nx9bqj" in r.text:
+                        return r.text
+                    if "Please enable Javascript" not in r.text:
+                        return r.text
+            except Exception as exc:
+                logger.debug("[flipkart] curl_cffi mobile fetch attempt %s failed: %s", attempt + 1, exc)
+            await self._polite_delay(backoff=attempt + 1)
+
+        # 2. Try Desktop User Agent
+        for attempt in range(self.config.retries):
+            try:
+                r = cffi_requests.get(
+                    url,
+                    headers=desktop_headers,
+                    impersonate="chrome124",
+                    allow_redirects=True,
+                    timeout=int(self.config.request_timeout),
+                )
+                if r.status_code == 200 and len(r.text) > 3000:
+                    if "jsonLD" in r.text or "offers" in r.text or "__INITIAL_STATE__" in r.text or "Nx9bqj" in r.text:
+                        return r.text
+                    if "Please enable Javascript" not in r.text:
+                        return r.text
+            except Exception as exc:
+                logger.debug("[flipkart] curl_cffi desktop fetch attempt %s failed: %s", attempt + 1, exc)
+            await self._polite_delay(backoff=attempt + 1)
+
+        # 3. Fallback to BaseScraper static fetch (Scrapling / httpx)
+        return await super()._static_fetch(url)
 
     async def _js_fetch(self, url: str) -> Optional[str]:
         """Render Flipkart page with Playwright, handling short links and Hyperlocal Minutes unwrapping."""

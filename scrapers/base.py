@@ -105,14 +105,30 @@ class BaseScraper(ABC):
                     "in stock" if result.in_stock else "out of stock",
                 )
                 return result
-            if result.title and (result.in_stock is False or result.price is None):
+
+            # Explicit out of stock with resolved title
+            if result.title and result.in_stock is False:
                 logger.info(
-                    "[%s] %s -> Out of stock / unlisted price",
+                    "[%s] %s -> Out of stock (explicit)",
                     self.platform,
                     result.title[:60],
                 )
                 return result
-            errors.append(f"{strategy}: price/title missing")
+
+            if result.title:
+                last_candidate = result
+            errors.append(f"{strategy}: price missing or unrendered")
+
+        # If price was not found on first strategy, but page title was found across strategies
+        if 'last_candidate' in locals() and last_candidate is not None:
+            logger.info(
+                "[%s] %s -> Unlisted price / Out of stock after trying %s",
+                self.platform,
+                last_candidate.title[:60],
+                order,
+            )
+            return last_candidate
+
         raise ScrapeError(
             f"{self.platform}: could not extract product info for {url} ({'; '.join(errors)})"
         )
