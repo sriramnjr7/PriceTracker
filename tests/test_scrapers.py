@@ -11,6 +11,7 @@ from scrapers import (
     BigBasketScraper,
     BlinkitScraper,
     CasioScraper,
+    EliteHubsScraper,
     FlipkartScraper,
     InstamartScraper,
     MyntraScraper,
@@ -41,6 +42,8 @@ def test_detect_platform_supported_domains():
 
     assert detect_platform("https://casiostore.bhawar.com/products/gbd-300") == "casio"
     assert detect_platform("https://bhawar.com/products/watch") == "casio"
+
+    assert detect_platform("https://elitehubs.com/products/crucial-p3-1tb-ssd") == "elitehubs"
 
     assert detect_platform("https://www.bigbasket.com/pd/12345/apple") == "bigbasket"
     assert detect_platform("https://bbinstant.com/item/123") == "bigbasket"
@@ -272,5 +275,29 @@ async def test_scrape_out_of_stock_returns_valid_result():
         assert result.price is None
         assert result.in_stock is False
         assert result.platform == "amazon"
+
+
+@pytest.mark.asyncio
+async def test_elitehubs_scraper_in_stock_and_out_of_stock():
+    """Verify EliteHubsScraper correctly parses Shopify .js responses for prices and availability."""
+    scraper = EliteHubsScraper()
+
+    mock_js_resp = MagicMock()
+    mock_js_resp.status_code = 200
+    mock_js_resp.json.return_value = {
+        "title": "Crucial P3 1TB NVMe SSD",
+        "price": 464500,
+        "available": True,
+        "variants": [{"title": "Default", "price": 464500, "available": True}],
+    }
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_js_resp
+        res = await scraper.scrape("https://elitehubs.com/products/crucial-p3-1tb-ssd")
+        assert res.title == "Crucial P3 1TB NVMe SSD"
+        assert res.price == 4645.0
+        assert res.in_stock is True
+        assert res.platform == "elitehubs"
+
 
 

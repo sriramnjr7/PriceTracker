@@ -76,7 +76,7 @@ class TelegramAssistant:
         """Handle direct product URL tracking with canonical normalization."""
         platform, resolved_url = await resolve_platform_and_url(url)
         if not platform:
-            await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
+            await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), EliteHubs, Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
             return
 
         norm_url = normalize_product_url(resolved_url, platform)
@@ -132,7 +132,7 @@ class TelegramAssistant:
                 res = await asyncio.wait_for(scraper.scrape(norm_url), timeout=6.0)
             except (asyncio.TimeoutError, Exception) as scrape_exc:
                 logger.warning("[%s] Initial fast scrape timed out or failed (%s); queueing background verification", platform, scrape_exc)
-                fallback_title = extract_fallback_title(norm_url, platform)
+                fallback_title = extract_fallback_title(resolved_url, platform)
                 target = target_price or 1.0
                 prod_id = await self.db.add_product(
                     url=norm_url,
@@ -154,7 +154,7 @@ class TelegramAssistant:
                 return
 
             is_out_of_stock = (res.price is None or res.price <= 0 or not res.in_stock)
-            title = res.title or extract_fallback_title(norm_url, platform)
+            title = res.title or extract_fallback_title(resolved_url, platform)
 
             if is_out_of_stock:
                 current_price = None
@@ -365,9 +365,9 @@ class TelegramAssistant:
         # 5. Direct URL check
         url_match = re.search(r"(https?://[^\s]+)", text)
         if url_match:
-            raw_url = url_match.group(1)
+            raw_url = url_match.group(1).rstrip("),.]\"'")
             # Check if target price specified after link
-            remainder = text.replace(raw_url, "").strip()
+            remainder = text.replace(url_match.group(1), "").strip()
             price_match = re.search(r"(\d+(?:,\d+)?(?:\.\d+)?)", remainder)
             target_price = float(price_match.group(1).replace(",", "")) if price_match else None
             await self.handle_url_tracking(chat_id, raw_url, target_price)

@@ -13,6 +13,7 @@ from .base import BaseScraper, ScrapeError, ScrapeResult
 from .bigbasket import BigBasketScraper
 from .blinkit import BlinkitScraper
 from .casio import CasioScraper
+from .elitehubs import EliteHubsScraper
 from .flipkart import FlipkartScraper
 from .instamart import InstamartScraper
 from .myntra import MyntraScraper
@@ -24,6 +25,7 @@ SCRAPERS = {
     "myntra": MyntraScraper,
     "ajio": AjioScraper,
     "casio": CasioScraper,
+    "elitehubs": EliteHubsScraper,
     "bigbasket": BigBasketScraper,
     "blinkit": BlinkitScraper,
     "zepto": ZeptoScraper,
@@ -46,6 +48,7 @@ HOST_MAP = {
     "ajio.page.link": "ajio",
     "casiostore.bhawar.com": "casio",
     "bhawar.com": "casio",
+    "elitehubs.com": "elitehubs",
     "bigbasket.com": "bigbasket",
     "bbinstant.com": "bigbasket",
     "blinkit.com": "blinkit",
@@ -98,6 +101,19 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
     """Detect platform and expand any shortlinks to their final canonical destination URL."""
     clean = url.strip()
     if is_shortlink(clean):
+        # 1. Use curl_cffi with Chrome impersonation to reliably resolve Flipkart & anti-bot shortlinks
+        try:
+            from curl_cffi.requests import AsyncSession
+            async with AsyncSession(impersonate="chrome") as session:
+                r = await session.get(clean, allow_redirects=True, timeout=8.0)
+                final_url = str(r.url)
+                plat = detect_platform(final_url, safe=True)
+                if plat:
+                    return plat, final_url
+        except Exception:
+            pass
+
+        # 2. Fallback to httpx AsyncClient
         try:
             async with httpx.AsyncClient(
                 follow_redirects=True,
@@ -115,6 +131,15 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
     plat = detect_platform(clean, safe=True)
     if plat:
         return plat, clean
+
+    try:
+        from curl_cffi.requests import AsyncSession
+        async with AsyncSession(impersonate="chrome") as session:
+            r = await session.get(clean, allow_redirects=True, timeout=8.0)
+            final_url = str(r.url)
+            return detect_platform(final_url, safe=True), final_url
+    except Exception:
+        pass
 
     try:
         async with httpx.AsyncClient(
@@ -170,6 +195,11 @@ def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
         if m_col:
             return f"https://casiostore.bhawar.com/collections/{m_col.group(1)}"
         return clean.split("?")[0].rstrip("/")
+    elif p == "elitehubs":
+        m = re.search(r"/products/([a-zA-Z0-9_-]+)", clean)
+        if m:
+            return f"https://elitehubs.com/products/{m.group(1)}"
+        return clean.split("?")[0].rstrip("/")
     elif p == "zepto":
         # Standardize zeptonow.com -> zepto.com and strip tracking queries
         base = clean.split("?")[0].rstrip("/")
@@ -198,13 +228,13 @@ def extract_fallback_title(url: str, platform: str) -> str:
     from urllib.parse import urlparse, unquote
 
     parsed = urlparse(url)
-    segments = [s for s in parsed.path.split("/") if s and s.lower() not in ("dp", "gp", "product", "products", "p", "buy")]
+    segments = [s for s in parsed.path.split("/") if s and s.lower() not in ("dp", "gp", "product", "products", "p", "buy", "s", "dl")]
 
     if segments:
         candidate = segments[0].replace("-", " ").replace("_", " ")
         candidate = unquote(candidate).strip()
-        # Ensure it's not just an ASIN or model ID
-        if len(candidate) > 3 and not re.match(r"^[A-Z0-9]{8,12}$", candidate, re.IGNORECASE):
+        # Ensure it's not just an ASIN, PID, or short code
+        if len(candidate) > 2 and not re.match(r"^[A-Z0-9]{8,12}$", candidate, re.IGNORECASE):
             return " ".join(w.capitalize() for w in candidate.split())[:80]
 
     return f"Tracked Product ({platform.title()})"
