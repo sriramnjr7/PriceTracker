@@ -13,8 +13,10 @@ from .base import BaseScraper, ScrapeError, ScrapeResult
 from .bigbasket import BigBasketScraper
 from .blinkit import BlinkitScraper
 from .casio import CasioScraper
+from .computech import ComputechScraper
 from .elitehubs import EliteHubsScraper
 from .flipkart import FlipkartScraper
+from .gameloot import GameLootScraper
 from .instamart import InstamartScraper
 from .myntra import MyntraScraper
 from .zepto import ZeptoScraper
@@ -26,6 +28,8 @@ SCRAPERS = {
     "ajio": AjioScraper,
     "casio": CasioScraper,
     "elitehubs": EliteHubsScraper,
+    "computech": ComputechScraper,
+    "gameloot": GameLootScraper,
     "bigbasket": BigBasketScraper,
     "blinkit": BlinkitScraper,
     "zepto": ZeptoScraper,
@@ -49,6 +53,8 @@ HOST_MAP = {
     "casiostore.bhawar.com": "casio",
     "bhawar.com": "casio",
     "elitehubs.com": "elitehubs",
+    "computechstore.in": "computech",
+    "gameloot.in": "gameloot",
     "bigbasket.com": "bigbasket",
     "bbinstant.com": "bigbasket",
     "blinkit.com": "blinkit",
@@ -200,6 +206,8 @@ def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
         if m:
             return f"https://elitehubs.com/products/{m.group(1)}"
         return clean.split("?")[0].rstrip("/")
+    elif p in ("computech", "gameloot"):
+        return clean.split("?")[0].rstrip("/") + "/"
     elif p == "zepto":
         # Standardize zeptonow.com -> zepto.com and strip tracking queries
         base = clean.split("?")[0].rstrip("/")

@@ -76,7 +76,7 @@ class TelegramAssistant:
         """Handle direct product URL tracking with canonical normalization."""
         platform, resolved_url = await resolve_platform_and_url(url)
         if not platform:
-            await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), EliteHubs, Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
+            await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), EliteHubs, Computech, GameLoot, Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
             return
 
         norm_url = normalize_product_url(resolved_url, platform)

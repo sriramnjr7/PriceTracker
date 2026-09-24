@@ -11,8 +11,10 @@ from scrapers import (
     BigBasketScraper,
     BlinkitScraper,
     CasioScraper,
+    ComputechScraper,
     EliteHubsScraper,
     FlipkartScraper,
+    GameLootScraper,
     InstamartScraper,
     MyntraScraper,
     ScrapeError,
@@ -44,6 +46,8 @@ def test_detect_platform_supported_domains():
     assert detect_platform("https://bhawar.com/products/watch") == "casio"
 
     assert detect_platform("https://elitehubs.com/products/crucial-p3-1tb-ssd") == "elitehubs"
+    assert detect_platform("https://computechstore.in/product/controller") == "computech"
+    assert detect_platform("https://gameloot.in/shop/ram") == "gameloot"
 
     assert detect_platform("https://www.bigbasket.com/pd/12345/apple") == "bigbasket"
     assert detect_platform("https://bbinstant.com/item/123") == "bigbasket"
@@ -298,6 +302,77 @@ async def test_elitehubs_scraper_in_stock_and_out_of_stock():
         assert res.price == 4645.0
         assert res.in_stock is True
         assert res.platform == "elitehubs"
+
+
+@pytest.mark.asyncio
+async def test_computech_scraper():
+    """Verify ComputechScraper parses JSON-LD price and in-stock status."""
+    scraper = ComputechScraper()
+
+    fake_html = """
+    <html>
+      <head>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org/",
+          "@type": "Product",
+          "name": "Cosmic Byte Blitz Controller",
+          "offers": {
+            "@type": "Offer",
+            "price": "1699.00",
+            "availability": "https://schema.org/InStock"
+          }
+        }
+        </script>
+      </head>
+      <body><h1>Cosmic Byte Blitz Controller</h1></body>
+    </html>
+    """
+
+    with patch.object(scraper, "_static_fetch", new_callable=AsyncMock) as mock_fetch:
+        mock_fetch.return_value = fake_html
+        res = await scraper.scrape("https://computechstore.in/product/blitz/")
+        assert res.title == "Cosmic Byte Blitz Controller"
+        assert res.price == 1699.0
+        assert res.in_stock is True
+        assert res.platform == "computech"
+
+
+@pytest.mark.asyncio
+async def test_gameloot_scraper_out_of_stock():
+    """Verify GameLootScraper parses OutOfStock JSON-LD status."""
+    scraper = GameLootScraper()
+
+    fake_html = """
+    <html>
+      <head>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org/",
+          "@type": "Product",
+          "name": "Crucial 8GB DDR4 RAM",
+          "offers": [{
+            "@type": "Offer",
+            "price": "2999",
+            "availability": "https://schema.org/OutOfStock"
+          }]
+        }
+        </script>
+      </head>
+      <body>
+        <div class="stock out-of-stock">SOLD OUT</div>
+      </body>
+    </html>
+    """
+
+    with patch.object(scraper, "_static_fetch", new_callable=AsyncMock) as mock_fetch:
+        mock_fetch.return_value = fake_html
+        res = await scraper.scrape("https://gameloot.in/shop/ram/")
+        assert res.title == "Crucial 8GB DDR4 RAM"
+        assert res.price is None
+        assert res.in_stock is False
+        assert res.platform == "gameloot"
+
 
 
 

@@ -295,7 +295,7 @@ async def api_add_product(payload: AddProductPayload):
     if not platform:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported URL. Supported: Amazon, Flipkart, Casio Bhawar, Myntra, Ajio, Blinkit, Zepto, BigBasket."
+            detail="Unsupported URL. Supported: Amazon, Flipkart, Casio Bhawar, EliteHubs, Computech, GameLoot, Myntra, Ajio, Blinkit, Zepto, BigBasket."
         )
 
     clean_url = normalize_product_url(raw_url, platform)
