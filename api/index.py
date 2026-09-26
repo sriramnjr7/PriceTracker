@@ -41,6 +41,7 @@ from radar import StealRadar
 from scrapers import extract_fallback_title, get_scraper, normalize_product_url, resolve_platform
 from telegram_bot import TelegramAssistant
 from tracker import Tracker
+from running_shoes_radar import shoes_radar
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("vercel_api")
@@ -163,6 +164,12 @@ async def root(request: Request):
         return await get_dashboard_data()
     elif clean == "api/status":
         return await get_status()
+    elif "running-shoes" in clean or "running_shoes" in clean:
+        if "toggle" in clean and method == "POST":
+            return await api_toggle_running_shoes(request)
+        elif "sweep" in clean and method == "POST":
+            return await api_sweep_running_shoes()
+        return await api_get_running_shoes_status()
     elif "sweep" in clean and method == "POST":
         return await manual_deal_sweep()
     elif re.search(r"products/(\d+)/check", clean) and method == "POST":
@@ -243,12 +250,20 @@ async def get_dashboard_data():
             if p.last_checked and (last_sweep is None or str(p.last_checked) > str(last_sweep)):
                 last_sweep = p.last_checked
 
+        shoes_cfg = shoes_radar.load_config()
+        shoes_deals = shoes_radar.load_cached_deals()
+
         stats = {
             "active_count": active_count,
             "total_count": len(products),
             "last_sweep_time": _format_datetime(last_sweep),
             "deal_radar_status": "ONLINE",
             "database": "Supabase PostgreSQL" if os.getenv("SUPABASE_URL") else "SQLite",
+            "running_shoes_radar": {
+                "is_active": shoes_radar.is_active(),
+                "deals_count": len(shoes_deals),
+                "last_sweep": shoes_cfg.get("last_sweep"),
+            },
         }
 
         prods_data = [
@@ -568,6 +583,57 @@ async def manual_deal_sweep():
         }
     finally:
         await db.close()
+
+
+# ==========================================
+# RUNNING SHOES RADAR REST APIS
+# ==========================================
+
+@app.get("/api/running-shoes/status")
+@app.get("/api/index.py/api/running-shoes/status")
+async def api_get_running_shoes_status():
+    """Fetch real-time telemetry, configuration, and detected deals for running shoes."""
+    cfg = shoes_radar.load_config()
+    deals = shoes_radar.load_cached_deals()
+    return JSONResponse(
+        content={
+            "status": "online",
+            "is_active": shoes_radar.is_active(),
+            "last_sweep": cfg.get("last_sweep"),
+            "min_price": cfg.get("min_price", 4000),
+            "max_price": cfg.get("max_price", 5999),
+            "target_sizes": cfg.get("target_sizes", ["UK 9.5", "UK 10", "UK 10.5", "UK 11"]),
+            "total_deals": len(deals),
+            "deals": deals,
+            "whitelist_brands": ["Nike", "Adidas", "Asics", "Puma", "New Balance", "Skechers"],
+        },
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@app.post("/api/running-shoes/toggle")
+@app.post("/api/index.py/api/running-shoes/toggle")
+async def api_toggle_running_shoes(request: Request):
+    """Switch Running Shoes Harvester ON or OFF."""
+    target = None
+    try:
+        body = await request.json()
+        if "active" in body:
+            target = bool(body["active"])
+    except Exception:
+        pass
+    if target is None:
+        target = not shoes_radar.is_active()
+    new_state = shoes_radar.set_active(target)
+    return JSONResponse(content={"status": "success", "is_active": new_state})
+
+
+@app.post("/api/running-shoes/sweep")
+@app.post("/api/index.py/api/running-shoes/sweep")
+async def api_sweep_running_shoes():
+    """Trigger an immediate live harvest sweep across Myntra, Flipkart, Tata CLiQ, and Ajio."""
+    res = await shoes_radar.sweep()
+    return JSONResponse(content=res)
 
 
 # ==========================================

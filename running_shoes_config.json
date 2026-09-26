@@ -1,0 +1,19 @@
+{
+  "is_active": true,
+  "min_price": 4000.0,
+  "max_price": 5999.0,
+  "target_sizes": [
+    "UK 9.5",
+    "UK 10",
+    "UK 10.5",
+    "UK 11"
+  ],
+  "platforms": {
+    "myntra": true,
+    "flipkart": true,
+    "tatacliq": true,
+    "ajio": true
+  },
+  "last_sweep": "2026-09-26T20:31:04.462513+00:00",
+  "last_updated": "2026-09-26T20:36:39.487939+00:00"
+}

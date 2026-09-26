@@ -1604,6 +1604,396 @@
       .topbar-actions .btn-ui-primary { padding: 0 8px; font-size: 11.5px; }
       .topbar-search-box { max-width: 170px; }
     }
+
+    /* ==========================================================================
+       RUNNING SHOES RADAR TAB & CONTROLS
+       ========================================================================== */
+    .nav-link-dashboard {
+      cursor: pointer;
+    }
+    .nav-link-dashboard.active {
+      background: var(--bg-card-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-medium);
+    }
+    .nav-item-badge.badge-shoes {
+      background: var(--accent-emerald-subtle);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .shoes-header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+
+    .shoes-switch-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-medium);
+      padding: 6px 14px;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    .switch-meta {
+      display: flex;
+      flex-direction: column;
+      text-align: right;
+    }
+
+    .switch-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .switch-status-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-emerald);
+      transition: color var(--transition-fast);
+    }
+
+    .switch-status-text.is-paused {
+      color: var(--accent-amber);
+    }
+
+    /* Modern Rocker Switch */
+    .rocker-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .rocker-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .rocker-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .24s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 24px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .rocker-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #ffffff;
+      transition: .24s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .rocker-switch input:checked + .rocker-slider {
+      background-color: var(--accent-emerald);
+      border-color: var(--accent-emerald);
+    }
+
+    .rocker-switch input:checked + .rocker-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Store Connectors Matrix */
+    .store-connectors-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+    }
+
+    .connector-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .connector-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .connector-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .connector-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: var(--accent-emerald-subtle);
+      color: var(--accent-emerald);
+    }
+
+    /* Whitelist Pill Cloud */
+    .whitelist-drawer {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+
+    .whitelist-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-3);
+    }
+
+    .whitelist-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .whitelist-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .model-chip {
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .model-chip strong {
+      color: var(--text-primary);
+    }
+
+    /* Shoe Deal Card */
+    .shoe-deals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-4);
+    }
+
+    .shoe-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .shoe-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-medium);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .shoe-card-media {
+      width: 100%;
+      height: 180px;
+      background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .shoe-card-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .shoe-card:hover .shoe-card-media img {
+      transform: scale(1.04);
+    }
+
+    .shoe-card-platform-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: rgba(9, 10, 15, 0.85);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(8px);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .shoe-card-body {
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .shoe-card-brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-1);
+    }
+
+    .shoe-card-brand {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .shoe-card-model-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-emerald);
+      background: var(--accent-emerald-subtle);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .shoe-card-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.35;
+      margin-bottom: var(--space-3);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 36px;
+    }
+
+    .shoe-card-sizes-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-bottom: var(--space-3);
+    }
+
+    .shoe-size-pill {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(59, 130, 246, 0.12);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      font-family: var(--font-mono);
+    }
+
+    .shoe-card-price-row {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+      margin-top: auto;
+      margin-bottom: var(--space-4);
+    }
+
+    .shoe-price-current {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .shoe-price-mrp {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-decoration: line-through;
+      font-family: var(--font-mono);
+    }
+
+    .shoe-price-discount {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-emerald);
+    }
+
+    .shoe-btn-buy {
+      width: 100%;
+      height: 36px;
+      background: var(--accent-primary);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: background-color var(--transition-fast);
+    }
+
+    .shoe-btn-buy:hover {
+      background: var(--accent-primary-hover);
+    }
+
+    .shoe-empty-state {
+      background: var(--bg-card);
+      border: 1px dashed var(--border-medium);
+      border-radius: var(--radius-lg);
+      padding: var(--space-10) var(--space-6);
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .shoe-empty-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto var(--space-4);
+      color: var(--accent-primary);
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
@@ -1685,9 +2075,9 @@
               </div>
             </div>
 
-            <!-- Single Sidebar Navigation: Dashboard Only -->
+            <!-- Primary Sidebar Navigation: Dashboard & Running Shoes Radar -->
             <nav class="sidebar-nav-single">
-              <a class="nav-link-dashboard" onclick="switchNavDashboard()">
+              <a class="nav-link-dashboard active" id="nav-btn-dashboard" onclick="switchNavTab('dashboard')">
                 <div class="nav-link-left">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"></rect>
@@ -1698,6 +2088,18 @@
                   <span>Dashboard</span>
                 </div>
                 <span class="nav-item-badge" id="nav-count-badge">0</span>
+              </a>
+
+              <a class="nav-link-dashboard" id="nav-btn-shoes" onclick="switchNavTab('shoes')">
+                <div class="nav-link-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 16v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
+                    <path d="M2 16h20v4H2z"></path>
+                    <path d="M7 10l2-4h6l2 4"></path>
+                  </svg>
+                  <span>Running Shoes</span>
+                </div>
+                <span class="nav-item-badge badge-shoes" id="nav-shoes-count-badge" style="display: none;">0</span>
               </a>
             </nav>
 
@@ -1784,8 +2186,11 @@
           <!-- Workspace Body -->
           <div class="workspace-body">
             
-            <!-- Page Title Section -->
-            <div class="page-title-section">
+            <!-- TAB 1: MAIN DASHBOARD VIEW -->
+            <div id="tab-content-dashboard" class="workspace-tab-page">
+
+              <!-- Page Title Section -->
+              <div class="page-title-section">
               <div class="page-breadcrumb">PriceTracker / Telemetry</div>
               <div class="page-header-row">
                 <div>
@@ -1929,8 +2334,175 @@
               </aside>
 
             </div>
+          </div> <!-- /#tab-content-dashboard -->
+
+          <!-- ========================================================================
+               TAB 2: RUNNING SHOES RADAR VIEW
+               ======================================================================== -->
+          <div id="tab-content-shoes" class="workspace-tab-page" style="display: none;">
+            
+            <!-- Page Title Section with Master Toggle Switch -->
+            <div class="page-title-section">
+              <div class="page-breadcrumb">PriceTracker / Running Shoes Radar</div>
+              <div class="page-header-row">
+                <div>
+                  <h1 class="page-heading">Running Shoes Radar</h1>
+                  <p class="page-subheading">Autonomous harvester &amp; inventory sniper across Myntra, Flipkart, Tata CLiQ, and Ajio.</p>
+                </div>
+                <div class="shoes-header-actions">
+                  <!-- Master Rocker Switch -->
+                  <div class="shoes-switch-wrap">
+                    <div class="switch-meta">
+                      <span class="switch-title">HARVESTER RADAR</span>
+                      <span class="switch-status-text" id="shoes-status-text">MONITORING ACTIVE</span>
+                    </div>
+                    <label class="rocker-switch" title="Toggle Running Shoes Radar ON/OFF">
+                      <input type="checkbox" id="shoes-master-toggle" checked onchange="handleShoesToggle(this.checked)">
+                      <span class="rocker-slider"></span>
+                    </label>
+                  </div>
+
+                  <!-- Instant Sweep Button -->
+                  <button class="btn-ui btn-ui-primary" id="btn-sweep-shoes-run" onclick="handleShoesSweepClick()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    <span id="sweep-shoes-text">Sweep Running Shoes</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Overview Metric KPI Row (4 Guarded Telemetry Tiles) -->
+            <section class="metrics-grid" aria-label="Running Shoes Metrics">
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">Harvester Engine</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                  </svg>
+                </div>
+                <div class="metric-value highlight-emerald" id="kpi-shoes-status">ONLINE</div>
+                <div class="metric-caption" id="shoes-last-sweep-time">24/7 background scheduler active</div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">Price Alert Gate</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                </div>
+                <div class="metric-value">₹4,000 – ₹5,999</div>
+                <div class="metric-caption">Hard cap max ₹6,000 INR</div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">Size Inventory Gate</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  </svg>
+                </div>
+                <div class="metric-value" style="font-size: 19px;">UK 9.5 • 10 • 10.5 • 11</div>
+                <div class="metric-caption">SKU-level stock strictly verified</div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-top">
+                  <span class="metric-label">Verified Deals Found</span>
+                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <div class="metric-value highlight-emerald" id="kpi-shoes-deals-count">0</div>
+                <div class="metric-caption">26 Whitelist silhouettes tracked</div>
+              </div>
+            </section>
+
+            <!-- Retailer Harvester Connectors Strip -->
+            <div class="store-connectors-row">
+              <div class="connector-card">
+                <div>
+                  <div class="connector-name">Flipkart India</div>
+                  <div class="connector-meta">SSR window.__INITIAL_STATE__</div>
+                </div>
+                <span class="connector-status-badge">
+                  <span class="status-dot-live"></span>
+                  Live
+                </span>
+              </div>
+
+              <div class="connector-card">
+                <div>
+                  <div class="connector-name">Myntra</div>
+                  <div class="connector-meta">window.__myx SKU inventoryInfo</div>
+                </div>
+                <span class="connector-status-badge">
+                  <span class="status-dot-live"></span>
+                  Live
+                </span>
+              </div>
+
+              <div class="connector-card">
+                <div>
+                  <div class="connector-name">Tata CLiQ</div>
+                  <div class="connector-meta">SearchBFF JSON :inStockFlag:true</div>
+                </div>
+                <span class="connector-status-badge">
+                  <span class="status-dot-live"></span>
+                  Live
+                </span>
+              </div>
+
+              <div class="connector-card">
+                <div>
+                  <div class="connector-name">Ajio</div>
+                  <div class="connector-meta">API &amp; Proxy Adapter</div>
+                </div>
+                <span class="connector-status-badge" style="background: rgba(59, 130, 246, 0.12); color: #60a5fa;">
+                  <span class="status-dot-live" style="background:#3b82f6;"></span>
+                  Armed
+                </span>
+              </div>
+            </div>
+
+            <!-- Whitelist Performance Models Reference Drawer -->
+            <div class="whitelist-drawer">
+              <div class="whitelist-header">
+                <span class="whitelist-title">Guarded Whitelist Models (Casual / Lifestyle Filter Gate)</span>
+                <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">26 Models</span>
+              </div>
+              <div class="whitelist-cloud">
+                <span class="model-chip"><strong>PUMA:</strong> Velocity Nitro, Deviate Nitro, ForeverRun, Liberate Nitro</span>
+                <span class="model-chip"><strong>NIKE:</strong> Pegasus, Winflo, Rival Fly, Infinity Run, Vomero (Excl. Vomero 5)</span>
+                <span class="model-chip"><strong>ADIDAS:</strong> Adizero SL, Boston, Supernova Rise, Supernova Stride, Duramo Speed</span>
+                <span class="model-chip"><strong>ASICS:</strong> Novablast, Cumulus, GT-2000, GT-1000, Pulse</span>
+                <span class="model-chip"><strong>NEW BALANCE:</strong> FuelCell Propel, FuelCell Rebel, Fresh Foam 880</span>
+                <span class="model-chip"><strong>SKECHERS:</strong> Go Run Ride, Max Cushioning, Razor</span>
+              </div>
+            </div>
+
+            <!-- Brand Filter Chips -->
+            <div class="filter-bar" style="margin-bottom: var(--space-5);">
+              <button class="filter-btn shoe-filter-btn active" onclick="setShoeBrandFilter('all', this)">All Brands</button>
+              <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('Nike', this)">Nike</button>
+              <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('Adidas', this)">Adidas</button>
+              <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('Asics', this)">Asics</button>
+              <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('Puma', this)">Puma</button>
+              <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('New Balance', this)">New Balance</button>
+              <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('Skechers', this)">Skechers</button>
+            </div>
+
+            <!-- Deals Stream & Product Grid -->
+            <div class="shoe-deals-grid" id="shoes-deals-container">
+              <!-- Dynamically Rendered by renderRunningShoeCards() -->
+            </div>
 
           </div>
+
+        </div> <!-- /workspace-body -->
         </main>
 
       </div>
@@ -2090,13 +2662,239 @@
       if (bd) bd.classList.toggle("is-active");
     }
 
-    // Single Sidebar Action: Dashboard
-    function switchNavDashboard() {
-      setFilter("all");
+    // Tab Navigation: Dashboard vs Running Shoes Radar
+    let currentActiveTab = "dashboard";
+
+    function switchNavTab(tabName) {
+      currentActiveTab = tabName;
+      const tabDash = document.getElementById("tab-content-dashboard");
+      const tabShoes = document.getElementById("tab-content-shoes");
+      const btnDash = document.getElementById("nav-btn-dashboard");
+      const btnShoes = document.getElementById("nav-btn-shoes");
+
+      if (tabName === "shoes") {
+        if (tabDash) tabDash.style.display = "none";
+        if (tabShoes) tabShoes.style.display = "block";
+        if (btnDash) btnDash.classList.remove("active");
+        if (btnShoes) btnShoes.classList.add("active");
+        fetchRunningShoesData();
+      } else {
+        if (tabDash) tabDash.style.display = "block";
+        if (tabShoes) tabShoes.style.display = "none";
+        if (btnDash) btnDash.classList.add("active");
+        if (btnShoes) btnShoes.classList.remove("active");
+        setFilter("all");
+      }
+
+      // Close mobile drawer if open
       const sb = document.getElementById("app-sidebar");
       const bd = document.getElementById("sidebar-backdrop");
       if (sb) sb.classList.remove("mobile-open");
       if (bd) bd.classList.remove("is-active");
+    }
+
+    // Keep backwards-compatible alias
+    function switchNavDashboard() {
+      switchNavTab("dashboard");
+    }
+
+    // ==========================================================================
+    // RUNNING SHOES RADAR CONTROLLER
+    // ==========================================================================
+    let runningShoesState = {
+      is_active: true,
+      deals: [],
+      filterBrand: "all",
+    };
+
+    async function fetchRunningShoesData() {
+      try {
+        const res = await fetch("/api/running-shoes/status");
+        if (!res.ok) return;
+        const data = await res.json();
+        runningShoesState.is_active = data.is_active;
+        runningShoesState.deals = data.deals || [];
+        updateRunningShoesUI(data);
+      } catch (err) {
+        console.error("Failed to fetch running shoes status:", err);
+      }
+    }
+
+    function updateRunningShoesUI(data) {
+      const toggle = document.getElementById("shoes-master-toggle");
+      const statusLabel = document.getElementById("shoes-status-text");
+      const kpiStatus = document.getElementById("kpi-shoes-status");
+      const kpiCount = document.getElementById("kpi-shoes-deals-count");
+      const navBadge = document.getElementById("nav-shoes-count-badge");
+      const lastSweepEl = document.getElementById("shoes-last-sweep-time");
+
+      const isActive = data.is_active;
+      if (toggle) toggle.checked = isActive;
+      
+      if (statusLabel) {
+        statusLabel.textContent = isActive ? "MONITORING ACTIVE" : "RADAR PAUSED";
+        statusLabel.className = "switch-status-text" + (isActive ? "" : " is-paused");
+      }
+
+      if (kpiStatus) {
+        kpiStatus.textContent = isActive ? "ONLINE" : "PAUSED";
+        kpiStatus.style.color = isActive ? "var(--accent-emerald)" : "var(--accent-amber)";
+      }
+
+      const totalDeals = (data.deals || []).length;
+      if (kpiCount) kpiCount.textContent = totalDeals;
+      if (navBadge) {
+        navBadge.textContent = totalDeals;
+        navBadge.style.display = totalDeals > 0 ? "inline-flex" : "none";
+      }
+
+      if (lastSweepEl && data.last_sweep) {
+        try {
+          const d = new Date(data.last_sweep);
+          lastSweepEl.textContent = "Last sweep: " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+          lastSweepEl.textContent = "Last sweep: " + data.last_sweep;
+        }
+      }
+
+      renderRunningShoeCards();
+    }
+
+    async function handleShoesToggle(checked) {
+      const statusLabel = document.getElementById("shoes-status-text");
+      if (statusLabel) {
+        statusLabel.textContent = checked ? "MONITORING ACTIVE" : "RADAR PAUSED";
+        statusLabel.className = "switch-status-text" + (checked ? "" : " is-paused");
+      }
+
+      try {
+        const res = await fetch("/api/running-shoes/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active: checked })
+        });
+        const result = await res.json();
+        runningShoesState.is_active = result.is_active;
+        fetchRunningShoesData();
+        showToast(result.is_active ? "Running Shoes Radar: Activated (Monitoring 24/7)" : "Running Shoes Radar: Paused");
+      } catch (err) {
+        console.error("Toggle request failed:", err);
+        showToast("⚠️ Failed to update radar switch.");
+      }
+    }
+
+    async function handleShoesSweepClick() {
+      const btn = document.getElementById("btn-sweep-shoes-run");
+      const label = document.getElementById("sweep-shoes-text");
+      if (btn) btn.disabled = true;
+      if (label) label.textContent = "Harvesting Stores...";
+
+      try {
+        showToast("⚡ Harvesting Flipkart, Myntra, Tata CLiQ & Ajio...");
+        const res = await fetch("/api/running-shoes/sweep", { method: "POST" });
+        const data = await res.json();
+        await fetchRunningShoesData();
+        showToast(`Sweep complete: ${data.new_deals_found || 0} deals verified.`);
+      } catch (err) {
+        console.error("Sweep failed:", err);
+        showToast("⚠️ Running shoes sweep encountered an error.");
+      } finally {
+        if (btn) btn.disabled = false;
+        if (label) label.textContent = "Sweep Running Shoes";
+      }
+    }
+
+    function setShoeBrandFilter(brand, btnEl) {
+      runningShoesState.filterBrand = brand;
+      document.querySelectorAll(".shoe-filter-btn").forEach(b => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      renderRunningShoeCards();
+    }
+
+    function renderRunningShoeCards() {
+      const container = document.getElementById("shoes-deals-container");
+      if (!container) return;
+
+      let deals = runningShoesState.deals || [];
+      if (runningShoesState.filterBrand && runningShoesState.filterBrand !== "all") {
+        deals = deals.filter(d => (d.brand || "").toLowerCase() === runningShoesState.filterBrand.toLowerCase());
+      }
+
+      if (!deals.length) {
+        container.innerHTML = `
+          <div class="shoe-empty-state" style="grid-column: 1 / -1;">
+            <div class="shoe-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 16v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
+                <path d="M2 16h20v4H2z"></path>
+                <path d="M7 10l2-4h6l2 4"></path>
+              </svg>
+            </div>
+            <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+              Autonomous Radar Armed &amp; Scanning
+            </h3>
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
+              The engine is actively probing Myntra, Flipkart, Tata CLiQ, and Ajio for the 26 whitelist performance models. Verified deals trigger alerts when priced between ₹4,000 – ₹5,999 in UK 9.5, 10, 10.5, or 11.
+            </p>
+            <div style="display: inline-flex; gap: 8px;">
+              <button class="btn-ui btn-ui-primary" onclick="handleShoesSweepClick()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Trigger On-Demand Sweep</span>
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = deals.map(deal => {
+        const sizesHtml = (deal.available_sizes || []).map(sz => `<span class="shoe-size-pill">${escapeHtml(sz)} IN STOCK</span>`).join("");
+        const mrpHtml = deal.mrp && deal.mrp > deal.price ? `<span class="shoe-price-mrp">₹${Number(deal.mrp).toLocaleString('en-IN')}</span>` : "";
+        const discountHtml = deal.discount_percent ? `<span class="shoe-price-discount">${deal.discount_percent}% OFF</span>` : "";
+        const imgHtml = deal.image_url ? `<img src="${escapeHtml(deal.image_url)}" alt="${escapeHtml(deal.title)}" loading="lazy">` : `
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 16v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
+              <path d="M2 16h20v4H2z"></path>
+              <path d="M7 10l2-4h6l2 4"></path>
+            </svg>
+          </div>
+        `;
+
+        return `
+          <div class="shoe-card">
+            <div class="shoe-card-media">
+              ${imgHtml}
+              <span class="shoe-card-platform-badge">${escapeHtml(deal.platform || 'STORE')}</span>
+            </div>
+            <div class="shoe-card-body">
+              <div class="shoe-card-brand-row">
+                <span class="shoe-card-brand">${escapeHtml(deal.brand || '')}</span>
+                <span class="shoe-card-model-badge">${escapeHtml(deal.model || '')}</span>
+              </div>
+              <h3 class="shoe-card-title" title="${escapeHtml(deal.title || '')}">${escapeHtml(deal.title || '')}</h3>
+              <div class="shoe-card-sizes-row">
+                ${sizesHtml}
+              </div>
+              <div class="shoe-card-price-row">
+                <span class="shoe-price-current">₹${Number(deal.price).toLocaleString('en-IN')}</span>
+                ${mrpHtml}
+                ${discountHtml}
+              </div>
+              <a href="${escapeHtml(deal.url || '#')}" target="_blank" rel="noopener noreferrer" class="shoe-btn-buy">
+                <span>Buy on ${(deal.platform || 'Store').toUpperCase()}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </a>
+            </div>
+          </div>
+        `;
+      }).join("");
     }
 
     function setTargetPreset(val) {
@@ -2149,6 +2947,7 @@
       if (avatarEl) avatarEl.textContent = email.charAt(0).toUpperCase();
       showView("dashboard-view");
       fetchDashboardData();
+      fetchRunningShoesData();
     }
 
     // Login Form Submit Handler (Server-Side Authenticated via /api/auth/login)
@@ -2232,6 +3031,16 @@
         updateCounts();
         applyFilters();
         renderDeals(data.recent_deals || []);
+
+        // Update Running Shoes Radar Badge
+        if (data.stats && data.stats.running_shoes_radar) {
+          const rBadge = document.getElementById("nav-shoes-count-badge");
+          const rCount = data.stats.running_shoes_radar.deals_count || 0;
+          if (rBadge) {
+            rBadge.textContent = rCount;
+            rBadge.style.display = rCount > 0 ? "inline-flex" : "none";
+          }
+        }
 
         if (statusIndicator) {
           statusIndicator.innerHTML = `<span class="indicator-pulse"></span><span>${rawProductsList.length} Monitors Live</span>`;
