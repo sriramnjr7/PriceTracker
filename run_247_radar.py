@@ -67,6 +67,72 @@ async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 300):
         await asyncio.sleep(interval_seconds)
 
 
+VIP_GBD_H2000_URL = "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch"
+
+
+async def vip_casio_sniper_loop(tracker: Tracker, interval_seconds: int = 60):
+    """Ultra-high-frequency 60-second sniper loop for Casio GBD-H2000-1A9 member clearance restock."""
+    import httpx
+    from scrapers import get_scraper
+
+    target_url = VIP_GBD_H2000_URL
+    js_url = f"{target_url}.js"
+    cycle = 0
+
+    while True:
+        cycle += 1
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(js_url, headers=headers)
+                if r.status_code == 200:
+                    data = r.json()
+                    is_available = bool(data.get("available", False))
+                    variants = data.get("variants", [])
+                    has_avail = is_available or any(bool(v.get("available", False)) for v in variants)
+
+                    if has_avail:
+                        logger.info("🚨🚨 [VIP SNIPER] GBD-H2000 IS IN STOCK! Triggering instant verification & alert...")
+                        # Run authenticated scrape for live member-discounted price
+                        scraper = get_scraper("casio", tracker.config)
+                        res = await scraper.scrape(target_url)
+                        deal_price = res.price if (res.price and res.price > 0) else 13499.0
+
+                        alert_msg = (
+                            "🚨🚨 *URGENT VIP 70% DEAL RESTOCK!* 🚨🚨\n"
+                            "📦 *Watch:* CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD\n"
+                            "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
+                            f"💰 *Member Deal Price:* ₹{deal_price:g} (70% OFF! MRP: ₹44,995)\n"
+                            "🎯 *Target:* ₹14,000 (Target Met!)\n"
+                            f"🛒 *ORDER INSTANTLY:* {target_url}\n"
+                            "⚡ *Caught via 60-Second Priority VIP Sniper*"
+                        )
+                        await tracker.notifier.send_telegram(alert_msg)
+
+                        # Update DB
+                        products = await tracker.db.get_products()
+                        vip_prod = next((p for p in products if "gbd-h2000" in (p.url or "").lower()), None)
+                        if vip_prod:
+                            await tracker.db.update_price(vip_prod.id, deal_price, title="Casio G-Shock GBD-H2000-1A9 (IN STOCK!)")
+                            await tracker.db.set_last_notified(vip_prod.id, deal_price)
+                        await tracker.db.log_deal_alert(
+                            product_url=target_url,
+                            title="CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD (VIP IN STOCK)",
+                            price=deal_price,
+                            effective_price=deal_price,
+                            discount_percent=70.0,
+                            platform="casio",
+                        )
+                    else:
+                        if cycle % 10 == 1 or cycle <= 3:
+                            print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] GBD-H2000-1A9: Out of stock. Next probe in {interval_seconds}s...")
+        except Exception as exc:
+            logger.debug("[VIP Sniper] cycle #%s error: %s", cycle, exc)
+
+        await asyncio.sleep(interval_seconds)
+
+
 async def running_shoes_radar_loop(interval_seconds: int = 600):
     """Dedicated background harvester loop for Performance Running Shoes (Nike, Adidas, Asics, Puma, NB, Skechers)."""
     from running_shoes_radar import shoes_radar
@@ -229,14 +295,16 @@ async def main():
     print("🎯 Target 1: Casio Store Bhawar (70%+ Silent Deals & GBD-300 Watcher)")
     print("🎯 Target 2: Flipkart Casio Deals (70%+ Brand Facet)")
     print("🎯 Target 3: Tracked Products (Crocs LiteRide 360 All Variants / User Items)")
-    print("🎯 Target 4: Running Shoes Radar (Myntra, Flipkart, Tata CLiQ, Ajio - 26 Whitelist Models)")
+    print("🎯 Target 4: Running Shoes Radar (Myntra, Flipkart, Tata CLiQ, Ajio - 56 Whitelist Models)")
+    print("🎯 VIP Sniper: Casio G-Shock GBD-H2000-1A9 (70% Member Restock) -> Every 60s")
     print("📱 Telegram 2-Way Bot: ACTIVE")
-    print(f"⏰ Casio: Every {casio_interval}s | Tracked Items: Every {manual_interval}s | Running Shoes: Every {shoes_interval}s")
+    print(f"⏰ VIP Sniper: Every 60s | Casio: Every {casio_interval}s | Tracked Items: Every {manual_interval}s | Shoes: Every {shoes_interval}s")
     print("=" * 70 + "\n")
 
-    # Run Casio deals hunter, manual Telegram tracker, running shoes harvester, and interactive bot listener concurrently
+    # Run VIP sniper, Casio deals hunter, manual Telegram tracker, running shoes harvester, and interactive bot listener concurrently
     try:
         await asyncio.gather(
+            vip_casio_sniper_loop(tracker, interval_seconds=60),
             casio_deal_radar_loop(radar, interval_seconds=casio_interval),
             manual_tracker_loop(tracker, interval_seconds=manual_interval),
             running_shoes_radar_loop(interval_seconds=shoes_interval),

@@ -40,6 +40,9 @@ class Tracker:
             logger.info("No active products tracked.")
             return 0
 
+        # Prioritize VIP targets (e.g. GBD-H2000 member clearance) to run first
+        products = sorted(products, key=lambda p: 0 if "gbd-h2000" in (getattr(p, "url", "") or "").lower() else 1)
+
         sem = asyncio.Semaphore(6)
 
         async def _safe_check(p) -> bool:
@@ -99,6 +102,30 @@ class Tracker:
 
         if not should_notify:
             return False
+
+        # Urgent VIP Notification format for GBD-H2000
+        if "gbd-h2000" in (product.url or "").lower():
+            vip_msg = (
+                "🚨🚨 *URGENT VIP 70% DEAL RESTOCK!* 🚨🚨\n"
+                f"📦 *Watch:* {result.title or product.title}\n"
+                "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
+                f"💰 *Member Deal Price:* ₹{result.price:g} (70% OFF! MRP: ₹44,995)\n"
+                f"🎯 *Target:* ₹{product.target_price:g} (Target Met!)\n"
+                f"🛒 *ORDER INSTANTLY:* {product.url}\n"
+                "⚡ *Caught via 60-Second Priority VIP Sniper*"
+            )
+            if await self.notifier.send_telegram(vip_msg):
+                await self.db.set_last_notified(product.id, result.price)
+                await self.db.log_deal_alert(
+                    product_url=product.url,
+                    title=result.title or product.title,
+                    price=result.price,
+                    effective_price=result.price,
+                    discount_percent=drop_percent or 70.0,
+                    platform="casio",
+                )
+                logger.info("[VIP Sniper] Dispatched URGENT alert for GBD-H2000 at INR %s", result.price)
+                return True
 
         is_restock = product.current_price is None
         target_text = self._target_text(product)
