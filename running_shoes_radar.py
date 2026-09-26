@@ -32,8 +32,127 @@ TARGET_SIZES: Set[float] = {9.5, 10.0, 10.5, 11.0}
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_config.json")
 DEALS_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_deals.json")
 
-# Whitelist Models Definition with strict regex patterns and exclusions
+# Global Trap Model Blacklist Filter (Cheap EVA, lifestyle sneakers, or diffusion lines to strictly exclude)
+TRAP_MODELS_BLACKLIST = re.compile(
+    r"\b(energen|rewind|runfalcon|galaxy|coreracer|fluidflow|downshifter|"
+    r"revolution|quest|defy\s*all\s*day|softride|anzarun|flyer\s*runner|flyer|enzo|better\s*foam|"
+    r"jolt|patriot|raiden|gel[-\s]?contend|contend|arishi|roav|cohesion|excursion|versafoam|"
+    r"duramo\s+(?:10|sl|lite|rc)|court|lifestyle|sneaker|badminton|tennis|cricket)\b",
+    re.IGNORECASE,
+)
+
+# Whitelist Models Definition with strict regex patterns and exclusions (56 Verified Performance Models)
 WHITELIST_RULES = [
+    # --- SAUCONY ---
+    {
+        "brand": "Saucony",
+        "model": "Endorphin Speed",
+        "pattern": re.compile(r"\bendorphin\s+speed(?:\s+(?:2|3|4|ii|iii|iv))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Saucony",
+        "model": "Endorphin Pro",
+        "pattern": re.compile(r"\bendorphin\s+pro(?:\s+(?:2|3|4|ii|iii|iv))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Saucony",
+        "model": "Triumph",
+        "pattern": re.compile(r"\btriumph(?:\s+(?:19|20|21|22))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Saucony",
+        "model": "Kinvara",
+        "pattern": re.compile(r"\bkinvara(?:\s+(?:12|13|14|15))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Saucony",
+        "model": "Ride",
+        "pattern": re.compile(r"\b(?:saucony\s+)?ride(?:\s+(?:14|15|16|17|18))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:skechers|go\s*run|iso)\b", re.IGNORECASE),
+    },
+    {
+        "brand": "Saucony",
+        "model": "Tempus",
+        "pattern": re.compile(r"\btempus\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Saucony",
+        "model": "Guide",
+        "pattern": re.compile(r"\b(?:saucony\s+)?guide(?:\s+(?:14|15|16|17))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+
+    # --- REEBOK ---
+    {
+        "brand": "Reebok",
+        "model": "Floatride Energy X",
+        "pattern": re.compile(r"\bfloatride\s+energy\s+x\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Reebok",
+        "model": "Floatride Energy Symmetros",
+        "pattern": re.compile(r"\bfloatride\s+energy\s+symmetros(?:\s+[23])?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Reebok",
+        "model": "Floatride Energy",
+        "pattern": re.compile(r"\bfloatride\s+energy(?:\s+(?:3|4|5|6))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:energen|x|symmetros)\b", re.IGNORECASE),
+    },
+
+    # --- HOKA ---
+    {
+        "brand": "Hoka",
+        "model": "Mach",
+        "pattern": re.compile(r"\b(?:hoka(?:\s+one\s+one)?\s+)?mach(?:\s+(?:4|5|6))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Hoka",
+        "model": "Rincon",
+        "pattern": re.compile(r"\b(?:hoka(?:\s+one\s+one)?\s+)?rincon(?:\s+[34])?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Hoka",
+        "model": "Clifton",
+        "pattern": re.compile(r"\b(?:hoka(?:\s+one\s+one)?\s+)?clifton(?:\s+(?:8|9))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Hoka",
+        "model": "Bondi",
+        "pattern": re.compile(r"\b(?:hoka(?:\s+one\s+one)?\s+)?bondi(?:\s+(?:7|8))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+
+    # --- BROOKS ---
+    {
+        "brand": "Brooks",
+        "model": "Hyperion",
+        "pattern": re.compile(r"\b(?:brooks\s+)?hyperion(?:\s+(?:tempo|max|2))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Brooks",
+        "model": "Ghost",
+        "pattern": re.compile(r"\b(?:brooks\s+)?ghost(?:\s+(?:14|15|16))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Brooks",
+        "model": "Glycerin",
+        "pattern": re.compile(r"\b(?:brooks\s+)?glycerin(?:\s+(?:20|21))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+
     # --- PUMA ---
     {
         "brand": "Puma",
@@ -49,6 +168,12 @@ WHITELIST_RULES = [
     },
     {
         "brand": "Puma",
+        "model": "Magnify Nitro",
+        "pattern": re.compile(r"\bmagnify\s+nitro(?:\s+[23])?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Puma",
         "model": "ForeverRun",
         "pattern": re.compile(r"\bforever\s*run(?:\s+nitro)?\b", re.IGNORECASE),
         "exclusions": None,
@@ -59,6 +184,12 @@ WHITELIST_RULES = [
         "pattern": re.compile(r"\bliberate\s+nitro(?:\s+[23])?\b", re.IGNORECASE),
         "exclusions": None,
     },
+    {
+        "brand": "Puma",
+        "model": "Electrify Nitro",
+        "pattern": re.compile(r"\belectrify\s+nitro(?:\s+[23])?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
 
     # --- NIKE ---
     {
@@ -66,6 +197,30 @@ WHITELIST_RULES = [
         "model": "Pegasus",
         "pattern": re.compile(r"\bpegasus(?:\s+(?:39|40|41|42|turbo|trail|premium|easyon))?\b", re.IGNORECASE),
         "exclusions": re.compile(r"\b(?:kids|infant|toddler)\b", re.IGNORECASE),
+    },
+    {
+        "brand": "Nike",
+        "model": "Streakfly",
+        "pattern": re.compile(r"\b(?:zoomx\s+)?streakfly\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Nike",
+        "model": "Zoom Fly",
+        "pattern": re.compile(r"\bzoom\s*fly(?:\s+(?:4|5|6))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Nike",
+        "model": "Invincible Run",
+        "pattern": re.compile(r"\b(?:zoomx\s+)?invincible(?:\s*run)?(?:\s+(?:2|3))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Nike",
+        "model": "Structure",
+        "pattern": re.compile(r"\bstructure(?:\s+(?:24|25|26))?\b", re.IGNORECASE),
+        "exclusions": None,
     },
     {
         "brand": "Nike",
@@ -107,6 +262,24 @@ WHITELIST_RULES = [
     },
     {
         "brand": "Adidas",
+        "model": "Takumi Sen",
+        "pattern": re.compile(r"\b(?:adizero\s+)?takumi\s*sen(?:\s+(?:8|9|10))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Adidas",
+        "model": "Adios",
+        "pattern": re.compile(r"\b(?:adizero\s+)?adios(?:\s+(?:6|7|8))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\badios\s+pro\b", re.IGNORECASE),
+    },
+    {
+        "brand": "Adidas",
+        "model": "Solarboost",
+        "pattern": re.compile(r"\bsolar\s*boost(?:\s+(?:3|4|5))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Adidas",
         "model": "Supernova Rise",
         "pattern": re.compile(r"\bsupernova\s+rise\b", re.IGNORECASE),
         "exclusions": None,
@@ -129,6 +302,24 @@ WHITELIST_RULES = [
         "brand": "Asics",
         "model": "Novablast",
         "pattern": re.compile(r"\bnovablast(?:\s+[23456])?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Asics",
+        "model": "Magic Speed",
+        "pattern": re.compile(r"\bmagic\s*speed(?:\s+[234])?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Asics",
+        "model": "Noosa Tri",
+        "pattern": re.compile(r"\bnoosa\s*tri(?:\s+(?:13|14|15|16))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "Asics",
+        "model": "Glideride",
+        "pattern": re.compile(r"\bglideride(?:\s+[23])?\b", re.IGNORECASE),
         "exclusions": None,
     },
     {
@@ -171,6 +362,18 @@ WHITELIST_RULES = [
     },
     {
         "brand": "New Balance",
+        "model": "FuelCell SuperComp",
+        "pattern": re.compile(r"\b(?:fuelcell\s+)?(?:sc|supercomp)(?:\s+(?:trainer|pacer))?(?:\s+v[23])?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "New Balance",
+        "model": "Fresh Foam 1080",
+        "pattern": re.compile(r"\b(?:fresh\s*foam(?:\s*x)?\s*)?1080(?:\s+v(?:11|12|13|14))?\b", re.IGNORECASE),
+        "exclusions": None,
+    },
+    {
+        "brand": "New Balance",
         "model": "Fresh Foam 880",
         "pattern": re.compile(r"\b(?:fresh\s*foam(?:\s*x)?\s*)?880(?:\s+v(?:12|13|14))?\b", re.IGNORECASE),
         "exclusions": None,
@@ -201,12 +404,26 @@ WHITELIST_RULES = [
 def match_running_model(title: str, brand_hint: Optional[str] = None) -> Optional[Tuple[str, str]]:
     """Match a product title against the performance running model whitelist.
     
+    Rejects 100% of trap models via TRAP_MODELS_BLACKLIST, then matches
+    against the 56 guarded performance silhouettes.
     Returns (brand, canonical_model_name) if matched, else None.
     """
     if not title:
         return None
 
     clean_title = title.strip()
+
+    # Step 1: Global Trap Model Blacklist Filter
+    if TRAP_MODELS_BLACKLIST.search(clean_title):
+        return None
+
+    # Step 2: Auto-detect brand from title if not explicitly provided
+    if not brand_hint:
+        title_lower = clean_title.lower()
+        for b in ("saucony", "reebok", "hoka", "brooks", "puma", "nike", "adidas", "asics", "new balance", "skechers"):
+            if re.search(r"\b" + re.escape(b) + r"\b", title_lower):
+                brand_hint = b
+                break
 
     for rule in WHITELIST_RULES:
         if brand_hint and brand_hint.lower() not in rule["brand"].lower() and rule["brand"].lower() not in brand_hint.lower():
@@ -338,12 +555,14 @@ class RunningShoesRadar:
         """Harvest Myntra using lightweight HTTP fetch targeting window.__myx."""
         deals: List[RunningShoeDeal] = []
         urls = [
-            "https://www.myntra.com/men-sports-shoes?sort=discount&f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers",
-            "https://www.myntra.com/running-shoes?f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers",
+            "https://www.myntra.com/men-sports-shoes?sort=discount&f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers%2CSaucony%2CReebok",
+            "https://www.myntra.com/running-shoes?f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers%2CSaucony%2CReebok",
             "https://www.myntra.com/adizero?f=Brand%3AADIDAS",
             "https://www.myntra.com/pegasus?f=Brand%3ANike",
             "https://www.myntra.com/novablast?f=Brand%3AASICS",
             "https://www.myntra.com/nitro?f=Brand%3APuma",
+            "https://www.myntra.com/floatride-energy?f=Brand%3AReebok",
+            "https://www.myntra.com/saucony-shoes?f=Brand%3ASaucony",
         ]
         
         try:
@@ -430,10 +649,15 @@ class RunningShoesRadar:
                 "https://www.flipkart.com/search?q=shoes+for+men&sid=osp%2Ccil"
                 "&p[]=facets.brand[]=ADIDAS&p[]=facets.brand[]=NIKE&p[]=facets.brand[]=PUMA"
                 "&p[]=facets.brand[]=Asics&p[]=facets.brand[]=New+Balance&p[]=facets.brand[]=Skechers"
+                "&p[]=facets.brand[]=Reebok&p[]=facets.brand[]=Saucony"
                 "&p[]=facets.size[]=10&p[]=facets.size[]=10.5&p[]=facets.size[]=9.5&p[]=facets.size[]=11"
             ),
             (
                 "https://www.flipkart.com/search?q=running+shoes+men&sid=osp%2Ccil"
+                "&p[]=facets.size[]=10&p[]=facets.size[]=10.5&p[]=facets.size[]=9.5&p[]=facets.size[]=11"
+            ),
+            (
+                "https://www.flipkart.com/search?q=floatride+energy&sid=osp%2Ccil"
                 "&p[]=facets.size[]=10&p[]=facets.size[]=10.5&p[]=facets.size[]=9.5&p[]=facets.size[]=11"
             ),
         ]
