@@ -128,8 +128,8 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
         # 1. Use curl_cffi with Chrome impersonation to reliably resolve Flipkart & anti-bot shortlinks
         try:
             from curl_cffi.requests import AsyncSession
-            async with AsyncSession(impersonate="chrome") as session:
-                r = await session.get(clean, allow_redirects=True, timeout=8.0)
+            async with AsyncSession(impersonate="chrome124") as session:
+                r = await session.get(clean, allow_redirects=True, timeout=5.0)
                 final_url = _clean_resolved_url(str(r.url))
                 plat = detect_platform(final_url, safe=True)
                 if plat:
@@ -141,8 +141,8 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
         try:
             async with httpx.AsyncClient(
                 follow_redirects=True,
-                timeout=5.0,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                timeout=4.0,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
             ) as client:
                 resp = await client.get(clean)
                 final_url = _clean_resolved_url(str(resp.url))
@@ -158,8 +158,8 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
 
     try:
         from curl_cffi.requests import AsyncSession
-        async with AsyncSession(impersonate="chrome") as session:
-            r = await session.get(clean, allow_redirects=True, timeout=8.0)
+        async with AsyncSession(impersonate="chrome124") as session:
+            r = await session.get(clean, allow_redirects=True, timeout=4.0)
             final_url = _clean_resolved_url(str(r.url))
             return detect_platform(final_url, safe=True), final_url
     except Exception:
@@ -168,8 +168,8 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
     try:
         async with httpx.AsyncClient(
             follow_redirects=True,
-            timeout=5.0,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            timeout=3.5,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
         ) as client:
             resp = await client.get(clean)
             final_url = _clean_resolved_url(str(resp.url))

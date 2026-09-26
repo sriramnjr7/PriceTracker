@@ -205,7 +205,7 @@ class FlipkartScraper(BaseScraper):
 
     async def _static_fetch(self, url: str) -> Optional[str]:
         """Fetch Flipkart page using mobile Android SSR impersonation (curated to guarantee full JSON-LD & buy-box)."""
-        from curl_cffi import requests as cffi_requests
+        from curl_cffi.requests import AsyncSession
         mobile_headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -222,18 +222,18 @@ class FlipkartScraper(BaseScraper):
         # 1. Try Mobile User Agent with curl_cffi Chrome impersonation (Guaranteed SSR on Flipkart)
         for attempt in range(self.config.retries):
             try:
-                r = cffi_requests.get(
-                    url,
-                    headers=mobile_headers,
-                    impersonate="chrome124",
-                    allow_redirects=True,
-                    timeout=int(self.config.request_timeout),
-                )
-                if r.status_code == 200 and len(r.text) > 3000:
-                    if "jsonLD" in r.text or "offers" in r.text or "__INITIAL_STATE__" in r.text or "Nx9bqj" in r.text:
-                        return r.text
-                    if "Please enable Javascript" not in r.text:
-                        return r.text
+                async with AsyncSession(impersonate="chrome124") as session:
+                    r = await session.get(
+                        url,
+                        headers=mobile_headers,
+                        allow_redirects=True,
+                        timeout=int(self.config.request_timeout),
+                    )
+                    if r.status_code == 200 and len(r.text) > 3000:
+                        if "jsonLD" in r.text or "offers" in r.text or "__INITIAL_STATE__" in r.text or "Nx9bqj" in r.text:
+                            return r.text
+                        if "Please enable Javascript" not in r.text:
+                            return r.text
             except Exception as exc:
                 logger.debug("[flipkart] curl_cffi mobile fetch attempt %s failed: %s", attempt + 1, exc)
             await self._polite_delay(backoff=attempt + 1)
@@ -241,18 +241,18 @@ class FlipkartScraper(BaseScraper):
         # 2. Try Desktop User Agent
         for attempt in range(self.config.retries):
             try:
-                r = cffi_requests.get(
-                    url,
-                    headers=desktop_headers,
-                    impersonate="chrome124",
-                    allow_redirects=True,
-                    timeout=int(self.config.request_timeout),
-                )
-                if r.status_code == 200 and len(r.text) > 3000:
-                    if "jsonLD" in r.text or "offers" in r.text or "__INITIAL_STATE__" in r.text or "Nx9bqj" in r.text:
-                        return r.text
-                    if "Please enable Javascript" not in r.text:
-                        return r.text
+                async with AsyncSession(impersonate="chrome124") as session:
+                    r = await session.get(
+                        url,
+                        headers=desktop_headers,
+                        allow_redirects=True,
+                        timeout=int(self.config.request_timeout),
+                    )
+                    if r.status_code == 200 and len(r.text) > 3000:
+                        if "jsonLD" in r.text or "offers" in r.text or "__INITIAL_STATE__" in r.text or "Nx9bqj" in r.text:
+                            return r.text
+                        if "Please enable Javascript" not in r.text:
+                            return r.text
             except Exception as exc:
                 logger.debug("[flipkart] curl_cffi desktop fetch attempt %s failed: %s", attempt + 1, exc)
             await self._polite_delay(backoff=attempt + 1)

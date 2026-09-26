@@ -407,7 +407,13 @@ class CasioScraper(BaseScraper):
             sem = asyncio.Semaphore(5)
 
             # Dedicated silent-sale hubs where discounts require customer session verification
-            silent_hubs = ["silent-sale", "silent-sale-products", "corporate-discount"]
+            silent_hubs = [
+                "silent-sale",
+                "silent-sale-products",
+                "limited-sale",
+                "silentoffer",
+                "corporate-discount",
+            ]
             
             async def _verify_silent_prod(p):
                 handle = p.get("handle", "")
@@ -422,7 +428,7 @@ class CasioScraper(BaseScraper):
                     price = float(v.get("price", 0))
                     compare_at = float(v.get("compare_at_price") or price)
                     available = bool(v.get("available", False))
-                    if available and compare_at > price:
+                    if available and price > 0 and compare_at > price:
                         disc = round(((compare_at - price) / compare_at * 100.0), 1)
                         if disc >= min_discount:
                             return {
@@ -487,7 +493,14 @@ class CasioScraper(BaseScraper):
                     logger.debug("[casio] silent hub %s error: %s", hub, exc)
 
             # 2. Sweep other promotional collections with standard JSON variant discounts and silent-sale tags
-            promo_hubs = ["sale-products", "promotional-watches", "casio"]
+            promo_hubs = [
+                "sale-products",
+                "promotional-watches",
+                "limited-sale",
+                "silentoffer",
+                "g-shock-new-collection",
+                "casio",
+            ]
             for hub in promo_hubs:
                 try:
                     r = await self._safe_get(
@@ -515,7 +528,7 @@ class CasioScraper(BaseScraper):
                                     continue
                                 price = float(v.get("price", 0))
                                 compare_at = float(v.get("compare_at_price") or price)
-                                if compare_at > price:
+                                if price > 0 and compare_at > price:
                                     disc = round(((compare_at - price) / compare_at * 100.0), 1)
                                     if disc >= min_discount:
                                         deals_map[product_url] = {
@@ -538,7 +551,7 @@ class CasioScraper(BaseScraper):
 
             # 3. Sweep master catalog across all pages for genuine variant discounts
             page = 1
-            max_pages = 2 if (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) else 8
+            max_pages = 8
             while page <= max_pages:
                 try:
                     r = await self._safe_get(
@@ -571,22 +584,19 @@ class CasioScraper(BaseScraper):
                             available = bool(v.get("available", False))
                             if not available:
                                 continue
-                            disc = (
-                                round(((compare_at - price) / compare_at * 100.0), 1)
-                                if compare_at > price
-                                else 0.0
-                            )
-                            if disc >= min_discount and disc > 0:
-                                deals_map[product_url] = {
-                                    "title": formatted_title,
-                                    "price": price,
-                                    "mrp": compare_at,
-                                    "discount_percent": disc,
-                                    "in_stock": available,
-                                    "url": product_url,
-                                    "family": family,
-                                    "is_silent_sale": False,
-                                }
+                            if price > 0 and compare_at > price:
+                                disc = round(((compare_at - price) / compare_at * 100.0), 1)
+                                if disc >= min_discount:
+                                    deals_map[product_url] = {
+                                        "title": formatted_title,
+                                        "price": price,
+                                        "mrp": compare_at,
+                                        "discount_percent": disc,
+                                        "in_stock": available,
+                                        "url": product_url,
+                                        "family": family,
+                                        "is_silent_sale": False,
+                                    }
                     if silent_candidates:
                         v_deals = await asyncio.gather(*(_verify_silent_prod(p) for p in silent_candidates))
                         for vd in v_deals:

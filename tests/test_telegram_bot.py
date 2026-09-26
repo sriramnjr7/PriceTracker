@@ -14,6 +14,7 @@ def mock_db():
     db.initialize = AsyncMock()
     db.add_product = AsyncMock(return_value=42)
     db.get_products = AsyncMock(return_value=[])
+    db.get_product_by_url = AsyncMock(return_value=None)
     db.remove_product = AsyncMock()
     db.add_custom_rule = AsyncMock(return_value=99)
     return db

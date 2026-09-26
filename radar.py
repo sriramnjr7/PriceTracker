@@ -152,12 +152,7 @@ class StealRadar:
                         q_lower = rule.query.lower()
                         # If query is general "casio watch", "casio", or general watches, sweep master catalog
                         if "watch" in q_lower or "casio" in q_lower or not rule.query:
-                            casio_item = await self.db.get_product_by_url("https://casiostore.bhawar.com/collections/casio")
-                            if casio_item and not casio_item.is_active:
-                                logger.info("[radar] Skipping Casio catalog sweep: [Category: Casio] is PAUSED in dashboard.")
-                                deals = []
-                            else:
-                                deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
+                            deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
                         else:
                             handles_to_scan = set()
                             if "g-shock" in q_lower or "gshock" in q_lower:
@@ -186,11 +181,7 @@ class StealRadar:
                                 handles_to_scan.add("enticer-women")
 
                             if not handles_to_scan:
-                                casio_item = await self.db.get_product_by_url("https://casiostore.bhawar.com/collections/casio")
-                                if casio_item and not casio_item.is_active:
-                                    deals = []
-                                else:
-                                    deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
+                                deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
                             else:
                                 deals = []
                                 for handle in handles_to_scan:

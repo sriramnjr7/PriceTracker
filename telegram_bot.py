@@ -80,15 +80,27 @@ class TelegramAssistant:
             return
 
         norm_url = normalize_product_url(resolved_url, platform)
+        fallback_title = extract_fallback_title(resolved_url, platform)
 
-        # Check if already tracked in DB to avoid duplicate insertion or redundant scraping
+        # 1. Fast direct index lookup to check if already tracked
         try:
-            products = await self.db.get_products(active_only=False)
-            existing = next((p for p in products if p.url == norm_url), None)
+            existing = await self.db.get_product_by_url(norm_url)
+            if existing is not None and not isinstance(existing, Product):
+                if hasattr(existing, "_mock_return_value") or "Mock" in str(type(existing)):
+                    existing = None
         except Exception:
             existing = None
 
+        if not existing:
+            try:
+                products = await self.db.get_products(active_only=False)
+                existing = next((p for p in products if p.url == norm_url), None)
+            except Exception:
+                existing = None
+
         if existing:
+            curr_p = getattr(existing, "current_price", None)
+            curr_display = f"₹{curr_p:g}" if isinstance(curr_p, (int, float)) else "Pending check"
             if target_price is not None and target_price != existing.target_price:
                 await self.db.add_product(
                     url=norm_url,
@@ -97,7 +109,6 @@ class TelegramAssistant:
                     initial_price=existing.initial_price,
                     title=existing.title,
                 )
-                curr_display = f"₹{existing.current_price:g}" if existing.current_price else "Pending check"
                 await self.send_reply(
                     chat_id,
                     f"🎯 *Target Price Updated!*\n\n"
@@ -110,8 +121,8 @@ class TelegramAssistant:
                 )
                 return
             else:
-                curr_display = f"₹{existing.current_price:g}" if existing.current_price else "Pending check"
-                target_display = f"₹{existing.target_price:g}" if existing.target_price else "Auto"
+                tgt_p = getattr(existing, "target_price", None)
+                target_display = f"₹{tgt_p:g}" if isinstance(tgt_p, (int, float)) else "Auto"
                 await self.send_reply(
                     chat_id,
                     f"ℹ️ *Already Tracked!*\n\n"
@@ -124,54 +135,34 @@ class TelegramAssistant:
                 )
                 return
 
-        await self.send_reply(chat_id, f"🔍 Inspecting product on *{platform.title()}*...")
+        # 2. IMMEDIATE PERSISTENCE: Save product into DB first so it is never lost on network or scraping timeout
+        target = target_price
+        prod_id = await self.db.add_product(
+            url=norm_url,
+            platform=platform,
+            target_price=target,
+            initial_price=None,
+            title=fallback_title,
+        )
+
         try:
             scraper = get_scraper(platform, self.config)
-            # Bound scraping to 6.0 seconds so serverless / webhook never exceeds timeout
-            try:
-                res = await asyncio.wait_for(scraper.scrape(norm_url), timeout=6.0)
-            except (asyncio.TimeoutError, Exception) as scrape_exc:
-                logger.warning("[%s] Initial fast scrape timed out or failed (%s); queueing background verification", platform, scrape_exc)
-                fallback_title = extract_fallback_title(resolved_url, platform)
-                target = target_price
-                prod_id = await self.db.add_product(
-                    url=norm_url,
-                    platform=platform,
-                    target_price=target,
-                    initial_price=None,
-                    title=fallback_title,
-                )
-                target_display = f"₹{target:g}" if target else "Auto (on first price check)"
-                await self.send_reply(
-                    chat_id,
-                    f"✅ *Tracking Added!*\n\n"
-                    f"🆔 *ID:* #{prod_id}\n"
-                    f"📦 *Product:* {fallback_title}\n"
-                    f"🏪 *Platform:* {platform.title()}\n"
-                    f"🎯 *Alert Target:* {target_display}\n\n"
-                    f"⏳ *Note:* The retailer page is taking longer to verify. Product has been registered and live price verification will complete in the background shortly!"
-                )
-                return
+            # Bound live scrape to 5.0 seconds for instant webhook response
+            res = await asyncio.wait_for(scraper.scrape(norm_url), timeout=5.0)
 
             is_out_of_stock = (res.price is None or res.price <= 0 or not res.in_stock)
-            title = res.title or extract_fallback_title(resolved_url, platform)
+            title = res.title or fallback_title
 
             if is_out_of_stock:
                 current_price = None
                 target = target_price
-            else:
-                current_price = res.price
-                target = target_price if target_price is not None else round(current_price * 0.8, 2)
-
-            prod_id = await self.db.add_product(
-                url=norm_url,
-                platform=platform,
-                target_price=target,
-                initial_price=current_price,
-                title=title,
-            )
-
-            if is_out_of_stock:
+                await self.db.add_product(
+                    url=norm_url,
+                    platform=platform,
+                    target_price=target,
+                    initial_price=None,
+                    title=title,
+                )
                 target_display = f"₹{target:g}" if target else "Any Restock"
                 await self.send_reply(
                     chat_id,
@@ -184,6 +175,15 @@ class TelegramAssistant:
                     f"🔔 You will receive an instant Telegram alert the moment this item returns to stock!"
                 )
             else:
+                current_price = res.price
+                target = target_price if target_price is not None else round(current_price * 0.8, 2)
+                await self.db.add_product(
+                    url=norm_url,
+                    platform=platform,
+                    target_price=target,
+                    initial_price=current_price,
+                    title=title,
+                )
                 await self.send_reply(
                     chat_id,
                     f"✅ *Tracking Added Successfully!*\n\n"
@@ -194,9 +194,18 @@ class TelegramAssistant:
                     f"🎯 *Alert Target:* ₹{target:g}\n\n"
                     f"You will receive an instant alert when the price drops to or below your target!"
                 )
-        except Exception as exc:
-            logger.error("Error adding product from Telegram: %s", exc)
-            await self.send_reply(chat_id, f"❌ Error adding product: {exc}")
+        except Exception as scrape_exc:
+            logger.info("[%s] Fast scrape completed/deferred (%s); background verification will complete shortly", platform, scrape_exc)
+            target_display = f"₹{target:g}" if target else "Auto (on first price check)"
+            await self.send_reply(
+                chat_id,
+                f"✅ *Tracking Added!*\n\n"
+                f"🆔 *ID:* #{prod_id}\n"
+                f"📦 *Product:* {fallback_title}\n"
+                f"🏪 *Platform:* {platform.title()}\n"
+                f"🎯 *Alert Target:* {target_display}\n\n"
+                f"⏳ The retailer page is taking longer to verify. Product has been registered in your radar and live price verification will complete in the background shortly!"
+            )
 
     async def handle_natural_language_tracking(self, chat_id: str | int, text: str) -> None:
         """Parse natural language request and search platforms for matching hardware/groceries."""

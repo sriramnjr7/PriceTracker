@@ -619,14 +619,35 @@ async def telegram_webhook(request: Request):
     assistant = TelegramAssistant(settings, db=db)
 
     try:
-        # Strict 9.0s timeout guarantees Vercel NEVER returns a 504 Gateway Timeout (maxDuration is 15s)
-        await asyncio.wait_for(assistant.handle_message(message), timeout=9.0)
+        # Strict 12.0s timeout guarantees Vercel NEVER returns a 504 Gateway Timeout (maxDuration is 15s)
+        await asyncio.wait_for(assistant.handle_message(message), timeout=12.0)
     except asyncio.TimeoutError:
         logger.warning(
-            "Telegram webhook processing timed out after 9.0s for update_id %s; returning 200 OK to prevent Telegram retry loop",
+            "Telegram webhook processing timed out after 12.0s for update_id %s; returning 200 OK to prevent Telegram retry loop",
             update_id,
         )
         chat = message.get("chat", {})
+        text = (message.get("text") or "").strip()
+        url_match = re.search(r"(https?://[^\s]+)", text)
+        if url_match:
+            try:
+                from scrapers import detect_platform, extract_fallback_title, normalize_product_url
+                raw_u = url_match.group(1).rstrip("),.]\"'")
+                plat = detect_platform(raw_u, safe=True) or "online"
+                clean_u = normalize_product_url(raw_u, plat)
+                fb_title = extract_fallback_title(raw_u, plat)
+                m_target = re.search(r"(?:under|below|target|price|₹|rs\.?)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)", text.replace(url_match.group(1), ""), re.I)
+                target_val = float(m_target.group(1).replace(",", "")) if m_target else None
+                await db.add_product(
+                    url=clean_u,
+                    platform=plat,
+                    target_price=target_val,
+                    initial_price=None,
+                    title=fb_title,
+                )
+            except Exception as ins_exc:
+                logger.debug("Emergency fallback DB insertion error: %s", ins_exc)
+
         if chat.get("id"):
             try:
                 await assistant.send_reply(
