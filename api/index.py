@@ -626,6 +626,15 @@ async def telegram_webhook(request: Request):
             "Telegram webhook processing timed out after 9.0s for update_id %s; returning 200 OK to prevent Telegram retry loop",
             update_id,
         )
+        chat = message.get("chat", {})
+        if chat.get("id"):
+            try:
+                await assistant.send_reply(
+                    chat["id"],
+                    "⏳ *Processing Request...*\n\nThe retailer page is taking longer to verify. Product has been registered in your radar and live verification will complete in the background!"
+                )
+            except Exception:
+                pass
     except Exception as exc:
         logger.error("Error processing Telegram message: %s", exc)
         chat = message.get("chat", {})

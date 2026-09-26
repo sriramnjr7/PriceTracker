@@ -320,22 +320,7 @@ class StealRadar:
             if await self.db.is_deal_recently_notified(url, minutes=20, current_price=eff_price):
                 continue
 
-            # 2. AI Arbiter: Validate genuine brand & genuine high-value deal (Cloudflare -> Gemini)
-            verdict = await self.ai_validator.validate_deal(
-                title=deal["title"],
-                category=rule.category,
-                selling_price=eff_price,
-                mrp=mrp,
-                discount_percent=disc,
-                platform=deal.get("platform", "online"),
-                required_brands=rule.required_keywords,
-                scraped_brand=deal.get("scraped_brand"),
-            )
-            if not verdict.is_genuine_steal or verdict.is_accessory_or_knockoff:
-                logger.info("[radar] AI Filtered Out '%s': %s", deal["title"][:40], verdict.reason)
-                continue
-
-            # 3. Build high-priority alert message with AI model attribution
+            # 2. Fast instant deal alert (zero latency, no AI bottleneck so deals don't sell out)
             coupon_line = f"\n🎟️ *Coupon:* {coupon} (Apply on page!)" if coupon else ""
             deal_badge = "🔥 STEAL DEAL" if disc < 80 else "🚨 PRICING GLITCH / CLEARANCE"
             brand_tag = deal.get("scraped_brand") or "(verified)"
@@ -348,8 +333,6 @@ class StealRadar:
                 f"💰 *Deal Price:* ₹{eff_price:g} (MRP: ₹{mrp:g}){coupon_line}\n"
                 f"📉 *Discount:* {disc:.1f}% OFF (Target: >={rule.min_discount}%)\n"
                 f"🏪 *Platform:* {deal.get('platform', 'Retailer').title()}\n"
-                f"🤖 *AI Arbiter:* {verdict.model_used}\n"
-                f"📝 *AI Analysis:* {verdict.reason}\n"
                 f"🛒 *BUY NOW:* {url}"
             )
 

@@ -15,12 +15,14 @@ from scrapers import (
     EliteHubsScraper,
     FlipkartScraper,
     GameLootScraper,
+    GenesisPCScraper,
     InstamartScraper,
     MyntraScraper,
     ScrapeError,
     ZeptoScraper,
     detect_platform,
     get_scraper,
+    normalize_product_url,
     resolve_platform,
 )
 
@@ -48,6 +50,7 @@ def test_detect_platform_supported_domains():
     assert detect_platform("https://elitehubs.com/products/crucial-p3-1tb-ssd") == "elitehubs"
     assert detect_platform("https://computechstore.in/product/controller") == "computech"
     assert detect_platform("https://gameloot.in/shop/ram") == "gameloot"
+    assert detect_platform("https://www.genesispc.in/products/8bitdo-controller") == "genesispc"
 
     assert detect_platform("https://www.bigbasket.com/pd/12345/apple") == "bigbasket"
     assert detect_platform("https://bbinstant.com/item/123") == "bigbasket"
@@ -372,6 +375,66 @@ async def test_gameloot_scraper_out_of_stock():
         assert res.price is None
         assert res.in_stock is False
         assert res.platform == "gameloot"
+
+
+@pytest.mark.asyncio
+async def test_genesispc_scraper():
+    """Verify GenesisPCScraper parses Shopify JSON with variants correctly."""
+    scraper = GenesisPCScraper()
+
+    fake_json = {
+        "product": {
+            "title": "8BitDo Ultimate 2C Wireless Controller",
+            "variants": [
+                {
+                    "id": 45104209264693,
+                    "title": "Mint Green",
+                    "price": "2499.00",
+                    "available": True,
+                },
+                {
+                    "id": 45104209264694,
+                    "title": "Purple",
+                    "price": "2699.00",
+                    "available": False,
+                }
+            ]
+        }
+    }
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = fake_json
+
+    with patch("httpx.AsyncClient.get", AsyncMock(return_value=mock_resp)):
+        res = await scraper.scrape("https://www.genesispc.in/products/8bitdo-ultimate-2c?variant=45104209264693")
+        assert "Mint Green" in res.title
+        assert res.price == 2499.0
+        assert res.in_stock is True
+        assert res.platform == "genesispc"
+
+
+def test_normalize_product_url_variant_and_tracking_params():
+    """Verify normalize_product_url preserves essential variant IDs while dropping tracking garbage."""
+    raw_genesis = (
+        "https://www.genesispc.in/products/8bitdo-controller?variant=45104209264693"
+        "&country=IN&currency=INR&utm_medium=product_sync&utm_source=google&gad_source=1"
+        "&gbraid=0AAAABCjh_Z3IoeEoexgUPUnMFfjK7zw9r"
+    )
+    norm_genesis = normalize_product_url(raw_genesis)
+    assert norm_genesis == "https://www.genesispc.in/products/8bitdo-controller?variant=45104209264693"
+
+    raw_casio = "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000?_pos=1&_fid=50aa19687&_ss=c"
+    norm_casio = normalize_product_url(raw_casio)
+    assert norm_casio == "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000"
+
+    raw_flipkart_hyperlocal = (
+        "https://www.flipkart.com/hyperlocal-preview-page?marketplace=HYPERLOCAL"
+        "&originalUrl=%2Fmi-power-bank%2Fp%2Fitm123%3Fpid%3DPWB123XYZ%26lid%3DLST123"
+    )
+    norm_fk = normalize_product_url(raw_flipkart_hyperlocal)
+    assert "https://www.flipkart.com/mi-power-bank/p/itm123?pid=PWB123XYZ" in norm_fk
+
 
 
 

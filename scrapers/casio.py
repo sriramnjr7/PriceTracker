@@ -51,6 +51,35 @@ class CasioScraper(BaseScraper):
         "unavailable",
     )
 
+    def _extract_stock(self, soup: BeautifulSoup) -> bool:
+        """Check primary product purchase button state for accurate stock detection."""
+        # 1. Product Form Submit Button
+        btn = soup.select_one('button[name="add"], .product-form__submit, button.product__submit, .sticky-add-btn')
+        if btn:
+            if btn.has_attr("disabled"):
+                return False
+            btn_text = btn.get_text(" ", strip=True).lower()
+            if any(k in btn_text for k in ("sold out", "out of stock", "unavailable")):
+                return False
+            return True
+
+        # 2. Check for explicit Sold Out badge inside product info container
+        prod_info = soup.select_one('.product__info-container, .product-single__meta, form[action*="/cart/add"]')
+        if prod_info:
+            info_text = prod_info.get_text(" ", strip=True).lower()
+            if "sold out" in info_text or "out of stock" in info_text:
+                return False
+
+        # 3. Fallback to schema JSON-LD or meta tags
+        for script in soup.find_all("script", type=lambda t: t and ("ld+json" in t or "json" in t)):
+            txt = script.string or script.get_text() or ""
+            if "InStock" in txt:
+                return True
+            if "OutOfStock" in txt:
+                return False
+
+        return True
+
     def _extract_price(self, soup: BeautifulSoup) -> Optional[float]:
         """Extract selling price, prioritizing member silent sale discounts."""
         for selector in self.price_selectors:
@@ -387,13 +416,13 @@ class CasioScraper(BaseScraper):
                     return None
                 tags = p.get("tags", [])
                 fam, title = self._classify_casio_watch(p.get("title", ""), tags, handle)
+
+                # 1. First check if any variant in the JSON has an explicit discount & available
                 for v in p.get("variants", []):
-                    if not bool(v.get("available", False)):
-                        continue
                     price = float(v.get("price", 0))
                     compare_at = float(v.get("compare_at_price") or price)
-                    # If variant JSON already has explicit discount
-                    if compare_at > price:
+                    available = bool(v.get("available", False))
+                    if available and compare_at > price:
                         disc = round(((compare_at - price) / compare_at * 100.0), 1)
                         if disc >= min_discount:
                             return {
@@ -407,11 +436,15 @@ class CasioScraper(BaseScraper):
                                 "is_silent_sale": False,
                             }
 
-                    # Otherwise verify against authenticated storefront for silent sale pricing
-                    async with sem:
-                        try:
-                            resp = await auth_client.get(product_url)
+                # 2. Verify against authenticated storefront for silent sale pricing
+                async with sem:
+                    try:
+                        resp = await auth_client.get(product_url)
+                        if resp.status_code == 200:
                             soup = BeautifulSoup(resp.text, "html.parser")
+                            if not self._extract_stock(soup):
+                                return None
+
                             sale_el = soup.select_one(
                                 ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
                             )
@@ -433,8 +466,8 @@ class CasioScraper(BaseScraper):
                                         "family": fam,
                                         "is_silent_sale": True,
                                     }
-                        except Exception as exc:
-                            logger.debug("[casio] silent verify error for %s: %s", product_url, exc)
+                    except Exception as exc:
+                        logger.debug("[casio] silent verify error for %s: %s", product_url, exc)
                 return None
 
             for hub in silent_hubs:

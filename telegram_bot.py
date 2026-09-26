@@ -76,7 +76,7 @@ class TelegramAssistant:
         """Handle direct product URL tracking with canonical normalization."""
         platform, resolved_url = await resolve_platform_and_url(url)
         if not platform:
-            await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), EliteHubs, Computech, GameLoot, Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
+            await self.send_reply(chat_id, "⚠️ Could not identify the retailer from this link. Supported: Amazon (amzn.in), Flipkart (fkrt.co), EliteHubs, Computech, GameLoot, GenesisPC, Myntra, Ajio, BigBasket, Blinkit, Zepto, Swiggy, Casio.")
             return
 
         norm_url = normalize_product_url(resolved_url, platform)
@@ -133,7 +133,7 @@ class TelegramAssistant:
             except (asyncio.TimeoutError, Exception) as scrape_exc:
                 logger.warning("[%s] Initial fast scrape timed out or failed (%s); queueing background verification", platform, scrape_exc)
                 fallback_title = extract_fallback_title(resolved_url, platform)
-                target = target_price or 1.0
+                target = target_price
                 prod_id = await self.db.add_product(
                     url=norm_url,
                     platform=platform,
@@ -141,7 +141,7 @@ class TelegramAssistant:
                     initial_price=None,
                     title=fallback_title,
                 )
-                target_display = f"₹{target:g}" if target_price else "Auto (on first price check)"
+                target_display = f"₹{target:g}" if target else "Auto (on first price check)"
                 await self.send_reply(
                     chat_id,
                     f"✅ *Tracking Added!*\n\n"
@@ -199,13 +199,31 @@ class TelegramAssistant:
             await self.send_reply(chat_id, f"❌ Error adding product: {exc}")
 
     async def handle_natural_language_tracking(self, chat_id: str | int, text: str) -> None:
-        """Parse natural language request using AI and search platforms for matching hardware/groceries."""
-        await self.send_reply(chat_id, "🤖 *Analyzing request with AI & searching e-commerce platforms...*")
+        """Parse natural language request and search platforms for matching hardware/groceries."""
+        await self.send_reply(chat_id, "🔍 *Searching e-commerce platforms for best deals...*")
 
-        parsed = await self.ai.parse_tracking_intent(text)
-        query = parsed.get("query") or text
-        target_price = parsed.get("target_price")
-        brand = parsed.get("brand")
+        # Fast heuristic intent parser (instant, zero external API latency)
+        query = text.strip()
+        target_price = None
+        brand = None
+
+        m_price = re.search(r"(?:under|below|target|price|for|at|<=)\s*(?:₹|rs\.?)?\s*(\d+(?:\.\d+)?)\s*(k\b|thousand)?", text, re.I)
+        if m_price:
+            val = float(m_price.group(1))
+            target_price = val * 1000.0 if m_price.group(2) else val
+            cleaned = text[:m_price.start()] + text[m_price.end():]
+            cleaned = re.sub(r"\b(track|alert|when|if|drops?|comes?|alert me|notify me|ping me|me)\b", "", cleaned, flags=re.I).strip()
+            if len(cleaned) > 2:
+                query = cleaned
+        else:
+            # Fallback to AI intent parser only if heuristic didn't find clear target
+            try:
+                parsed = await asyncio.wait_for(self.ai.parse_tracking_intent(text), timeout=3.0)
+                query = parsed.get("query") or text
+                target_price = parsed.get("target_price")
+                brand = parsed.get("brand")
+            except Exception:
+                pass
 
         found_products = []
         text_lower = text.lower()
@@ -366,10 +384,21 @@ class TelegramAssistant:
         url_match = re.search(r"(https?://[^\s]+)", text)
         if url_match:
             raw_url = url_match.group(1).rstrip("),.]\"'")
-            # Check if target price specified after link
             remainder = text.replace(url_match.group(1), "").strip()
-            price_match = re.search(r"(\d+(?:,\d+)?(?:\.\d+)?)", remainder)
-            target_price = float(price_match.group(1).replace(",", "")) if price_match else None
+            remainder = re.sub(r"^/track\s*", "", remainder, flags=re.I).strip()
+            target_price = None
+            m_k = re.search(r"(?:under|below|target|price|₹|rs\.?)?\s*(\d+(?:\.\d+)?)\s*k\b", remainder, re.I)
+            if m_k:
+                target_price = float(m_k.group(1)) * 1000.0
+            else:
+                m_num = re.search(r"(?:under|below|target|price|₹|rs\.?)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)", remainder, re.I)
+                if m_num:
+                    try:
+                        p = float(m_num.group(1).replace(",", ""))
+                        if p > 0:
+                            target_price = p
+                    except ValueError:
+                        pass
             await self.handle_url_tracking(chat_id, raw_url, target_price)
             return
 

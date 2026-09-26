@@ -89,10 +89,12 @@ async def test_product_price_history_endpoint():
         is_active=True,
         last_notified_price=None,
     ))
+    from datetime import datetime, timezone, timedelta
+    now_utc = datetime.now(timezone.utc)
     mock_db.price_history = AsyncMock(return_value=[
-        (1800.0, "2026-09-20T10:00:00Z"),
-        (1900.0, "2026-09-19T10:00:00Z"),
-        (2000.0, "2026-09-18T10:00:00Z"),
+        (1800.0, (now_utc - timedelta(days=1)).isoformat()),
+        (1900.0, (now_utc - timedelta(days=2)).isoformat()),
+        (2000.0, (now_utc - timedelta(days=3)).isoformat()),
     ])
 
     with patch("api.index.get_database", return_value=mock_db):

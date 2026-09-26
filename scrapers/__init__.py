@@ -17,6 +17,7 @@ from .computech import ComputechScraper
 from .elitehubs import EliteHubsScraper
 from .flipkart import FlipkartScraper
 from .gameloot import GameLootScraper
+from .genesispc import GenesisPCScraper
 from .instamart import InstamartScraper
 from .myntra import MyntraScraper
 from .zepto import ZeptoScraper
@@ -30,6 +31,7 @@ SCRAPERS = {
     "elitehubs": EliteHubsScraper,
     "computech": ComputechScraper,
     "gameloot": GameLootScraper,
+    "genesispc": GenesisPCScraper,
     "bigbasket": BigBasketScraper,
     "blinkit": BlinkitScraper,
     "zepto": ZeptoScraper,
@@ -55,6 +57,7 @@ HOST_MAP = {
     "elitehubs.com": "elitehubs",
     "computechstore.in": "computech",
     "gameloot.in": "gameloot",
+    "genesispc.in": "genesispc",
     "bigbasket.com": "bigbasket",
     "bbinstant.com": "bigbasket",
     "blinkit.com": "blinkit",
@@ -103,6 +106,21 @@ def detect_platform(url: str, safe: bool = False) -> Optional[str]:
     )
 
 
+def _clean_resolved_url(final_url: str) -> str:
+    """Normalize redirected URL and decode nested shortlink destination parameters."""
+    if "hyperlocal-preview-page" in final_url and "originalUrl=" in final_url:
+        from urllib.parse import urlparse, parse_qs, unquote
+        parsed = urlparse(final_url)
+        qs = parse_qs(parsed.query)
+        orig = qs.get("originalUrl", [""])[0]
+        if orig:
+            unquoted = unquote(orig)
+            if not unquoted.startswith("http"):
+                return f"https://www.flipkart.com{unquoted}"
+            return unquoted
+    return final_url
+
+
 async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
     """Detect platform and expand any shortlinks to their final canonical destination URL."""
     clean = url.strip()
@@ -112,7 +130,7 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
             from curl_cffi.requests import AsyncSession
             async with AsyncSession(impersonate="chrome") as session:
                 r = await session.get(clean, allow_redirects=True, timeout=8.0)
-                final_url = str(r.url)
+                final_url = _clean_resolved_url(str(r.url))
                 plat = detect_platform(final_url, safe=True)
                 if plat:
                     return plat, final_url
@@ -127,7 +145,7 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
             ) as client:
                 resp = await client.get(clean)
-                final_url = str(resp.url)
+                final_url = _clean_resolved_url(str(resp.url))
                 plat = detect_platform(final_url, safe=True)
                 if plat:
                     return plat, final_url
@@ -142,7 +160,7 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
         from curl_cffi.requests import AsyncSession
         async with AsyncSession(impersonate="chrome") as session:
             r = await session.get(clean, allow_redirects=True, timeout=8.0)
-            final_url = str(r.url)
+            final_url = _clean_resolved_url(str(r.url))
             return detect_platform(final_url, safe=True), final_url
     except Exception:
         pass
@@ -154,7 +172,7 @@ async def resolve_platform_and_url(url: str) -> tuple[Optional[str], str]:
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         ) as client:
             resp = await client.get(clean)
-            final_url = str(resp.url)
+            final_url = _clean_resolved_url(str(resp.url))
             return detect_platform(final_url, safe=True), final_url
     except Exception:
         return None, clean
@@ -180,9 +198,19 @@ def get_scraper(platform: str, config=None) -> BaseScraper:
 def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
     """Strip search tokens, tracking IDs, and affiliate cruft to produce a canonical product URL."""
     import re
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, parse_qs, unquote
 
     clean = url.strip()
+
+    # Handle Flipkart hyperlocal-preview-page with originalUrl parameter
+    if "hyperlocal-preview-page" in clean and "originalUrl=" in clean:
+        parsed_hl = urlparse(clean)
+        qs_hl = parse_qs(parsed_hl.query)
+        orig = qs_hl.get("originalUrl", [""])[0]
+        if orig:
+            unquoted = unquote(orig)
+            clean = f"https://www.flipkart.com{unquoted}" if not unquoted.startswith("http") else unquoted
+
     p = platform or detect_platform(clean, safe=True) or ""
 
     if p == "amazon":
@@ -192,20 +220,23 @@ def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
             asin = m.group(1).upper()
             host = urlparse(clean).hostname or "www.amazon.in"
             return f"https://{host}/dp/{asin}"
-    elif p == "casio":
-        # Canonicalize Shopify product URLs: /collections/.../products/<handle> -> /products/<handle>
-        m = re.search(r"/products/([a-zA-Z0-9_-]+)", clean)
+    elif p in ("casio", "elitehubs", "genesispc"):
+        # Canonicalize Shopify product URLs: /products/<handle>
+        # Preserve ?variant=<id> if present, but strip all other tracking cruft
+        parsed = urlparse(clean)
+        domain = parsed.hostname or ("casiostore.bhawar.com" if p == "casio" else ("elitehubs.com" if p == "elitehubs" else "www.genesispc.in"))
+        scheme = parsed.scheme or "https"
+        m = re.search(r"/products/([a-zA-Z0-9_-]+)", parsed.path)
+        qs = parse_qs(parsed.query)
+        variant_id = qs.get("variant", [None])[0]
+        variant_suffix = f"?variant={variant_id}" if variant_id else ""
         if m:
-            return f"https://casiostore.bhawar.com/products/{m.group(1)}"
-        m_col = re.search(r"/collections/([a-zA-Z0-9_-]+)", clean)
-        if m_col:
-            return f"https://casiostore.bhawar.com/collections/{m_col.group(1)}"
-        return clean.split("?")[0].rstrip("/")
-    elif p == "elitehubs":
-        m = re.search(r"/products/([a-zA-Z0-9_-]+)", clean)
-        if m:
-            return f"https://elitehubs.com/products/{m.group(1)}"
-        return clean.split("?")[0].rstrip("/")
+            return f"{scheme}://{domain}/products/{m.group(1)}{variant_suffix}"
+        if p == "casio":
+            m_col = re.search(r"/collections/([a-zA-Z0-9_-]+)", parsed.path)
+            if m_col:
+                return f"{scheme}://{domain}/collections/{m_col.group(1)}"
+        return f"{scheme}://{domain}{parsed.path.rstrip('/')}{variant_suffix}"
     elif p in ("computech", "gameloot"):
         return clean.split("?")[0].rstrip("/") + "/"
     elif p == "zepto":
@@ -227,16 +258,23 @@ def normalize_product_url(url: str, platform: Optional[str] = None) -> str:
     elif p in ("myntra", "ajio", "blinkit", "bigbasket", "instamart"):
         return clean.split("?")[0].rstrip("/")
 
-    return clean.split("?")[0] if "?" in clean and any(k in clean for k in ("ref=", "utm_", "dib=")) else clean
+    return clean.split("?")[0] if "?" in clean and any(k in clean for k in ("ref=", "utm_", "dib=", "gclid=", "fbclid=", "gad_source=")) else clean
 
 
 def extract_fallback_title(url: str, platform: str) -> str:
     """Generate a clean, human-readable title from URL path slug instead of query parameters."""
     import re
-    from urllib.parse import urlparse, unquote
+    from urllib.parse import urlparse, unquote, parse_qs
 
-    parsed = urlparse(url)
-    segments = [s for s in parsed.path.split("/") if s and s.lower() not in ("dp", "gp", "product", "products", "p", "buy", "s", "dl")]
+    clean = url.strip()
+    if "hyperlocal-preview-page" in clean and "originalUrl=" in clean:
+        parsed_hl = urlparse(clean)
+        orig = parse_qs(parsed_hl.query).get("originalUrl", [""])[0]
+        if orig:
+            clean = unquote(orig)
+
+    parsed = urlparse(clean)
+    segments = [s for s in parsed.path.split("/") if s and s.lower() not in ("dp", "gp", "product", "products", "p", "buy", "s", "dl", "hyperlocal-preview-page")]
 
     if segments:
         candidate = segments[0].replace("-", " ").replace("_", " ")

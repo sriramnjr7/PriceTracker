@@ -159,7 +159,7 @@ async def test_process_and_notify_deals(mock_db, mock_notifier):
 def test_casio_rules_platforms_and_discount_integrity():
     """Verify Casio rules target Casio Bhawar, Flipkart, and Myntra with >= 50% discount, and unrequested rules are inactive."""
     active_rules = [r for r in DEFAULT_RADAR_RULES if r.is_active]
-    assert len(active_rules) == 5  # Casio 70%+, Casio GBD-300, G-Shock 50%+, Casio Myntra 60%+, Casio Flipkart 60%+
+    assert len(active_rules) == 6  # Casio 70%+, Casio GBD-300, G-Shock 50%+, GBD-H2000, Casio Myntra 60%+, Casio Flipkart 60%+
     
     for rule in active_rules:
         assert set(rule.platforms).issubset({"casio", "flipkart", "myntra"})

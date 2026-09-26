@@ -40,7 +40,7 @@ class Tracker:
             logger.info("No active products tracked.")
             return 0
 
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(6)
 
         async def _safe_check(p) -> bool:
             async with sem:

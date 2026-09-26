@@ -173,6 +173,23 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         },
         is_active=True,
     ),
+    # 6d. Specific GBD-H2000 Tracker (Casio Bhawar & Flipkart)
+    RadarRule(
+        name="Casio GBD-H2000 Specific Tracker",
+        category="Watches",
+        query="casio g-shock gbd-h2000",
+        brand="Casio",
+        platforms=["casio", "flipkart"],
+        min_discount=50.0,
+        max_price=14000.0,  # Target alert threshold (₹14,000)
+        min_mrp=44995.0,
+        required_keywords=["gbd-h2000", "h2000", "gbdh2000"],
+        negative_keywords=["strap", "band", "bezel", "protector"],
+        search_url_template={
+            "casio": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch",
+        },
+        is_active=True,
+    ),
 
     # 7. Apple All Products & Gadgets (Deactivated)
     RadarRule(
