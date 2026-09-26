@@ -89,98 +89,101 @@ VIP_WATCHES = [
 ]
 
 
-async def vip_casio_sniper_loop(tracker: Tracker, interval_seconds: int = 60):
-    """Ultra-high-frequency 60-second sniper loop for Casio GBD-H2000 and GBD-300-9DR restocks.
+async def probe_vip_watches(tracker: Tracker) -> int:
+    """Perform a single instantaneous probe of all VIP target watches (GBD-H2000 & GBD-300-9DR).
     
-    Zero deduplication: dispatches Telegram alert EVERY cycle while either watch is in stock.
+    Zero deduplication: dispatches Telegram alert on every cycle while either watch is in stock.
+    Returns the count of alerts dispatched.
     """
     import httpx
     from scrapers import get_scraper
 
-    cycle = 0
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    alerts_sent = 0
 
+    for watch in VIP_WATCHES:
+        target_url = watch["url"]
+        js_url = f"{target_url}.js"
+        in_stock = False
+        deal_price = watch["default_price"]
+
+        try:
+            async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+                r = await client.get(js_url, headers=headers)
+                if r.status_code == 200:
+                    try:
+                        data = r.json()
+                        is_avail = bool(data.get("available", False))
+                        variants = data.get("variants", [])
+                        if is_avail or any(bool(v.get("available", False)) for v in variants):
+                            in_stock = True
+                            for v in variants:
+                                if v.get("price"):
+                                    p_val = float(v["price"]) / 100.0 if float(v["price"]) > 100000 else float(v["price"])
+                                    if p_val > 0:
+                                        deal_price = p_val
+                                        break
+                    except Exception:
+                        pass
+                elif r.status_code == 404:
+                    r_html = await client.get(target_url, headers=headers)
+                    if r_html.status_code == 200 and "404" not in r_html.text[:300].lower():
+                        in_stock = True
+
+                if in_stock:
+                    logger.info("🚨🚨 [VIP SNIPER] %s IS IN STOCK! Triggering alert...", watch["name"])
+                    try:
+                        scraper = get_scraper("casio", tracker.config)
+                        res = await scraper.scrape(target_url)
+                        if res.price and res.price > 0:
+                            deal_price = res.price
+                    except Exception:
+                        pass
+
+                    alert_msg = (
+                        "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
+                        f"📦 *Watch:* {watch['name']}\n"
+                        "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
+                        f"💰 *Deal Price:* ₹{deal_price:g} (MRP: ₹{watch['mrp']:,})\n"
+                        f"🎯 *Target:* ₹{watch['target_price']:g} (Target Met!)\n"
+                        f"🛒 *ORDER INSTANTLY:* {target_url}\n"
+                        "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
+                        "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock!*"
+                    )
+                    await tracker.notifier.send_telegram(alert_msg)
+                    alerts_sent += 1
+
+                    try:
+                        products = await tracker.db.get_products()
+                        vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
+                        if vip_prod:
+                            await tracker.db.update_price(vip_prod.id, deal_price, title=f"{watch['name']} (IN STOCK!)")
+                        await tracker.db.log_deal_alert(
+                            product_url=target_url,
+                            title=f"{watch['name']} (VIP IN STOCK)",
+                            price=deal_price,
+                            effective_price=deal_price,
+                            discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
+                            platform="casio",
+                        )
+                    except Exception as db_err:
+                        logger.debug("[VIP Sniper] DB update error: %s", db_err)
+
+        except Exception as exc:
+            logger.debug("[VIP Sniper] %s error: %s", watch["name"], exc)
+
+    return alerts_sent
+
+
+async def vip_casio_sniper_loop(tracker: Tracker, interval_seconds: int = 60):
+    """Ultra-high-frequency 60-second sniper loop for Casio GBD-H2000 and GBD-300-9DR restocks."""
+    cycle = 0
     while True:
         cycle += 1
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-
-        for watch in VIP_WATCHES:
-            target_url = watch["url"]
-            js_url = f"{target_url}.js"
-            in_stock = False
-            deal_price = watch["default_price"]
-
-            try:
-                async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
-                    r = await client.get(js_url, headers=headers)
-                    if r.status_code == 200:
-                        try:
-                            data = r.json()
-                            is_avail = bool(data.get("available", False))
-                            variants = data.get("variants", [])
-                            if is_avail or any(bool(v.get("available", False)) for v in variants):
-                                in_stock = True
-                                # Extract price from Shopify JS variants if present
-                                for v in variants:
-                                    if v.get("price"):
-                                        p_val = float(v["price"]) / 100.0 if float(v["price"]) > 100000 else float(v["price"])
-                                        if p_val > 0:
-                                            deal_price = p_val
-                                            break
-                        except Exception:
-                            pass
-                    elif r.status_code == 404:
-                        # Some sold out watches are unlisted (404); check HTML if it was published
-                        r_html = await client.get(target_url, headers=headers)
-                        if r_html.status_code == 200 and "404" not in r_html.text[:300].lower():
-                            in_stock = True
-
-                    if in_stock:
-                        logger.info("🚨🚨 [VIP SNIPER] %s IS IN STOCK! Triggering alert...", watch["name"])
-                        # Try authenticated scrape for live member-discounted price
-                        try:
-                            scraper = get_scraper("casio", tracker.config)
-                            res = await scraper.scrape(target_url)
-                            if res.price and res.price > 0:
-                                deal_price = res.price
-                        except Exception:
-                            pass
-
-                        alert_msg = (
-                            "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
-                            f"📦 *Watch:* {watch['name']}\n"
-                            "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
-                            f"💰 *Deal Price:* ₹{deal_price:g} (MRP: ₹{watch['mrp']:,})\n"
-                            f"🎯 *Target:* ₹{watch['target_price']:g} (Target Met!)\n"
-                            f"🛒 *ORDER INSTANTLY:* {target_url}\n"
-                            "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
-                            "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock!*"
-                        )
-                        await tracker.notifier.send_telegram(alert_msg)
-
-                        # Update DB without suppressing future cycle alerts
-                        try:
-                            products = await tracker.db.get_products()
-                            vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
-                            if vip_prod:
-                                await tracker.db.update_price(vip_prod.id, deal_price, title=f"{watch['name']} (IN STOCK!)")
-                            await tracker.db.log_deal_alert(
-                                product_url=target_url,
-                                title=f"{watch['name']} (VIP IN STOCK)",
-                                price=deal_price,
-                                effective_price=deal_price,
-                                discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
-                                platform="casio",
-                            )
-                        except Exception as db_err:
-                            logger.debug("[VIP Sniper] DB update error: %s", db_err)
-
-            except Exception as exc:
-                logger.debug("[VIP Sniper] %s error: %s", watch["name"], exc)
-
+        await probe_vip_watches(tracker)
         if cycle % 10 == 1 or cycle <= 3:
             print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] GBD-H2000 & GBD-300-9DR probed. Both 1-min priority guards live.")
-
         await asyncio.sleep(interval_seconds)
 
 
@@ -223,6 +226,10 @@ async def run_single_pass() -> int:
             casio_alerts = 0
 
         tracker = Tracker(radar.db, radar.notifier, settings)
+
+        # Priority 1: Instant VIP restock probe (GBD-H2000 & GBD-300-9DR with zero dedupe)
+        vip_alerts = await probe_vip_watches(tracker)
+
         try:
             tracked_alerts = await asyncio.wait_for(
                 tracker.run_once(),
@@ -233,7 +240,7 @@ async def run_single_pass() -> int:
             print("⚠️ Tracked products check timed out after 120s.")
             tracked_alerts = 0
 
-        total = casio_alerts + tracked_alerts
+        total = casio_alerts + tracked_alerts + vip_alerts
         print(f"🎯 Total alerts sent: {total}\n")
 
         # Check Running Shoes Radar if active
@@ -258,6 +265,69 @@ async def run_single_pass() -> int:
             logger.debug("Heartbeat check error: %s", hb_exc)
 
         return total
+    finally:
+        await radar.close()
+
+
+async def run_cloud_runner(duration_seconds: int = 240) -> int:
+    """Execute continuous cloud runner pass (ideal for GitHub Actions 5-minute scheduled runs).
+    
+    Probes VIP watches every 60 seconds throughout the execution window, while
+    running standard deal sweeps in parallel, ensuring 24/7 sub-minute cloud vigilance.
+    """
+    print(f"\n⚡ [PriceTracker Cloud Runner] Starting {duration_seconds}s active surveillance window...")
+    radar = StealRadar(settings)
+    await radar.init()
+    try:
+        tracker = Tracker(radar.db, radar.notifier, settings)
+        loop = asyncio.get_running_loop()
+        start_time = loop.time()
+        cycle = 0
+        total_alerts = 0
+
+        while (loop.time() - start_time) < (duration_seconds - 15):
+            cycle += 1
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now_str}] 🎯 [Cloud Runner VIP Sniper Pass #{cycle}] Probing GBD-H2000 & GBD-300-9DR...")
+            vip_alerts = await probe_vip_watches(tracker)
+            total_alerts += vip_alerts
+
+            # On cycle 1, perform the full deal radar and running shoes sweep
+            if cycle == 1:
+                try:
+                    casio_alerts = await asyncio.wait_for(
+                        radar.scan_all(only_platforms=["casio", "flipkart", "myntra"]),
+                        timeout=90.0,
+                    )
+                    tracked_alerts = await asyncio.wait_for(tracker.run_once(), timeout=120.0)
+                    total_alerts += casio_alerts + tracked_alerts
+                except Exception as e:
+                    logger.debug("Cloud sweep cycle #1 partial: %s", e)
+
+                try:
+                    from running_shoes_radar import shoes_radar
+                    if shoes_radar.is_active():
+                        shoe_res = await asyncio.wait_for(shoes_radar.sweep(), timeout=60.0)
+                        total_alerts += shoe_res.get("alerts_dispatched", 0)
+                except Exception as e:
+                    logger.debug("Cloud shoe sweep: %s", e)
+
+                try:
+                    from heartbeat import check_and_send_heartbeat
+                    await check_and_send_heartbeat(radar.db, radar.notifier, settings)
+                except Exception as hb_exc:
+                    logger.debug("Heartbeat check error: %s", hb_exc)
+
+            # Sleep 60 seconds between VIP probes
+            remaining = duration_seconds - (loop.time() - start_time)
+            if remaining > 60:
+                print(f"⏳ Sleeping 60s until next VIP probe in cloud runner (Window remaining: {int(remaining)}s)...")
+                await asyncio.sleep(60)
+            else:
+                break
+
+        print(f"\n✅ [Cloud Runner] Surveillance window concluded. Total alerts dispatched: {total_alerts}")
+        return total_alerts
     finally:
         await radar.close()
 
@@ -310,6 +380,14 @@ async def run_repeating_sweep(repeats: int = 3, interval_seconds: int = 110) -> 
 
 
 async def main():
+    if "--runner" in sys.argv:
+        duration = 240
+        for i, arg in enumerate(sys.argv):
+            if arg == "--duration" and i + 1 < len(sys.argv) and sys.argv[i + 1].isdigit():
+                duration = int(sys.argv[i + 1])
+        await run_cloud_runner(duration_seconds=duration)
+        return
+
     if "--once" in sys.argv:
         await run_single_pass()
         return
