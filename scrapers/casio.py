@@ -628,28 +628,6 @@ class CasioScraper(BaseScraper):
     ) -> List[dict[str, Any]]:
         """Fetch all products in a collection via paginated JSON with automatic 429 backoff."""
         c_low = collection_handle.lower()
-        # If user asks for master catalog or broad casio collections, use full catalog sweep
-        if c_low in ("all", "master", "catalog", "casio-all-watches", "casio", "watches"):
-            return await self.scan_catalog_deals(min_discount=min_discount)
-
-        # For major watch families, sweep catalog + silent sales so clearance/silent deals are never missed
-        target_family = None
-        if "g-shock" in c_low or "gshock" in c_low or c_low in ("master-of-g", "g-squad", "g-steel", "g-steels"):
-            target_family = "G-Shock"
-        elif "edifice" in c_low:
-            target_family = "Edifice"
-        elif "vintage" in c_low:
-            target_family = "Vintage"
-        elif "enticer" in c_low:
-            target_family = "Enticer"
-
-        if target_family:
-            all_deals = await self.scan_catalog_deals(min_discount=min_discount)
-            return [
-                d for d in all_deals
-                if d.get("family") == target_family or target_family.lower() in d.get("title", "").lower()
-            ]
-
         deals_map: dict[str, dict[str, Any]] = {}
         headers = {
             "User-Agent": self._random_user_agent(),

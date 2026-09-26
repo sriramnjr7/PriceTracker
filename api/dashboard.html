@@ -10,46 +10,50 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%233b82f6'/%3E%3Cstop offset='100%25' stop-color='%2310b981'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='%230b0f19'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='url(%23g)' stroke-width='1.8' stroke-dasharray='3 2'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='url(%23g)'/%3E%3Cpath d='M16 6v3M16 23v3M6 16h3M23 16h3' stroke='%2338bdf8' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpath d='M20 12l3-3m0 0h-3m3 0v3' stroke='%2310b981' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* ==========================================================================
-       DESIGN SYSTEM TOKENS (Modern SaaS: Linear / Vercel / Raycast Aesthetic)
+       DESIGN SYSTEM TOKENS (Cyber Obsidian & Neon Mint Aesthetic - INDEX 0_ Inspired)
        ========================================================================== */
     :root {
-      /* Backgrounds */
-      --bg-canvas: #090a0f;
-      --bg-sidebar: #0d1017;
-      --bg-card: #121620;
-      --bg-card-hover: #161b28;
-      --bg-card-elevated: #1a2030;
-      --bg-input: rgba(13, 16, 23, 0.8);
-      --bg-overlay: rgba(5, 7, 11, 0.82);
+      /* Backgrounds (Cyber Obsidian / Deep Space) */
+      --bg-canvas: #07090E;
+      --bg-sidebar: #0A0D15;
+      --bg-card: #0D111A;
+      --bg-card-hover: #121824;
+      --bg-card-elevated: #161E2D;
+      --bg-input: rgba(13, 17, 26, 0.95);
+      --bg-overlay: rgba(4, 6, 10, 0.88);
 
       /* Borders */
-      --border-subtle: rgba(255, 255, 255, 0.07);
-      --border-medium: rgba(255, 255, 255, 0.12);
-      --border-hover: rgba(255, 255, 255, 0.18);
-      --border-focus: #3b82f6;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-medium: rgba(255, 255, 255, 0.14);
+      --border-hover: rgba(0, 255, 163, 0.38);
+      --border-focus: #00FFA3;
 
       /* Typography & Text */
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
-      --text-muted: #64748b;
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
       --text-dim: #475569;
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Space Grotesk', -apple-system, sans-serif;
 
-      /* Semantic Accents */
-      --accent-primary: #3b82f6;
-      --accent-primary-hover: #2563eb;
-      --accent-emerald: #10b981;
-      --accent-emerald-subtle: rgba(16, 185, 129, 0.12);
-      --accent-amber: #f59e0b;
-      --accent-amber-subtle: rgba(245, 158, 11, 0.12);
-      --accent-rose: #f43f5e;
-      --accent-rose-subtle: rgba(244, 63, 94, 0.12);
-      --accent-blue-subtle: rgba(59, 130, 246, 0.12);
+      /* Semantic Accents - Cyber Mint & Electric Highlights */
+      --accent-primary: #00FFA3;
+      --accent-primary-hover: #00E592;
+      --accent-cyan: #00F0FF;
+      --accent-emerald: #00FFA3;
+      --accent-emerald-subtle: rgba(0, 255, 163, 0.12);
+      --accent-amber: #FFB800;
+      --accent-amber-subtle: rgba(255, 184, 0, 0.12);
+      --accent-orange: #FF7A00;
+      --accent-orange-subtle: rgba(255, 122, 0, 0.12);
+      --accent-rose: #FF3366;
+      --accent-rose-subtle: rgba(255, 51, 102, 0.12);
+      --accent-blue-subtle: rgba(0, 240, 255, 0.12);
 
       /* Spacing Scale */
       --space-1: 4px;
@@ -62,16 +66,16 @@
       --space-10: 40px;
 
       /* Radius */
-      --radius-sm: 4px;
-      --radius-md: 6px;
-      --radius-lg: 8px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
       --radius-full: 9999px;
 
       /* Layout */
-      --sidebar-width: 216px;
-      --header-height: 48px;
-      --rail-width: 296px;
-      --transition-fast: 140ms cubic-bezier(0.16, 1, 0.3, 1);
+      --sidebar-width: 220px;
+      --header-height: 52px;
+      --rail-width: 300px;
+      --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     /* Base Reset */
@@ -642,116 +646,297 @@
       margin: 0 auto;
     }
 
-    /* Page Header */
-    .page-title-section {
-      margin-bottom: 10px;
+    /* ==========================================================================
+       CYBER TERMINAL DESIGN SYSTEM (Inspired by INDEX 0_ Aesthetics)
+       ========================================================================== */
+    .cyber-hero-banner {
+      text-align: center;
+      padding: 22px 16px 26px;
+      margin-bottom: 22px;
+      position: relative;
     }
 
-    .page-breadcrumb {
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-bottom: 1px;
-    }
-
-    .page-header-row {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-    }
-
-    .page-heading {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      color: var(--text-primary);
-    }
-
-    .page-subheading {
-      font-size: 11.5px;
-      color: var(--text-secondary);
-      margin-top: 1px;
-    }
-
-    .live-sync-indicator {
+    .cyber-brand-title {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+      line-height: 1.2;
+      display: inline-block;
+    }
+
+    .cyber-title-main {
+      color: #ffffff;
+    }
+
+    .cyber-title-accent {
+      color: #00FFA3;
+      text-shadow: 0 0 14px rgba(0, 255, 163, 0.5);
+    }
+
+    .cyber-brand-slogan {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+
+    .cyber-brand-quote {
+      font-size: 11.5px;
+      font-style: italic;
       color: var(--text-muted);
+      margin-top: 4px;
+      font-family: var(--font-sans);
+    }
+
+    /* Welcome / Status Strip */
+    .cyber-welcome-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .cyber-welcome-badge {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #00FFA3;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .cyber-welcome-heading {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.03em;
+      font-family: var(--font-sans);
+    }
+
+    .cyber-cursor {
+      color: #00FFA3;
+      animation: cursorBlink 1s step-end infinite;
+    }
+
+    @keyframes cursorBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .cyber-welcome-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: var(--font-mono);
+    }
+
+    .cyber-streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 122, 0, 0.1);
+      border: 1px solid rgba(255, 122, 0, 0.3);
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #FF9900;
+      font-family: var(--font-mono);
+      box-shadow: 0 0 14px rgba(255, 122, 0, 0.15);
+    }
+
+    /* Insight Box (Matches ZERO REMEMBERS from Screenshot 2) */
+    .cyber-insight-box {
+      background: #0C1018;
+      border: 1px solid rgba(0, 255, 163, 0.2);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 14px;
+      box-shadow: 0 4px 20px -5px rgba(0, 255, 163, 0.06);
     }
 
-    .indicator-pulse {
-      width: 5px;
-      height: 5px;
-      border-radius: var(--radius-full);
-      background: var(--accent-emerald);
+    .cyber-insight-fox {
+      font-size: 24px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 6px rgba(255, 122, 0, 0.4));
     }
 
-    /* ==========================================================================
-       METRIC KPI ROW (4 Compact, High-Scanability Observability Cards)
-       ========================================================================== */
-    .metrics-grid {
+    .cyber-insight-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cyber-insight-headline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .cyber-insight-title {
+      color: #00FFA3;
+    }
+
+    .cyber-insight-sep {
+      color: var(--text-dim);
+    }
+
+    .cyber-insight-subtitle {
+      color: var(--text-muted);
+    }
+
+    .cyber-insight-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    /* 4 Stat Counter Bar (Matches Screenshot 2's 4-stat bar) */
+    .cyber-stats-bar {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-bottom: 10px;
+      background: #0C1018;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
     }
 
-    .metric-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 8px 12px;
+    .cyber-stat-col {
+      padding: 14px 18px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      min-height: 64px;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .metric-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2px;
+    .cyber-stat-col:last-child {
+      border-right: none;
     }
 
-    .metric-label {
-      font-size: 10.5px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      color: var(--text-muted);
-    }
-
-    .metric-icon {
-      color: var(--text-dim);
-      width: 13px;
-      height: 13px;
-    }
-
-    .metric-value {
-      font-size: 19px;
-      font-weight: 600;
+    .cyber-stat-num {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.1;
+      margin-bottom: 4px;
       letter-spacing: -0.02em;
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      line-height: 1.15;
-      margin-bottom: 1px;
     }
 
-    .metric-value.highlight-emerald {
-      color: var(--accent-emerald);
+    .cyber-stat-num.highlight-emerald {
+      color: #00FFA3;
+      text-shadow: 0 0 10px rgba(0, 255, 163, 0.3);
     }
 
-    .metric-caption {
-      font-size: 10.5px;
-      color: var(--text-dim);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .cyber-stat-num.highlight-cyan {
+      color: #00F0FF;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+
+    .cyber-stat-num.highlight-amber {
+      color: #FFB800;
+    }
+
+    .cyber-stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: lowercase;
+    }
+
+    /* Topbar Glowing Pill */
+    .topbar-status-glow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 255, 163, 0.08);
+      border: 1px solid rgba(0, 255, 163, 0.28);
+      color: #00FFA3;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 11px;
+      border-radius: var(--radius-full);
+      box-shadow: 0 0 12px rgba(0, 255, 163, 0.15);
+    }
+
+    .glow-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-full);
+      background: #00FFA3;
+      box-shadow: 0 0 6px #00FFA3;
+      animation: pulseGlow 1.8s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Cyber Meta Chips */
+    .cyber-meta-chips {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .cyber-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    /* Mobile Floating Action Button (FAB) */
+    .mobile-fab-btn {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #00FFA3;
+      color: #07090E;
+      border: none;
+      box-shadow: 0 4px 20px rgba(0, 255, 163, 0.45);
+      cursor: pointer;
+      z-index: 90;
+      align-items: center;
+      justify-content: center;
+      transition: transform var(--transition-fast), background-color var(--transition-fast);
+    }
+
+    .mobile-fab-btn:active {
+      transform: scale(0.92);
+    }
+
+    @media (max-width: 768px) {
+      .mobile-fab-btn {
+        display: flex;
+      }
     }
 
     /* ==========================================================================
@@ -1553,11 +1738,60 @@
       .metrics-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+      .cyber-hero-banner {
+        padding: 16px 8px 18px;
+        margin-bottom: 14px;
+      }
+      .cyber-brand-title {
+        font-size: 24px;
+      }
+      .cyber-welcome-heading {
+        font-size: 18px;
+      }
+      .cyber-welcome-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .cyber-stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .cyber-stat-col:nth-child(2) {
+        border-right: none;
+      }
+      .cyber-stat-col:nth-child(1), .cyber-stat-col:nth-child(2) {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .cyber-insight-box {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .topbar-status-glow {
+        display: none;
+      }
       .topbar-actions .btn-ui-secondary span {
         display: none;
       }
       .topbar-actions .btn-ui-secondary {
         padding: 0 8px;
+      }
+      .filter-bar {
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .filter-btn {
+        min-height: 32px;
+        padding: 0 12px;
+        font-size: 11.5px;
+      }
+      .product-card {
+        min-height: auto;
+        padding: 12px;
+      }
+      .product-action-btn {
+        min-width: 36px;
+        min-height: 36px;
       }
       .modal-dialog {
         border-radius: var(--radius-lg);
@@ -1574,6 +1808,16 @@
     @media (max-width: 440px) {
       .metrics-grid {
         grid-template-columns: 1fr;
+      }
+      .cyber-stats-bar {
+        grid-template-columns: 1fr;
+      }
+      .cyber-stat-col {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .cyber-stat-col:last-child {
+        border-bottom: none;
       }
       .filter-bar {
         gap: 4px;
@@ -2166,6 +2410,7 @@
             </div>
 
             <div class="topbar-actions">
+              <div class="topbar-status-glow"><span class="glow-dot"></span><span>Up to date</span></div>
               <button class="btn-ui btn-ui-secondary" onclick="triggerManualSweep()">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
@@ -2189,68 +2434,72 @@
             <!-- TAB 1: MAIN DASHBOARD VIEW -->
             <div id="tab-content-dashboard" class="workspace-tab-page">
 
-              <!-- Page Title Section -->
-              <div class="page-title-section">
-              <div class="page-breadcrumb">PriceTracker / Telemetry</div>
-              <div class="page-header-row">
+              <!-- Cyber Hero Banner (INDEX 0_ Aesthetic) -->
+              <div class="cyber-hero-banner">
+                <div class="cyber-brand-title">
+                  <span class="cyber-title-main">PRICETRACKER </span><span class="cyber-title-accent">0_</span>
+                </div>
+                <div class="cyber-brand-slogan">Where all great snipes begin.</div>
+                <div class="cyber-brand-quote">“Never pay retail when the radar can catch the floor.”</div>
+                <div class="cyber-meta-chips">
+                  <span class="cyber-chip"><span>⚡</span> 24/7 Autonomous</span>
+                  <span class="cyber-chip"><span>🎯</span> BuyBox Isolated</span>
+                  <span class="cyber-chip"><span>📱</span> Telegram Synced</span>
+                  <span class="cyber-chip"><span>👟</span> Running Shoes Harvester</span>
+                </div>
+              </div>
+
+              <!-- Cyber Welcome & Live Streak Strip -->
+              <div class="cyber-welcome-row">
                 <div>
-                  <h1 class="page-heading">Dashboard</h1>
-                  <p class="page-subheading">Autonomous price drop radar and deal telemetry across Amazon, Flipkart, and Casio.</p>
+                  <div class="cyber-welcome-badge">● WELCOME BACK</div>
+                  <h2 class="cyber-welcome-heading">Ready when you are, Sri<span class="cyber-cursor">_</span></h2>
+                  <div class="cyber-welcome-sub">Autonomous price drop radar and deal telemetry across Amazon, Flipkart, Myntra, and Casio.</div>
+                </div>
+                <div class="cyber-streak-badge">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.5 3 2.5 5 4.5 7 1.8 1.8 2.5 3.7 2.5 5.5 0 4.1-3.4 7.5-7.5 7.5S4 18.6 4 14.5c0-3.5 2.5-6.5 4.5-9 0 2.5 1.5 4 3.5 5 0-3 1.5-6.5 0-8z"/></svg>
+                  <span>24/7 Radar Armed</span>
+                </div>
+              </div>
+
+              <!-- Cyber Insight Box (Matches ZERO REMEMBERS from reference UI) -->
+              <div class="cyber-insight-box">
+                <div class="cyber-insight-fox">🦊</div>
+                <div class="cyber-insight-body">
+                  <div class="cyber-insight-headline">
+                    <span class="cyber-insight-title">RADAR INTEL</span>
+                    <span class="cyber-insight-sep">•</span>
+                    <span class="cyber-insight-subtitle">ALL PLATFORMS LIVE</span>
+                  </div>
+                  <div class="cyber-insight-text">
+                    Direct Casio Shopify JSON pipeline active (sub-second sweeps), Flipkart BuyBox isolation armed, Amazon stealth active.
+                  </div>
                 </div>
                 <div class="live-sync-indicator" id="catalog-status-indicator">
                   <span class="indicator-pulse"></span>
                   <span>Syncing telemetry...</span>
                 </div>
               </div>
-            </div>
 
-            <!-- Overview Metric KPI Row (4 Restrained, High Scanability Tiles) -->
-            <section class="metrics-grid" aria-label="System Metrics">
-              <div class="metric-card">
-                <div class="metric-top">
-                  <span class="metric-label">Active Monitors</span>
-                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                  </svg>
+              <!-- Cyber 4-Stat Metric Bar (Minimalist Obsidian Row) -->
+              <section class="cyber-stats-bar" aria-label="System Metrics">
+                <div class="cyber-stat-col">
+                  <div class="cyber-stat-num" id="kpi-active-count">0</div>
+                  <div class="cyber-stat-label">monitored targets</div>
                 </div>
-                <div class="metric-value" id="kpi-active-count">0</div>
-                <div class="metric-caption">Monitored products &amp; catalogs</div>
-              </div>
-
-              <div class="metric-card">
-                <div class="metric-top">
-                  <span class="metric-label">Verified 70%+ Drops</span>
-                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                  </svg>
+                <div class="cyber-stat-col">
+                  <div class="cyber-stat-num highlight-emerald" id="kpi-verified-drops">17</div>
+                  <div class="cyber-stat-label">verified 70%+ drops</div>
                 </div>
-                <div class="metric-value highlight-emerald" id="kpi-verified-drops">17</div>
-                <div class="metric-caption">Casio Bhawar member clearance</div>
-              </div>
-
-              <div class="metric-card">
-                <div class="metric-top">
-                  <span class="metric-label">BuyBox Isolation</span>
-                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                  </svg>
+                <div class="cyber-stat-col">
+                  <div class="cyber-stat-num highlight-cyan">100%</div>
+                  <div class="cyber-stat-label">buybox isolation</div>
                 </div>
-                <div class="metric-value">100%</div>
-                <div class="metric-caption">Protection plans rejected</div>
-              </div>
-
-              <div class="metric-card">
-                <div class="metric-top">
-                  <span class="metric-label">Background Radar</span>
-                  <svg class="metric-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 14 14"></polyline>
-                  </svg>
+                <div class="cyber-stat-col">
+                  <div class="cyber-stat-num highlight-amber" id="kpi-last-sweep">Live</div>
+                  <div class="cyber-stat-label">background radar</div>
                 </div>
-                <div class="metric-value" id="kpi-last-sweep">Live</div>
-                <div class="metric-caption">Telegram alerts armed</div>
-              </div>
-            </section>
+              </section>
 
             <!-- Main Content Layout: Catalog on Left, Live Deals & Presets on Right -->
             <div class="dashboard-layout-columns">
@@ -2508,10 +2757,18 @@
               <!-- Dynamically Rendered by renderRunningShoeCards() -->
             </div>
 
-          </div>
+          </div> <!-- /#tab-content-shoes -->
 
         </div> <!-- /workspace-body -->
-        </main>
+
+        <!-- Floating Action Button for Mobile Screens -->
+        <button class="mobile-fab-btn" onclick="openAddProductModal()" title="Track New Product" aria-label="Track New Product">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </main>
 
       </div>
     </div>
