@@ -148,46 +148,27 @@ class StealRadar:
                                 })
                     else:
 
-                        # 2. Collection & Catalog scanning
-                        q_lower = rule.query.lower()
-                        # If query is general "casio watch", "casio", or general watches, sweep master catalog
-                        if "watch" in q_lower or "casio" in q_lower or not rule.query:
-                            deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
+                        # 2. Comprehensive Catalog & Silent Sales Scanning
+                        all_casio_deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
+                        q_lower = rule.query.lower() if rule.query else ""
+                        
+                        # If a specific sub-brand or model is targeted, filter from the catalog sweep
+                        if q_lower and "watch" not in q_lower and "casio" not in q_lower:
+                            deals = []
+                            for d in all_casio_deals:
+                                title_low = d.get("title", "").lower()
+                                fam_low = (d.get("family") or "").lower()
+                                # Check if sub-brand keyword matches title or family
+                                if (
+                                    ("g-shock" in q_lower or "gshock" in q_lower) and ("g-shock" in title_low or "gshock" in title_low or fam_low == "g-shock")
+                                    or ("edifice" in q_lower and ("edifice" in title_low or fam_low == "edifice"))
+                                    or ("vintage" in q_lower and ("vintage" in title_low or fam_low == "vintage"))
+                                    or ("enticer" in q_lower and ("enticer" in title_low or fam_low == "enticer"))
+                                    or (any(word in title_low for word in q_lower.split() if len(word) > 2))
+                                ):
+                                    deals.append(d)
                         else:
-                            handles_to_scan = set()
-                            if "g-shock" in q_lower or "gshock" in q_lower:
-                                gshock_item = await self.db.get_product_by_url("https://casiostore.bhawar.com/collections/g-shock")
-                                if not gshock_item or gshock_item.is_active:
-                                    handles_to_scan.add("g-shock")
-                                else:
-                                    logger.info("[radar] Skipping G-Shock sweep: paused in dashboard.")
-
-                            if "edifice" in q_lower:
-                                ed_item = await self.db.get_product_by_url("https://casiostore.bhawar.com/collections/edifice-watches")
-                                if not ed_item or ed_item.is_active:
-                                    handles_to_scan.add("edifice-watches")
-                                else:
-                                    logger.info("[radar] Skipping Edifice sweep: paused in dashboard.")
-
-                            if "vintage" in q_lower:
-                                vin_item = await self.db.get_product_by_url("https://casiostore.bhawar.com/collections/casio-vintage")
-                                if not vin_item or vin_item.is_active:
-                                    handles_to_scan.add("casio-vintage")
-                                else:
-                                    logger.info("[radar] Skipping Vintage sweep: paused in dashboard.")
-
-                            if "enticer" in q_lower:
-                                handles_to_scan.add("enticer-men")
-                                handles_to_scan.add("enticer-women")
-
-                            if not handles_to_scan:
-                                deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
-                            else:
-                                deals = []
-                                for handle in handles_to_scan:
-                                    collection_deals = await casio_scraper.scan_collection_deals(handle, min_discount=rule.min_discount)
-                                    deals.extend(collection_deals)
-                                    await asyncio.sleep(random.uniform(1.0, 2.0))
+                            deals = all_casio_deals
 
                     for d in deals:
                         d["effective_price"] = d["price"]

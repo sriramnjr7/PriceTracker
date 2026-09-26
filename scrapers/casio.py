@@ -404,7 +404,7 @@ class CasioScraper(BaseScraper):
         async with httpx.AsyncClient(timeout=20) as client:
             # 1. Sweep dedicated discount and clearance hubs first
             auth_client = await self._get_authenticated_client()
-            sem = asyncio.Semaphore(5)
+            sem = asyncio.Semaphore(4)
 
             # Dedicated silent-sale hubs where discounts require customer session verification
             silent_hubs = [
@@ -413,6 +413,8 @@ class CasioScraper(BaseScraper):
                 "limited-sale",
                 "silentoffer",
                 "corporate-discount",
+                "promotional-watches",
+                "sale-products",
             ]
             
             async def _verify_silent_prod(p):
@@ -442,23 +444,33 @@ class CasioScraper(BaseScraper):
                                 "is_silent_sale": False,
                             }
 
-                # 2. Verify against authenticated storefront for silent sale pricing
+                # 2. Verify against authenticated storefront for member/silent sale pricing
                 async with sem:
                     try:
-                        resp = await auth_client.get(product_url)
-                        if resp.status_code == 200:
+                        await asyncio.sleep(0.15)
+                        resp = await self._safe_get(auth_client, product_url)
+                        if resp and resp.status_code == 200:
                             soup = BeautifulSoup(resp.text, "html.parser")
                             if not self._extract_stock(soup):
                                 return None
 
                             sale_el = soup.select_one(
-                                ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
+                                ".price--silent-off .price-item--sale, .price--on-sale .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
                             )
                             reg_el = soup.select_one(
-                                ".price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
+                                ".price--silent-off .price-item--regular, .price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
                             )
                             sale_p = self.clean_price(sale_el.get_text()) if sale_el else None
                             reg_p = self.clean_price(reg_el.get_text()) if reg_el else None
+
+                            # If regular price not explicitly separated in HTML, fall back to variant baseline price
+                            if sale_p and (not reg_p or reg_p <= sale_p):
+                                for v in p.get("variants", []):
+                                    v_p = float(v.get("price", 0))
+                                    if v_p > sale_p:
+                                        reg_p = v_p
+                                        break
+
                             if sale_p and reg_p and reg_p > sale_p:
                                 d = round(((reg_p - sale_p) / reg_p * 100.0), 1)
                                 if d >= min_discount:
@@ -688,18 +700,18 @@ class CasioScraper(BaseScraper):
                             )
                             async with sem:
                                 try:
-                                    await asyncio.sleep(0.3)
-                                    r_prod = await auth_client.get(p_url)
-                                    if r_prod.status_code == 200:
+                                    await asyncio.sleep(0.2)
+                                    r_prod = await self._safe_get(auth_client, p_url)
+                                    if r_prod and r_prod.status_code == 200:
                                         s_prod = BeautifulSoup(r_prod.text, "html.parser")
                                         # Strict stock check: If the item is sold out, skip immediately
                                         if not self._extract_stock(s_prod):
                                             return None
                                         s_el = s_prod.select_one(
-                                            ".price--on-sale .price-item--sale, .price--silent-off .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
+                                            ".price--silent-off .price-item--sale, .price--on-sale .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
                                         )
                                         r_el = s_prod.select_one(
-                                            ".price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
+                                            ".price--silent-off .price-item--regular, .price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
                                         )
                                         s_price = self.clean_price(s_el.get_text()) if s_el else None
                                         r_price = self.clean_price(r_el.get_text()) if r_el else None
