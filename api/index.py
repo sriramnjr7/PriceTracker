@@ -605,7 +605,19 @@ async def api_get_running_shoes_status():
             "target_sizes": cfg.get("target_sizes", ["UK 9.5", "UK 10", "UK 10.5", "UK 11"]),
             "total_deals": len(deals),
             "deals": deals,
-            "whitelist_brands": ["Nike", "Adidas", "Asics", "Puma", "New Balance", "Skechers"],
+            "whitelist_brands": ["Saucony", "Reebok", "Hoka", "Brooks", "Puma", "Nike", "Adidas", "Asics", "New Balance", "Skechers"],
+            "enabled_brands": cfg.get("enabled_brands", {
+                "Saucony": True,
+                "Reebok": True,
+                "Hoka": True,
+                "Brooks": True,
+                "Puma": True,
+                "Nike": True,
+                "Adidas": True,
+                "Asics": True,
+                "New Balance": True,
+                "Skechers": True,
+            }),
         },
         headers={"Cache-Control": "no-cache"},
     )
@@ -624,8 +636,32 @@ async def api_toggle_running_shoes(request: Request):
         pass
     if target is None:
         target = not shoes_radar.is_active()
+
     new_state = shoes_radar.set_active(target)
     return JSONResponse(content={"status": "success", "is_active": new_state})
+
+
+@app.post("/api/running-shoes/toggle-brand")
+@app.post("/api/index.py/api/running-shoes/toggle-brand")
+async def api_toggle_shoe_brand(request: Request):
+    """Enable or disable tracking searches for a specific shoe brand."""
+    try:
+        body = await request.json()
+        brand = body.get("brand")
+        enabled = body.get("enabled", True)
+        if not brand:
+            raise HTTPException(status_code=400, detail="Brand parameter required")
+        updated_brands = shoes_radar.toggle_brand(brand, enabled)
+        return JSONResponse(
+            content={
+                "status": "success",
+                "brand": brand,
+                "enabled": enabled,
+                "enabled_brands": updated_brands,
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/running-shoes/sweep")
@@ -977,6 +1013,17 @@ async def catch_all(request: Request, full_path: str):
             payload = AddProductPayload(**data)
             return await api_add_product(payload)
         return await get_dashboard_data()
+
+    # 7.5 Running Shoes Sub-routes
+    if "running-shoes" in clean:
+        if "toggle-brand" in clean:
+            return await api_toggle_shoe_brand(request)
+        if "toggle" in clean:
+            return await api_toggle_running_shoes(request)
+        if "sweep" in clean:
+            return await api_sweep_running_shoes()
+        if "status" in clean:
+            return await api_get_running_shoes_status()
 
     # 8. Root or Dashboard HTML fallback
     if method == "GET" and (is_browser_request(request) or clean in ("", "dashboard", "index", "index.py", "api", "api/index", "api/index.py")):

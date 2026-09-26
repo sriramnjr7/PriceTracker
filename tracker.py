@@ -103,16 +103,19 @@ class Tracker:
         if not should_notify:
             return False
 
-        # Urgent VIP Notification format for GBD-H2000
-        if "gbd-h2000" in (product.url or "").lower():
+        # Urgent VIP Notification format for GBD-H2000 & GBD-300-9DR
+        url_lower = (product.url or "").lower()
+        if "gbd-h2000" in url_lower or "gbd-300-9dr" in url_lower:
+            mrp_text = "₹44,995" if "gbd-h2000" in url_lower else "₹11,495"
             vip_msg = (
-                "🚨🚨 *URGENT VIP 70% DEAL RESTOCK!* 🚨🚨\n"
+                "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
                 f"📦 *Watch:* {result.title or product.title}\n"
                 "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
-                f"💰 *Member Deal Price:* ₹{result.price:g} (70% OFF! MRP: ₹44,995)\n"
+                f"💰 *Deal Price:* ₹{result.price:g} (MRP: {mrp_text})\n"
                 f"🎯 *Target:* ₹{product.target_price:g} (Target Met!)\n"
                 f"🛒 *ORDER INSTANTLY:* {product.url}\n"
-                "⚡ *Caught via 60-Second Priority VIP Sniper*"
+                "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
+                "⚠️ *Zero-dedupe mode: Alerting continuously while in stock!*"
             )
             if await self.notifier.send_telegram(vip_msg):
                 await self.db.set_last_notified(product.id, result.price)
@@ -124,7 +127,7 @@ class Tracker:
                     discount_percent=drop_percent or 70.0,
                     platform="casio",
                 )
-                logger.info("[VIP Sniper] Dispatched URGENT alert for GBD-H2000 at INR %s", result.price)
+                logger.info("[VIP Sniper] Dispatched URGENT alert for %s at INR %s", product.title, result.price)
                 return True
 
         is_restock = product.current_price is None
@@ -424,6 +427,11 @@ class Tracker:
         # 2. Recovery from non-deal price: If price was previously above target (regular price),
         # this is a fresh drop back into target range, not a bounce within the deal.
         if product.target_price is not None and old_price > product.target_price:
+            return True, drop_percent
+
+        # VIP items bypass anti-spam deduplication completely (alert repeatedly while in stock as requested):
+        url_lower = (product.url or "").lower()
+        if "gbd-h2000" in url_lower or "gbd-300-9dr" in url_lower:
             return True, drop_percent
 
         # 3. Anti-spam: don't re-alert at the same or a higher price within the same deal window.

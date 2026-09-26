@@ -504,6 +504,42 @@ class RunningShoesRadar:
         self.save_config(cfg)
         return cfg["is_active"]
 
+    def is_brand_enabled(self, brand: str) -> bool:
+        """Check if a specific brand is enabled for tracking."""
+        cfg = self.load_config()
+        brands_cfg = cfg.get("enabled_brands", {})
+        if not brands_cfg:
+            return True
+        for b_name, is_en in brands_cfg.items():
+            if b_name.lower() in brand.lower() or brand.lower() in b_name.lower():
+                return bool(is_en)
+        return True
+
+    def toggle_brand(self, brand: str, enabled: bool) -> dict[str, bool]:
+        """Toggle tracking searches for a specific brand."""
+        cfg = self.load_config()
+        brands_cfg = cfg.setdefault("enabled_brands", {
+            "Saucony": True,
+            "Reebok": True,
+            "Hoka": True,
+            "Brooks": True,
+            "Puma": True,
+            "Nike": True,
+            "Adidas": True,
+            "Asics": True,
+            "New Balance": True,
+            "Skechers": True,
+        })
+        target_key = brand
+        for k in brands_cfg:
+            if k.lower() == brand.lower():
+                target_key = k
+                break
+        brands_cfg[target_key] = bool(enabled)
+        cfg["last_updated"] = datetime.now(timezone.utc).isoformat()
+        self.save_config(cfg)
+        return brands_cfg
+
     def load_config(self) -> dict[str, Any]:
         """Load harvester settings from JSON file."""
         if os.path.exists(CONFIG_FILE_PATH):
@@ -518,6 +554,18 @@ class RunningShoesRadar:
             "max_price": TARGET_PRICE_MAX,
             "target_sizes": ["UK 9.5", "UK 10", "UK 10.5", "UK 11"],
             "platforms": {"myntra": True, "flipkart": True, "tatacliq": True, "ajio": True},
+            "enabled_brands": {
+                "Saucony": True,
+                "Reebok": True,
+                "Hoka": True,
+                "Brooks": True,
+                "Puma": True,
+                "Nike": True,
+                "Adidas": True,
+                "Asics": True,
+                "New Balance": True,
+                "Skechers": True,
+            },
             "last_sweep": None,
         }
 
@@ -557,13 +605,19 @@ class RunningShoesRadar:
         urls = [
             "https://www.myntra.com/men-sports-shoes?sort=discount&f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers%2CSaucony%2CReebok",
             "https://www.myntra.com/running-shoes?f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers%2CSaucony%2CReebok",
-            "https://www.myntra.com/adizero?f=Brand%3AADIDAS",
-            "https://www.myntra.com/pegasus?f=Brand%3ANike",
-            "https://www.myntra.com/novablast?f=Brand%3AASICS",
-            "https://www.myntra.com/nitro?f=Brand%3APuma",
-            "https://www.myntra.com/floatride-energy?f=Brand%3AReebok",
-            "https://www.myntra.com/saucony-shoes?f=Brand%3ASaucony",
         ]
+        if self.is_brand_enabled("Adidas"):
+            urls.append("https://www.myntra.com/adizero?f=Brand%3AADIDAS")
+        if self.is_brand_enabled("Nike"):
+            urls.append("https://www.myntra.com/pegasus?f=Brand%3ANike")
+        if self.is_brand_enabled("Asics"):
+            urls.append("https://www.myntra.com/novablast?f=Brand%3AASICS")
+        if self.is_brand_enabled("Puma"):
+            urls.append("https://www.myntra.com/nitro?f=Brand%3APuma")
+        if self.is_brand_enabled("Reebok"):
+            urls.append("https://www.myntra.com/floatride-energy?f=Brand%3AReebok")
+        if self.is_brand_enabled("Saucony"):
+            urls.append("https://www.myntra.com/saucony-shoes?f=Brand%3ASaucony")
         
         try:
             async with httpx.AsyncClient(headers=self.client_headers, timeout=12.0, follow_redirects=True) as client:
@@ -588,6 +642,9 @@ class RunningShoesRadar:
                                 continue
 
                             brand_canon, model_canon = matched
+                            if not self.is_brand_enabled(brand_canon):
+                                continue
+
                             price = float(p.get("price") or 0)
                             mrp = float(p.get("mrp") or price)
 
@@ -646,21 +703,15 @@ class RunningShoesRadar:
         deals: List[RunningShoeDeal] = []
         urls = [
             (
-                "https://www.flipkart.com/search?q=shoes+for+men&sid=osp%2Ccil"
-                "&p[]=facets.brand[]=ADIDAS&p[]=facets.brand[]=NIKE&p[]=facets.brand[]=PUMA"
-                "&p[]=facets.brand[]=Asics&p[]=facets.brand[]=New+Balance&p[]=facets.brand[]=Skechers"
-                "&p[]=facets.brand[]=Reebok&p[]=facets.brand[]=Saucony"
-                "&p[]=facets.size[]=10&p[]=facets.size[]=10.5&p[]=facets.size[]=9.5&p[]=facets.size[]=11"
-            ),
-            (
                 "https://www.flipkart.com/search?q=running+shoes+men&sid=osp%2Ccil"
                 "&p[]=facets.size[]=10&p[]=facets.size[]=10.5&p[]=facets.size[]=9.5&p[]=facets.size[]=11"
             ),
-            (
+        ]
+        if self.is_brand_enabled("Reebok"):
+            urls.append(
                 "https://www.flipkart.com/search?q=floatride+energy&sid=osp%2Ccil"
                 "&p[]=facets.size[]=10&p[]=facets.size[]=10.5&p[]=facets.size[]=9.5&p[]=facets.size[]=11"
-            ),
-        ]
+            )
         
         try:
             async with httpx.AsyncClient(headers=self.client_headers, timeout=12.0, follow_redirects=True) as client:
@@ -694,6 +745,8 @@ class RunningShoesRadar:
                                         continue
 
                                     brand_canon, model_canon = matched
+                                    if not self.is_brand_enabled(brand_canon):
+                                        continue
                                     
                                     # Pricing Extraction
                                     pricing_data = val.get("pricing", {})
@@ -784,6 +837,8 @@ class RunningShoesRadar:
                                 continue
 
                             brand_canon, model_canon = matched
+                            if not self.is_brand_enabled(brand_canon):
+                                continue
                             
                             price_obj = p.get("price", {})
                             selling = price_obj.get("sellingPrice", {})
@@ -855,6 +910,8 @@ class RunningShoesRadar:
                         if not matched:
                             continue
                         brand_canon, model_canon = matched
+                        if not self.is_brand_enabled(brand_canon):
+                            continue
                         price = float(p.get("price", {}).get("value") or 0.0)
                         if price > MAX_PRICE_THRESHOLD:
                             continue
@@ -910,6 +967,9 @@ class RunningShoesRadar:
                 fresh_deals.extend(r)
             elif isinstance(r, Exception):
                 logger.error("Platform harvest task exception: %s", r)
+
+        # Filter deals by active enabled brands
+        fresh_deals = [d for d in fresh_deals if self.is_brand_enabled(d.brand)]
 
         # Merge with cached deals
         cached = self.load_cached_deals()

@@ -67,68 +67,119 @@ async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 300):
         await asyncio.sleep(interval_seconds)
 
 
-VIP_GBD_H2000_URL = "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch"
+VIP_WATCHES = [
+    {
+        "id": 58,
+        "name": "CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD",
+        "url": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch",
+        "target_price": 14000.0,
+        "default_price": 13499.0,
+        "mrp": 44995,
+        "tag": "gbd-h2000",
+    },
+    {
+        "id": 5,
+        "name": "CASIO G-SHOCK GBD-300-9DR",
+        "url": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-9dr-watch",
+        "target_price": 4000.0,
+        "default_price": 3495.0,
+        "mrp": 11495,
+        "tag": "gbd-300-9dr",
+    },
+]
 
 
 async def vip_casio_sniper_loop(tracker: Tracker, interval_seconds: int = 60):
-    """Ultra-high-frequency 60-second sniper loop for Casio GBD-H2000-1A9 member clearance restock."""
+    """Ultra-high-frequency 60-second sniper loop for Casio GBD-H2000 and GBD-300-9DR restocks.
+    
+    Zero deduplication: dispatches Telegram alert EVERY cycle while either watch is in stock.
+    """
     import httpx
     from scrapers import get_scraper
 
-    target_url = VIP_GBD_H2000_URL
-    js_url = f"{target_url}.js"
     cycle = 0
 
     while True:
         cycle += 1
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-            async with httpx.AsyncClient(timeout=8) as client:
-                r = await client.get(js_url, headers=headers)
-                if r.status_code == 200:
-                    data = r.json()
-                    is_available = bool(data.get("available", False))
-                    variants = data.get("variants", [])
-                    has_avail = is_available or any(bool(v.get("available", False)) for v in variants)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-                    if has_avail:
-                        logger.info("🚨🚨 [VIP SNIPER] GBD-H2000 IS IN STOCK! Triggering instant verification & alert...")
-                        # Run authenticated scrape for live member-discounted price
-                        scraper = get_scraper("casio", tracker.config)
-                        res = await scraper.scrape(target_url)
-                        deal_price = res.price if (res.price and res.price > 0) else 13499.0
+        for watch in VIP_WATCHES:
+            target_url = watch["url"]
+            js_url = f"{target_url}.js"
+            in_stock = False
+            deal_price = watch["default_price"]
+
+            try:
+                async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+                    r = await client.get(js_url, headers=headers)
+                    if r.status_code == 200:
+                        try:
+                            data = r.json()
+                            is_avail = bool(data.get("available", False))
+                            variants = data.get("variants", [])
+                            if is_avail or any(bool(v.get("available", False)) for v in variants):
+                                in_stock = True
+                                # Extract price from Shopify JS variants if present
+                                for v in variants:
+                                    if v.get("price"):
+                                        p_val = float(v["price"]) / 100.0 if float(v["price"]) > 100000 else float(v["price"])
+                                        if p_val > 0:
+                                            deal_price = p_val
+                                            break
+                        except Exception:
+                            pass
+                    elif r.status_code == 404:
+                        # Some sold out watches are unlisted (404); check HTML if it was published
+                        r_html = await client.get(target_url, headers=headers)
+                        if r_html.status_code == 200 and "404" not in r_html.text[:300].lower():
+                            in_stock = True
+
+                    if in_stock:
+                        logger.info("🚨🚨 [VIP SNIPER] %s IS IN STOCK! Triggering alert...", watch["name"])
+                        # Try authenticated scrape for live member-discounted price
+                        try:
+                            scraper = get_scraper("casio", tracker.config)
+                            res = await scraper.scrape(target_url)
+                            if res.price and res.price > 0:
+                                deal_price = res.price
+                        except Exception:
+                            pass
 
                         alert_msg = (
-                            "🚨🚨 *URGENT VIP 70% DEAL RESTOCK!* 🚨🚨\n"
-                            "📦 *Watch:* CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD\n"
+                            "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
+                            f"📦 *Watch:* {watch['name']}\n"
                             "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
-                            f"💰 *Member Deal Price:* ₹{deal_price:g} (70% OFF! MRP: ₹44,995)\n"
-                            "🎯 *Target:* ₹14,000 (Target Met!)\n"
+                            f"💰 *Deal Price:* ₹{deal_price:g} (MRP: ₹{watch['mrp']:,})\n"
+                            f"🎯 *Target:* ₹{watch['target_price']:g} (Target Met!)\n"
                             f"🛒 *ORDER INSTANTLY:* {target_url}\n"
-                            "⚡ *Caught via 60-Second Priority VIP Sniper*"
+                            "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
+                            "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock!*"
                         )
                         await tracker.notifier.send_telegram(alert_msg)
 
-                        # Update DB
-                        products = await tracker.db.get_products()
-                        vip_prod = next((p for p in products if "gbd-h2000" in (p.url or "").lower()), None)
-                        if vip_prod:
-                            await tracker.db.update_price(vip_prod.id, deal_price, title="Casio G-Shock GBD-H2000-1A9 (IN STOCK!)")
-                            await tracker.db.set_last_notified(vip_prod.id, deal_price)
-                        await tracker.db.log_deal_alert(
-                            product_url=target_url,
-                            title="CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD (VIP IN STOCK)",
-                            price=deal_price,
-                            effective_price=deal_price,
-                            discount_percent=70.0,
-                            platform="casio",
-                        )
-                    else:
-                        if cycle % 10 == 1 or cycle <= 3:
-                            print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] GBD-H2000-1A9: Out of stock. Next probe in {interval_seconds}s...")
-        except Exception as exc:
-            logger.debug("[VIP Sniper] cycle #%s error: %s", cycle, exc)
+                        # Update DB without suppressing future cycle alerts
+                        try:
+                            products = await tracker.db.get_products()
+                            vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
+                            if vip_prod:
+                                await tracker.db.update_price(vip_prod.id, deal_price, title=f"{watch['name']} (IN STOCK!)")
+                            await tracker.db.log_deal_alert(
+                                product_url=target_url,
+                                title=f"{watch['name']} (VIP IN STOCK)",
+                                price=deal_price,
+                                effective_price=deal_price,
+                                discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
+                                platform="casio",
+                            )
+                        except Exception as db_err:
+                            logger.debug("[VIP Sniper] DB update error: %s", db_err)
+
+            except Exception as exc:
+                logger.debug("[VIP Sniper] %s error: %s", watch["name"], exc)
+
+        if cycle % 10 == 1 or cycle <= 3:
+            print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] GBD-H2000 & GBD-300-9DR probed. Both 1-min priority guards live.")
 
         await asyncio.sleep(interval_seconds)
 

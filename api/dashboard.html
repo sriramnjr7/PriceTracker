@@ -1960,6 +1960,247 @@
       transform: translateX(20px);
     }
 
+    /* Running Shoes Metrics KPI Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+
+    @media (max-width: 1024px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 110px;
+      transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 163, 0.4), transparent);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .metric-card:hover::before {
+      opacity: 1;
+    }
+
+    .metric-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-2);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .metric-icon {
+      color: var(--accent-primary);
+      opacity: 0.85;
+    }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      line-height: 1.25;
+      margin-bottom: var(--space-1);
+    }
+
+    .metric-caption {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+
+    .highlight-emerald {
+      color: var(--accent-emerald) !important;
+      text-shadow: 0 0 16px rgba(0, 255, 163, 0.4);
+    }
+
+    /* Brand Control Matrix (Per-brand Toggle Switch Cards) */
+    .brand-matrix-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .brand-matrix-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .brand-matrix-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand-matrix-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-matrix-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .brand-matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: var(--space-3);
+    }
+
+    .brand-control-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      transition: border-color var(--transition-fast), background-color var(--transition-fast), opacity var(--transition-fast);
+    }
+
+    .brand-control-card:hover {
+      border-color: var(--border-medium);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .brand-control-card.is-disabled {
+      opacity: 0.45;
+      border-style: dashed;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .brand-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .brand-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+    }
+
+    .brand-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    /* Mini Rocker Switch for Brand Controls */
+    .mini-rocker {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .mini-rocker input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .mini-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .2s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 20px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .mini-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #ffffff;
+      transition: .2s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    .mini-rocker input:checked + .mini-slider {
+      background-color: var(--accent-emerald);
+      border-color: var(--accent-emerald);
+    }
+
+    .mini-rocker input:checked + .mini-slider:before {
+      transform: translateX(16px);
+    }
+
     /* Store Connectors Matrix */
     .store-connectors-row {
       display: grid;
@@ -2737,6 +2978,143 @@
               </div>
             </div>
 
+            <!-- Brand Tracking Control Matrix (Toggle Scraping Per Brand) -->
+            <div class="brand-matrix-section">
+              <div class="brand-matrix-header">
+                <div class="brand-matrix-title-wrap">
+                  <span class="brand-matrix-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    Brand Scraper &amp; Search Matrix
+                  </span>
+                  <span class="brand-matrix-subtitle">Enable or disable automated scraping &amp; deal tracking per brand independently</span>
+                </div>
+              </div>
+
+              <div class="brand-matrix-grid">
+                <!-- 1. Reebok -->
+                <div class="brand-control-card" id="brand-card-reebok">
+                  <div class="brand-info">
+                    <span class="brand-name">REEBOK</span>
+                    <span class="brand-meta">Floatride Energy 1-5, X, Sym</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Reebok Tracking">
+                    <input type="checkbox" id="brand-toggle-reebok" checked onchange="toggleBrandTracking('Reebok', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 2. Nike -->
+                <div class="brand-control-card" id="brand-card-nike">
+                  <div class="brand-info">
+                    <span class="brand-name">NIKE</span>
+                    <span class="brand-meta">Pegasus, Vomero, Zoom Fly</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Nike Tracking">
+                    <input type="checkbox" id="brand-toggle-nike" checked onchange="toggleBrandTracking('Nike', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 3. Adidas -->
+                <div class="brand-control-card" id="brand-card-adidas">
+                  <div class="brand-info">
+                    <span class="brand-name">ADIDAS</span>
+                    <span class="brand-meta">Adizero SL, Boston, Takumi</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Adidas Tracking">
+                    <input type="checkbox" id="brand-toggle-adidas" checked onchange="toggleBrandTracking('Adidas', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 4. Asics -->
+                <div class="brand-control-card" id="brand-card-asics">
+                  <div class="brand-info">
+                    <span class="brand-name">ASICS</span>
+                    <span class="brand-meta">Novablast, Magic Speed, GT</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Asics Tracking">
+                    <input type="checkbox" id="brand-toggle-asics" checked onchange="toggleBrandTracking('Asics', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 5. Puma -->
+                <div class="brand-control-card" id="brand-card-puma">
+                  <div class="brand-info">
+                    <span class="brand-name">PUMA</span>
+                    <span class="brand-meta">Deviate Nitro, Velocity, Mag</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Puma Tracking">
+                    <input type="checkbox" id="brand-toggle-puma" checked onchange="toggleBrandTracking('Puma', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 6. Saucony -->
+                <div class="brand-control-card" id="brand-card-saucony">
+                  <div class="brand-info">
+                    <span class="brand-name">SAUCONY</span>
+                    <span class="brand-meta">Endorphin Speed, Triumph</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Saucony Tracking">
+                    <input type="checkbox" id="brand-toggle-saucony" checked onchange="toggleBrandTracking('Saucony', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 7. Hoka -->
+                <div class="brand-control-card" id="brand-card-hoka">
+                  <div class="brand-info">
+                    <span class="brand-name">HOKA</span>
+                    <span class="brand-meta">Mach, Rincon, Clifton, Bondi</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Hoka Tracking">
+                    <input type="checkbox" id="brand-toggle-hoka" checked onchange="toggleBrandTracking('Hoka', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 8. New Balance -->
+                <div class="brand-control-card" id="brand-card-newbalance">
+                  <div class="brand-info">
+                    <span class="brand-name">NEW BALANCE</span>
+                    <span class="brand-meta">Rebel, Propel, SuperComp</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle New Balance Tracking">
+                    <input type="checkbox" id="brand-toggle-newbalance" checked onchange="toggleBrandTracking('New Balance', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 9. Brooks -->
+                <div class="brand-control-card" id="brand-card-brooks">
+                  <div class="brand-info">
+                    <span class="brand-name">BROOKS</span>
+                    <span class="brand-meta">Hyperion, Ghost, Glycerin</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Brooks Tracking">
+                    <input type="checkbox" id="brand-toggle-brooks" checked onchange="toggleBrandTracking('Brooks', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+
+                <!-- 10. Skechers -->
+                <div class="brand-control-card" id="brand-card-skechers">
+                  <div class="brand-info">
+                    <span class="brand-name">SKECHERS</span>
+                    <span class="brand-meta">Go Run Ride, Max Cushion</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle Skechers Tracking">
+                    <input type="checkbox" id="brand-toggle-skechers" checked onchange="toggleBrandTracking('Skechers', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
             <!-- Brand Filter Chips -->
             <div class="filter-bar" style="margin-bottom: var(--space-5);">
               <button class="filter-btn shoe-filter-btn active" onclick="setShoeBrandFilter('all', this)">All Brands</button>
@@ -3022,7 +3400,38 @@
         }
       }
 
+      if (data.enabled_brands) {
+        for (const [b, isEn] of Object.entries(data.enabled_brands)) {
+          const slug = b.toLowerCase().replace(/\s+/g, "");
+          const chk = document.getElementById("brand-toggle-" + slug);
+          const card = document.getElementById("brand-card-" + slug);
+          if (chk) chk.checked = Boolean(isEn);
+          if (card) card.classList.toggle("is-disabled", !isEn);
+        }
+      }
+
       renderRunningShoeCards();
+    }
+
+    async function toggleBrandTracking(brand, enabled) {
+      const slug = brand.toLowerCase().replace(/\s+/g, "");
+      const card = document.getElementById("brand-card-" + slug);
+      if (card) card.classList.toggle("is-disabled", !enabled);
+
+      try {
+        const res = await fetch("/api/running-shoes/toggle-brand", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ brand: brand, enabled: enabled })
+        });
+        const result = await res.json();
+        if (result.status === "success") {
+          showToast(enabled ? `⚡ ${brand}: Live tracking & search queries ENABLED` : `⏸️ ${brand}: Tracking & search queries DISABLED`);
+        }
+      } catch (err) {
+        console.error("Brand toggle failed:", err);
+        showToast(`⚠️ Failed to update ${brand} toggle.`);
+      }
     }
 
     async function handleShoesToggle(checked) {

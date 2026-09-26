@@ -14,6 +14,18 @@
     "tatacliq": true,
     "ajio": true
   },
-  "last_sweep": "2026-09-26T20:31:04.462513+00:00",
-  "last_updated": "2026-09-26T22:07:01.387021+00:00"
+  "enabled_brands": {
+    "Saucony": true,
+    "Reebok": true,
+    "Hoka": true,
+    "Brooks": true,
+    "Puma": true,
+    "Nike": true,
+    "Adidas": true,
+    "Asics": true,
+    "New Balance": true,
+    "Skechers": true
+  },
+  "last_sweep": "2026-09-26T22:28:55.062735+00:00",
+  "last_updated": "2026-09-26T22:27:51.619012+00:00"
 }
