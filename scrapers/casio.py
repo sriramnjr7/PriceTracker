@@ -415,6 +415,8 @@ class CasioScraper(BaseScraper):
                 "corporate-discount",
                 "promotional-watches",
                 "sale-products",
+                "raksha-bandhan-special",
+                "top-5-sku",
             ]
             
             async def _verify_silent_prod(p):
@@ -529,8 +531,8 @@ class CasioScraper(BaseScraper):
                             if product_url in deals_map:
                                 continue
                             tags = p.get("tags", [])
-                            # If tagged for silent sale, queue for storefront check
-                            if any("silent" in str(t).lower() for t in tags):
+                            # If tagged for silent sale or promotional member discounts, queue for storefront check
+                            if any(any(k in str(t).lower() for k in ("silent", "cobr", "special", "clearance", "promo", "discount")) for t in tags):
                                 silent_candidates.append(p)
                                 continue
 
@@ -583,7 +585,7 @@ class CasioScraper(BaseScraper):
                         if product_url in deals_map:
                             continue
                         tags = p.get("tags", [])
-                        if any("silent" in str(t).lower() for t in tags):
+                        if any(any(k in str(t).lower() for k in ("silent", "cobr", "special", "clearance", "promo", "discount")) for t in tags):
                             silent_candidates.append(p)
                             continue
 
@@ -625,9 +627,28 @@ class CasioScraper(BaseScraper):
         self, collection_handle: str = "g-shock", min_discount: float = 0.0
     ) -> List[dict[str, Any]]:
         """Fetch all products in a collection via paginated JSON with automatic 429 backoff."""
-        # If user asks for master catalog or broad casio collections, use catalog sweep
-        if collection_handle.lower() in ("all", "master", "catalog", "casio-all-watches", "casio"):
+        c_low = collection_handle.lower()
+        # If user asks for master catalog or broad casio collections, use full catalog sweep
+        if c_low in ("all", "master", "catalog", "casio-all-watches", "casio", "watches"):
             return await self.scan_catalog_deals(min_discount=min_discount)
+
+        # For major watch families, sweep catalog + silent sales so clearance/silent deals are never missed
+        target_family = None
+        if "g-shock" in c_low or "gshock" in c_low or c_low in ("master-of-g", "g-squad", "g-steel", "g-steels"):
+            target_family = "G-Shock"
+        elif "edifice" in c_low:
+            target_family = "Edifice"
+        elif "vintage" in c_low:
+            target_family = "Vintage"
+        elif "enticer" in c_low:
+            target_family = "Enticer"
+
+        if target_family:
+            all_deals = await self.scan_catalog_deals(min_discount=min_discount)
+            return [
+                d for d in all_deals
+                if d.get("family") == target_family or target_family.lower() in d.get("title", "").lower()
+            ]
 
         deals_map: dict[str, dict[str, Any]] = {}
         headers = {

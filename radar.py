@@ -148,25 +148,41 @@ class StealRadar:
                                 })
                     else:
 
-                        # 2. Comprehensive Catalog & Silent Sales Scanning
+                        # 2. Comprehensive Catalog & Silent Sales Scanning (sweeps all silent, promo, and clearance hubs)
                         all_casio_deals = await casio_scraper.scan_catalog_deals(min_discount=rule.min_discount)
                         q_lower = rule.query.lower() if rule.query else ""
-                        
-                        # If a specific sub-brand or model is targeted, filter from the catalog sweep
-                        if q_lower and "watch" not in q_lower and "casio" not in q_lower:
+                        c_raw_low = (custom_url_raw or "").lower()
+                        req_kws_low = [k.lower() for k in (rule.required_keywords or [])]
+
+                        # Detect target sub-brand/family from query, collection URL slug, or required keywords
+                        target_family = None
+                        if any("g-shock" in s or "gshock" in s for s in [q_lower, c_raw_low] + req_kws_low):
+                            target_family = "G-Shock"
+                        elif any("edifice" in s for s in [q_lower, c_raw_low] + req_kws_low):
+                            target_family = "Edifice"
+                        elif any("vintage" in s for s in [q_lower, c_raw_low] + req_kws_low):
+                            target_family = "Vintage"
+                        elif any("enticer" in s for s in [q_lower, c_raw_low] + req_kws_low):
+                            target_family = "Enticer"
+
+                        specific_keywords = [
+                            w for w in q_lower.split()
+                            if len(w) > 2 and w not in ("watch", "watches", "casio", "drops", "steals", "sale")
+                        ]
+
+                        if target_family or specific_keywords:
                             deals = []
                             for d in all_casio_deals:
                                 title_low = d.get("title", "").lower()
-                                fam_low = (d.get("family") or "").lower()
-                                # Check if sub-brand keyword matches title or family
-                                if (
-                                    ("g-shock" in q_lower or "gshock" in q_lower) and ("g-shock" in title_low or "gshock" in title_low or fam_low == "g-shock")
-                                    or ("edifice" in q_lower and ("edifice" in title_low or fam_low == "edifice"))
-                                    or ("vintage" in q_lower and ("vintage" in title_low or fam_low == "vintage"))
-                                    or ("enticer" in q_lower and ("enticer" in title_low or fam_low == "enticer"))
-                                    or (any(word in title_low for word in q_lower.split() if len(word) > 2))
-                                ):
+                                fam = d.get("family")
+                                # Family match (e.g. G-Shock, Edifice)
+                                if target_family and (fam == target_family or target_family.lower() in title_low):
                                     deals.append(d)
+                                    continue
+                                # Keyword match
+                                if specific_keywords and any(kw in title_low for kw in specific_keywords):
+                                    deals.append(d)
+                                    continue
                         else:
                             deals = all_casio_deals
 
