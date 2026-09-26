@@ -67,6 +67,28 @@ async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 300):
         await asyncio.sleep(interval_seconds)
 
 
+async def running_shoes_radar_loop(interval_seconds: int = 600):
+    """Dedicated background harvester loop for Performance Running Shoes (Nike, Adidas, Asics, Puma, NB, Skechers)."""
+    from running_shoes_radar import shoes_radar
+    cycle_count = 0
+    while True:
+        cycle_count += 1
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if not shoes_radar.is_active():
+            logger.info("Running Shoes Radar is switched OFF in UI. Skipping background cycle #%s.", cycle_count)
+        else:
+            print(f"\n[{now_str}] 👟 Starting Running Shoes Radar Harvest Cycle #{cycle_count}...")
+            try:
+                res = await shoes_radar.sweep()
+                new_deals = res.get("new_deals_found", 0)
+                alerts = res.get("alerts_dispatched", 0)
+                print(f"[{now_str}] ✅ Running Shoes Cycle #{cycle_count} completed: {new_deals} deals found, {alerts} Telegram alerts dispatched.")
+            except Exception as exc:
+                logger.error("Error during running shoes cycle #%s: %s", cycle_count, exc)
+
+        await asyncio.sleep(interval_seconds)
+
+
 async def run_single_pass() -> int:
     """Execute a single complete sweep (Casio Bhawar + Flipkart deals + manual products)."""
     print("\n⚡ [PriceTracker] Executing Single Sweep (GitHub Actions / Scheduled Runner)...")
@@ -97,6 +119,20 @@ async def run_single_pass() -> int:
         total = casio_alerts + tracked_alerts
         print(f"🎯 Total alerts sent: {total}\n")
 
+        # Check Running Shoes Radar if active
+        try:
+            from running_shoes_radar import shoes_radar
+            if shoes_radar.is_active():
+                print("👟 Checking Running Shoes Radar (Myntra, Flipkart, Tata CLiQ, Ajio)...")
+                shoe_res = await asyncio.wait_for(shoes_radar.sweep(), timeout=60.0)
+                shoe_alerts = shoe_res.get("alerts_dispatched", 0)
+                total += shoe_alerts
+                print(f"✅ Running Shoes check completed: {shoe_alerts} alert(s) dispatched.")
+            else:
+                print("ℹ️ Running Shoes Radar is switched OFF in config/UI. Skipping.")
+        except Exception as shoe_exc:
+            logger.error("Error during running shoes single pass: %s", shoe_exc)
+
         # Check and dispatch periodic Telegram heartbeat if due
         try:
             from heartbeat import check_and_send_heartbeat
@@ -125,6 +161,16 @@ async def run_repeating_sweep(repeats: int = 3, interval_seconds: int = 110) -> 
                 tracked_alerts = await tracker.run_once()
                 print(f"[{now_str}] ✅ Tracked items check: {tracked_alerts} alert(s).")
                 total_alerts += casio_alerts + tracked_alerts
+
+                try:
+                    from running_shoes_radar import shoes_radar
+                    if shoes_radar.is_active():
+                        shoe_res = await shoes_radar.sweep()
+                        shoe_alerts = shoe_res.get("alerts_dispatched", 0)
+                        total_alerts += shoe_alerts
+                        print(f"[{now_str}] ✅ Running Shoes scan: {shoe_alerts} alert(s).")
+                except Exception as shoe_exc:
+                    logger.error("Error during running shoes sweep pass: %s", shoe_exc)
                 
                 # Check periodic heartbeat
                 try:
@@ -172,6 +218,7 @@ async def main():
 
     manual_interval = 120
     casio_interval = 90
+    shoes_interval = 600
     for arg in sys.argv[1:]:
         if arg.isdigit():
             manual_interval = int(arg)
@@ -182,15 +229,17 @@ async def main():
     print("🎯 Target 1: Casio Store Bhawar (70%+ Silent Deals & GBD-300 Watcher)")
     print("🎯 Target 2: Flipkart Casio Deals (70%+ Brand Facet)")
     print("🎯 Target 3: Tracked Products (Crocs LiteRide 360 All Variants / User Items)")
+    print("🎯 Target 4: Running Shoes Radar (Myntra, Flipkart, Tata CLiQ, Ajio - 26 Whitelist Models)")
     print("📱 Telegram 2-Way Bot: ACTIVE")
-    print(f"⏰ Casio Deal Sweep: Every {casio_interval}s | Tracked Items Sweep: Every {manual_interval}s")
+    print(f"⏰ Casio: Every {casio_interval}s | Tracked Items: Every {manual_interval}s | Running Shoes: Every {shoes_interval}s")
     print("=" * 70 + "\n")
 
-    # Run Casio deals hunter, manual Telegram tracker, and interactive bot listener concurrently
+    # Run Casio deals hunter, manual Telegram tracker, running shoes harvester, and interactive bot listener concurrently
     try:
         await asyncio.gather(
             casio_deal_radar_loop(radar, interval_seconds=casio_interval),
             manual_tracker_loop(tracker, interval_seconds=manual_interval),
+            running_shoes_radar_loop(interval_seconds=shoes_interval),
             tg_bot.listen_loop(),
         )
     except (KeyboardInterrupt, SystemExit):
