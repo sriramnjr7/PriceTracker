@@ -2479,6 +2479,453 @@
       color: var(--accent-primary);
       opacity: 0.8;
     }
+    /* ==========================================================================
+       TAB 3: SYSTEM LOGS & TELEMETRY STYLES
+       ========================================================================== */
+    .nav-item-badge.badge-logs {
+      background: var(--accent-blue-subtle);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+    .nav-item-badge.badge-logs.has-warnings {
+      background: var(--accent-amber-subtle);
+      color: var(--accent-amber);
+      border-color: rgba(255, 184, 0, 0.4);
+    }
+    .nav-item-badge.badge-logs.has-errors {
+      background: var(--accent-rose-subtle);
+      color: var(--accent-rose);
+      border-color: rgba(255, 51, 102, 0.4);
+    }
+
+    .logs-header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .daemon-live-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid rgba(0, 255, 163, 0.3);
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-emerald);
+      box-shadow: 0 0 16px rgba(0, 255, 163, 0.08);
+    }
+    .daemon-live-chip.is-idle {
+      border-color: rgba(255, 184, 0, 0.3);
+      color: var(--accent-amber);
+    }
+    .daemon-live-chip.is-stopped {
+      border-color: rgba(255, 51, 102, 0.3);
+      color: var(--accent-rose);
+    }
+
+    .status-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: var(--radius-full);
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+      animation: statusPulse 1.8s infinite ease-in-out;
+    }
+    @keyframes statusPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.85); }
+    }
+
+    .btn-logs-autorefresh.is-active {
+      border-color: rgba(0, 255, 163, 0.35);
+      color: var(--accent-primary);
+      background: rgba(0, 255, 163, 0.08);
+    }
+    .refresh-indicator-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-full);
+      background: currentColor;
+      display: inline-block;
+    }
+
+    .issues-spotlight-card {
+      background: rgba(255, 184, 0, 0.04);
+      border: 1px solid rgba(255, 184, 0, 0.28);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-5);
+      overflow: hidden;
+      transition: border-color var(--transition-fast);
+    }
+    .issues-spotlight-card.has-errors {
+      background: rgba(255, 51, 102, 0.04);
+      border-color: rgba(255, 51, 102, 0.32);
+    }
+    .issues-spotlight-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      background: rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      user-select: none;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+    .issues-header-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .issue-pulse-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 184, 0, 0.15);
+      color: var(--accent-amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .issues-spotlight-card.has-errors .issue-pulse-icon {
+      background: rgba(255, 51, 102, 0.15);
+      color: var(--accent-rose);
+    }
+    .issues-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .issues-subtitle {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+    .issues-spotlight-body {
+      padding: var(--space-3) var(--space-4);
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .issue-item-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+    }
+    .issue-item-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-medium);
+    }
+    .issue-item-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+    .issue-item-msg {
+      color: #E2E8F0;
+      line-height: 1.45;
+      word-break: break-word;
+      font-size: 11.5px;
+    }
+
+    .logs-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .logs-filter-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+    .log-filter-btn {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .log-filter-btn.active, .log-filter-btn:hover {
+      background: var(--bg-card-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-medium);
+    }
+    .filter-chip-num {
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      opacity: 0.85;
+      margin-left: 4px;
+    }
+    .logs-controls-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+    .logs-search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .logs-search-wrapper svg {
+      position: absolute;
+      left: 10px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .log-search-input {
+      height: 34px;
+      padding: 0 28px 0 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 12.5px;
+      width: 240px;
+      transition: width var(--transition-fast), border-color var(--transition-fast);
+    }
+    .log-search-input:focus {
+      width: 300px;
+      border-color: var(--border-focus);
+      outline: none;
+    }
+    .btn-clear-search {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .log-limit-select {
+      height: 34px;
+      padding: 0 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .logs-autoscroll-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+    .logs-autoscroll-label input {
+      cursor: pointer;
+      accent-color: var(--accent-primary);
+    }
+
+    .terminal-window {
+      background: #06080E;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+    }
+    .terminal-chrome {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #090C14;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .terminal-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .t-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: var(--radius-full);
+    }
+    .dot-red { background: #FF5F56; }
+    .dot-yellow { background: #FFBD2E; }
+    .dot-green { background: #27C93F; }
+    .terminal-title {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+    .terminal-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+    .terminal-stream-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-full);
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+    .terminal-body {
+      max-height: 580px;
+      min-height: 360px;
+      overflow-y: auto;
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.65;
+      background: #06080E;
+      color: #CBD5E1;
+      scroll-behavior: smooth;
+    }
+    .terminal-body::-webkit-scrollbar {
+      width: 8px;
+    }
+    .terminal-body::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    .terminal-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    .terminal-body::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .terminal-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+    .log-line-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      transition: background-color 100ms ease;
+      position: relative;
+    }
+    .log-line-row:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .log-line-time {
+      color: #64748B;
+      flex-shrink: 0;
+      font-size: 11px;
+      user-select: none;
+      min-width: 130px;
+    }
+    .log-level-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .lvl-info {
+      background: rgba(0, 240, 255, 0.12);
+      color: #38BDF8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+    .lvl-warning {
+      background: rgba(255, 184, 0, 0.14);
+      color: #FBBF24;
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+    .lvl-error {
+      background: rgba(255, 51, 102, 0.16);
+      color: #FB7185;
+      border: 1px solid rgba(251, 113, 133, 0.4);
+    }
+    .log-line-logger {
+      color: #818CF8;
+      font-weight: 500;
+      flex-shrink: 0;
+      min-width: 80px;
+    }
+    .log-line-msg {
+      flex-grow: 1;
+      word-break: break-word;
+      color: #E2E8F0;
+    }
+    .log-line-row.is-warning .log-line-msg {
+      color: #FDE68A;
+    }
+    .log-line-row.is-error .log-line-msg {
+      color: #FECDD3;
+    }
+    .log-copy-btn {
+      opacity: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      color: #CBD5E1;
+      padding: 1px 5px;
+      font-size: 10px;
+      cursor: pointer;
+      position: absolute;
+      right: 8px;
+      top: 3px;
+      transition: opacity var(--transition-fast);
+    }
+    .log-line-row:hover .log-copy-btn {
+      opacity: 1;
+    }
+    .terminal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 14px;
+      background: #090C14;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .t-footer-sep {
+      margin: 0 6px;
+      opacity: 0.5;
+    }
   </style>
 </head>
 <body>
@@ -2585,6 +3032,17 @@
                   <span>Running Shoes</span>
                 </div>
                 <span class="nav-item-badge badge-shoes" id="nav-shoes-count-badge" style="display: none;">0</span>
+              </a>
+
+              <a class="nav-link-dashboard" id="nav-btn-logs" onclick="switchNavTab('logs')">
+                <div class="nav-link-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 17 10 11 4 5"></polyline>
+                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                  </svg>
+                  <span>System Logs</span>
+                </div>
+                <span class="nav-item-badge badge-logs" id="nav-logs-badge">Live</span>
               </a>
             </nav>
 
@@ -3137,6 +3595,256 @@
 
           </div> <!-- /#tab-content-shoes -->
 
+          <!-- ========================================================================
+               TAB 3: SYSTEM LOGS & TELEMETRY VIEW
+               ======================================================================== -->
+          <div id="tab-content-logs" class="workspace-tab-page" style="display: none;">
+            
+            <!-- Page Title Section with Quick Actions -->
+            <div class="page-title-section">
+              <div class="page-breadcrumb">PriceTracker / System Telemetry</div>
+              <div class="page-header-row">
+                <div>
+                  <h1 class="page-heading">System &amp; Radar Logs</h1>
+                  <p class="page-subheading">Live daemon activity stream, scraper heartbeat diagnostics, and error inspector.</p>
+                </div>
+                <div class="logs-header-actions">
+                  <!-- Daemon Live Pill -->
+                  <div class="daemon-live-chip" id="log-daemon-chip">
+                    <span class="status-pulse-dot" id="log-daemon-pulse"></span>
+                    <span id="log-daemon-chip-text">Checking status...</span>
+                  </div>
+
+                  <!-- Auto-Refresh Toggle -->
+                  <button class="btn-ui btn-ui-secondary btn-logs-autorefresh is-active" id="btn-logs-autorefresh" onclick="toggleLogsAutoRefresh()" title="Toggle live streaming updates">
+                    <span class="refresh-indicator-dot"></span>
+                    <span id="label-autorefresh">Auto-refresh (3s)</span>
+                  </button>
+
+                  <!-- Manual Refresh -->
+                  <button class="btn-ui btn-ui-secondary" onclick="fetchLogsData(false)" title="Fetch latest logs immediately">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
+
+                  <!-- Copy Issues for Debugging -->
+                  <button class="btn-ui btn-ui-primary" id="btn-copy-all-issues" onclick="copyAllCaughtIssues()" title="Copy all captured errors and warnings for debugging">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>Copy Issues (<span id="btn-issues-count">0</span>)</span>
+                  </button>
+
+                  <!-- Truncate / Clear -->
+                  <button class="btn-ui btn-ui-ghost" onclick="clearLogsViewer()" title="Clear stream view / Reset log file">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Telemetry Metrics Grid (4 Cards) -->
+            <div class="kpi-grid logs-kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-label">Daemon Engine</span>
+                  <div class="kpi-icon-wrap" style="color: var(--accent-emerald);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                  </div>
+                </div>
+                <div class="kpi-value-row">
+                  <span class="metric-value highlight-emerald" id="kpi-daemon-state">ACTIVE</span>
+                </div>
+                <div class="metric-caption" id="kpi-daemon-sub">Last activity: checking...</div>
+              </div>
+
+              <div class="kpi-card" style="cursor: pointer;" onclick="setLogLevelFilter('warning_error', document.getElementById('filter-btn-issues'))">
+                <div class="kpi-header">
+                  <span class="kpi-label">Scraper Warnings</span>
+                  <div class="kpi-icon-wrap" style="color: var(--accent-amber);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                  </div>
+                </div>
+                <div class="kpi-value-row">
+                  <span class="metric-value" id="kpi-daemon-warnings" style="color: var(--accent-amber);">0</span>
+                </div>
+                <div class="metric-caption">Connection resets &amp; retry attempts</div>
+              </div>
+
+              <div class="kpi-card" style="cursor: pointer;" onclick="setLogLevelFilter('error', document.getElementById('filter-btn-errors'))">
+                <div class="kpi-header">
+                  <span class="kpi-label">Scraper / API Errors</span>
+                  <div class="kpi-icon-wrap" style="color: var(--accent-rose);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="15" y1="9" x2="9" y2="15"></line>
+                      <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                  </div>
+                </div>
+                <div class="kpi-value-row">
+                  <span class="metric-value" id="kpi-daemon-errors" style="color: var(--accent-rose);">0</span>
+                </div>
+                <div class="metric-caption">Critical exceptions &amp; failures</div>
+              </div>
+
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-label">Log Buffer &amp; Storage</span>
+                  <div class="kpi-icon-wrap" style="color: var(--accent-cyan);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="4 17 10 11 4 5"></polyline>
+                      <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                  </div>
+                </div>
+                <div class="kpi-value-row">
+                  <span class="metric-value" id="kpi-daemon-size" style="color: var(--accent-cyan);">0 MB</span>
+                </div>
+                <div class="metric-caption" id="kpi-daemon-lines">0 lines parsed in memory</div>
+              </div>
+            </div>
+
+            <!-- Caught Issues Spotlight / Debugging Drawer (Collapsible) -->
+            <div class="issues-spotlight-card" id="issues-spotlight-card" style="display: none;">
+              <div class="issues-spotlight-header" onclick="toggleIssuesDrawer()">
+                <div class="issues-header-left">
+                  <div class="issue-pulse-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="issues-title">Caught Scraper Warnings &amp; Errors for Debugging</div>
+                    <div class="issues-subtitle"><span id="issues-spotlight-count">0</span> issues detected in recent cycles (connection resets, curl retries, timeouts)</div>
+                  </div>
+                </div>
+                <div class="issues-header-actions" onclick="event.stopPropagation()">
+                  <button class="btn-ui btn-ui-secondary btn-sm" onclick="copyAllCaughtIssues()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>Copy All for Debugging</span>
+                  </button>
+                  <button class="btn-ui btn-ui-ghost btn-sm" id="btn-toggle-issues-drawer" onclick="toggleIssuesDrawer()" aria-label="Toggle issues drawer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="issues-spotlight-body" id="issues-spotlight-body">
+                <!-- Dynamically rendered by renderIssuesSpotlight() -->
+              </div>
+            </div>
+
+            <!-- Log Stream Filter Toolbar -->
+            <div class="logs-toolbar">
+              <!-- Filter Tabs -->
+              <div class="logs-filter-group">
+                <button class="filter-btn log-filter-btn active" id="filter-btn-all" onclick="setLogLevelFilter('all', this)">
+                  All Logs <span class="filter-chip-num" id="filter-cnt-all">0</span>
+                </button>
+                <button class="filter-btn log-filter-btn" id="filter-btn-issues" onclick="setLogLevelFilter('warning_error', this)">
+                  ⚠️ Issues <span class="filter-chip-num" id="filter-cnt-issues" style="color: var(--accent-amber);">0</span>
+                </button>
+                <button class="filter-btn log-filter-btn" id="filter-btn-errors" onclick="setLogLevelFilter('error', this)">
+                  🔴 Errors <span class="filter-chip-num" id="filter-cnt-errors" style="color: var(--accent-rose);">0</span>
+                </button>
+                <button class="filter-btn log-filter-btn" id="filter-btn-warnings" onclick="setLogLevelFilter('warning', this)">
+                  🟡 Warnings <span class="filter-chip-num" id="filter-cnt-warnings" style="color: var(--accent-amber);">0</span>
+                </button>
+                <button class="filter-btn log-filter-btn" id="filter-btn-info" onclick="setLogLevelFilter('info', this)">
+                  🔵 Info <span class="filter-chip-num" id="filter-cnt-info">0</span>
+                </button>
+              </div>
+
+              <!-- Search & Controls -->
+              <div class="logs-controls-right">
+                <div class="logs-search-wrapper">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input type="text" id="log-search-input" class="log-search-input" placeholder="Search logs (e.g. curl, flipkart, 404, reset)..." oninput="onLogSearchInput(this.value)">
+                  <button type="button" class="btn-clear-search" id="btn-clear-log-search" onclick="clearLogSearch()" style="display: none;">&times;</button>
+                </div>
+
+                <div class="logs-limit-select-wrap">
+                  <select id="log-limit-select" class="log-limit-select" onchange="onLogLimitChange(this.value)">
+                    <option value="100">100 lines</option>
+                    <option value="250" selected>250 lines</option>
+                    <option value="500">500 lines</option>
+                  </select>
+                </div>
+
+                <label class="logs-autoscroll-label" title="Keep terminal scrolled to the bottom on new logs">
+                  <input type="checkbox" id="chk-log-autoscroll" checked>
+                  <span>Auto-scroll</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Cyber Obsidian Terminal Window -->
+            <div class="terminal-window">
+              <div class="terminal-chrome">
+                <div class="terminal-dots">
+                  <span class="t-dot dot-red"></span>
+                  <span class="t-dot dot-yellow"></span>
+                  <span class="t-dot dot-green"></span>
+                </div>
+                <div class="terminal-title">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 17 10 11 4 5"></polyline>
+                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                  </svg>
+                  <span>radar_daemon.log &bull; Live Stream</span>
+                </div>
+                <div class="terminal-meta">
+                  <span class="terminal-stream-dot"></span>
+                  <span id="terminal-sync-status">Streaming</span>
+                  <span class="terminal-timestamp" id="terminal-updated-time">--:--:--</span>
+                </div>
+              </div>
+
+              <!-- Terminal Stream Body -->
+              <div class="terminal-body" id="log-terminal-stream">
+                <div class="terminal-loading">
+                  <span class="indicator-pulse"></span>
+                  <span>Connecting to daemon log stream...</span>
+                </div>
+              </div>
+
+              <!-- Terminal Footer Status Bar -->
+              <div class="terminal-footer">
+                <div class="t-footer-left">
+                  <span>Displaying: <strong id="t-footer-showing">0</strong> of <strong id="t-footer-total">0</strong> lines</span>
+                  <span class="t-footer-sep">&bull;</span>
+                  <span id="t-footer-path">radar_daemon.log</span>
+                </div>
+                <div class="t-footer-right">
+                  <span>Click any line or issue to copy &bull; Press Ctrl+F to find</span>
+                </div>
+              </div>
+            </div>
+
+          </div> <!-- /#tab-content-logs -->
+
         </div> <!-- /workspace-body -->
 
         <!-- Floating Action Button for Mobile Screens -->
@@ -3305,27 +4013,31 @@
       if (bd) bd.classList.toggle("is-active");
     }
 
-    // Tab Navigation: Dashboard vs Running Shoes Radar
+    // Tab Navigation: Dashboard vs Running Shoes Radar vs System Logs
     let currentActiveTab = "dashboard";
 
     function switchNavTab(tabName) {
       currentActiveTab = tabName;
       const tabDash = document.getElementById("tab-content-dashboard");
       const tabShoes = document.getElementById("tab-content-shoes");
+      const tabLogs = document.getElementById("tab-content-logs");
       const btnDash = document.getElementById("nav-btn-dashboard");
       const btnShoes = document.getElementById("nav-btn-shoes");
+      const btnLogs = document.getElementById("nav-btn-logs");
+
+      if (tabDash) tabDash.style.display = tabName === "dashboard" ? "block" : "none";
+      if (tabShoes) tabShoes.style.display = tabName === "shoes" ? "block" : "none";
+      if (tabLogs) tabLogs.style.display = tabName === "logs" ? "block" : "none";
+
+      if (btnDash) btnDash.classList.toggle("active", tabName === "dashboard");
+      if (btnShoes) btnShoes.classList.toggle("active", tabName === "shoes");
+      if (btnLogs) btnLogs.classList.toggle("active", tabName === "logs");
 
       if (tabName === "shoes") {
-        if (tabDash) tabDash.style.display = "none";
-        if (tabShoes) tabShoes.style.display = "block";
-        if (btnDash) btnDash.classList.remove("active");
-        if (btnShoes) btnShoes.classList.add("active");
         fetchRunningShoesData();
+      } else if (tabName === "logs") {
+        fetchLogsData(false);
       } else {
-        if (tabDash) tabDash.style.display = "block";
-        if (tabShoes) tabShoes.style.display = "none";
-        if (btnDash) btnDash.classList.add("active");
-        if (btnShoes) btnShoes.classList.remove("active");
         setFilter("all");
       }
 
@@ -3713,6 +4425,27 @@
           if (rBadge) {
             rBadge.textContent = rCount;
             rBadge.style.display = rCount > 0 ? "inline-flex" : "none";
+          }
+        }
+
+        // Update Daemon Logs Badge from overview telemetry
+        if (data.stats && data.stats.daemon) {
+          const lBadge = document.getElementById("nav-logs-badge");
+          const dInfo = data.stats.daemon;
+          if (lBadge) {
+            if (dInfo.error_count > 0) {
+              lBadge.textContent = dInfo.error_count + " Err";
+              lBadge.className = "nav-item-badge badge-logs has-errors";
+            } else if (dInfo.warning_count > 0) {
+              lBadge.textContent = dInfo.warning_count + " Warn";
+              lBadge.className = "nav-item-badge badge-logs has-warnings";
+            } else if (dInfo.is_running) {
+              lBadge.textContent = "Live";
+              lBadge.className = "nav-item-badge badge-logs";
+            } else {
+              lBadge.textContent = "Offline";
+              lBadge.className = "nav-item-badge badge-logs";
+            }
           }
         }
 
@@ -4260,6 +4993,406 @@
       }
     });
 
+    // ==========================================================================
+    // SYSTEM LOGS & TELEMETRY CONTROLLER
+    // ==========================================================================
+    let logsState = {
+      isAutoRefresh: true,
+      refreshIntervalMs: 3000,
+      currentLevelFilter: "all",
+      searchQuery: "",
+      lineLimit: 250,
+      cachedLogs: [],
+      cachedIssues: [],
+      daemonInfo: null,
+      isFetching: false,
+      issuesDrawerOpen: true,
+    };
+
+    async function fetchLogsData(isAuto = false) {
+      if (logsState.isFetching && isAuto) return;
+      logsState.isFetching = true;
+
+      const streamEl = document.getElementById("log-terminal-stream");
+      if (!isAuto && streamEl && logsState.cachedLogs.length === 0) {
+        streamEl.innerHTML = '<div class="terminal-loading"><span class="indicator-pulse"></span><span>Fetching daemon logs...</span></div>';
+      }
+
+      try {
+        const params = new URLSearchParams();
+        params.set("limit", logsState.lineLimit);
+        if (logsState.currentLevelFilter && logsState.currentLevelFilter !== "all") {
+          params.set("level", logsState.currentLevelFilter);
+        }
+        if (logsState.searchQuery && logsState.searchQuery.trim()) {
+          params.set("search", logsState.searchQuery.trim());
+        }
+
+        const res = await fetch("/api/logs?" + params.toString());
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        logsState.cachedLogs = data.logs || [];
+        logsState.cachedIssues = data.recent_issues || [];
+        logsState.daemonInfo = data.daemon || {};
+
+        updateLogsTelemetryUI(data);
+        renderLogs(logsState.cachedLogs);
+        renderIssuesSpotlight(logsState.cachedIssues);
+      } catch (err) {
+        console.error("Logs fetch error:", err);
+        const chipText = document.getElementById("log-daemon-chip-text");
+        if (chipText && !isAuto) chipText.textContent = "SYNC ERROR";
+        if (!isAuto) showToast("⚠️ Could not fetch daemon logs: " + err.message);
+      } finally {
+        logsState.isFetching = false;
+      }
+    }
+
+    function updateLogsTelemetryUI(data) {
+      const daemon = data.daemon || {};
+      const counts = daemon.counts || { total: 0, errors: 0, warnings: 0, info: 0 };
+
+      // Sidebar Logs Badge
+      const navLogsBadge = document.getElementById("nav-logs-badge");
+      if (navLogsBadge) {
+        if (counts.errors > 0) {
+          navLogsBadge.textContent = counts.errors + " Err";
+          navLogsBadge.className = "nav-item-badge badge-logs has-errors";
+        } else if (counts.warnings > 0) {
+          navLogsBadge.textContent = counts.warnings + " Warn";
+          navLogsBadge.className = "nav-item-badge badge-logs has-warnings";
+        } else if (daemon.is_running) {
+          navLogsBadge.textContent = "Live";
+          navLogsBadge.className = "nav-item-badge badge-logs";
+        } else {
+          navLogsBadge.textContent = "Offline";
+          navLogsBadge.className = "nav-item-badge badge-logs";
+        }
+      }
+
+      // Top Status Chip
+      const chip = document.getElementById("log-daemon-chip");
+      const chipText = document.getElementById("log-daemon-chip-text");
+      const kpiState = document.getElementById("kpi-daemon-state");
+      const kpiSub = document.getElementById("kpi-daemon-sub");
+
+      const isRunning = daemon.is_running;
+      const statusText = daemon.status_text || (isRunning ? "ACTIVE" : "OFFLINE");
+      const secAgo = daemon.seconds_since_activity;
+
+      if (chip && chipText) {
+        if (isRunning) {
+          chip.className = "daemon-live-chip";
+          chipText.textContent = "DAEMON " + statusText;
+        } else if (secAgo !== null && secAgo <= 600) {
+          chip.className = "daemon-live-chip is-idle";
+          chipText.textContent = "DAEMON IDLE";
+        } else {
+          chip.className = "daemon-live-chip is-stopped";
+          chipText.textContent = "DAEMON STOPPED";
+        }
+      }
+
+      if (kpiState) {
+        kpiState.textContent = isRunning ? "ACTIVE & LOGGING" : statusText;
+        if (isRunning) {
+          kpiState.className = "metric-value highlight-emerald";
+        } else if (secAgo !== null && secAgo <= 600) {
+          kpiState.className = "metric-value";
+          kpiState.style.color = "var(--accent-amber)";
+        } else {
+          kpiState.className = "metric-value";
+          kpiState.style.color = "var(--accent-rose)";
+        }
+      }
+
+      if (kpiSub) {
+        if (secAgo !== null && secAgo !== undefined) {
+          if (secAgo < 5) kpiSub.textContent = "Active event < 5s ago • " + (daemon.file_size_mb || 0) + " MB";
+          else if (secAgo < 60) kpiSub.textContent = "Active event " + secAgo + "s ago • " + (daemon.file_size_mb || 0) + " MB";
+          else kpiSub.textContent = "Last event " + Math.floor(secAgo / 60) + "m ago • " + (daemon.file_size_mb || 0) + " MB";
+        } else {
+          kpiSub.textContent = daemon.note || "No log activity detected";
+        }
+      }
+
+      // KPI Counts
+      const elWarn = document.getElementById("kpi-daemon-warnings");
+      const elErr = document.getElementById("kpi-daemon-errors");
+      const elSize = document.getElementById("kpi-daemon-size");
+      const elLines = document.getElementById("kpi-daemon-lines");
+      const btnIssuesCount = document.getElementById("btn-issues-count");
+
+      if (elWarn) elWarn.textContent = counts.warnings || 0;
+      if (elErr) elErr.textContent = counts.errors || 0;
+      if (elSize) elSize.textContent = (daemon.file_size_mb || 0) + " MB";
+      if (elLines) elLines.textContent = (counts.total || 0).toLocaleString() + " lines in buffer";
+
+      const totalIssues = (counts.errors || 0) + (counts.warnings || 0);
+      if (btnIssuesCount) btnIssuesCount.textContent = totalIssues;
+
+      // Filter Counts
+      const cntAll = document.getElementById("filter-cnt-all");
+      const cntIssues = document.getElementById("filter-cnt-issues");
+      const cntErrors = document.getElementById("filter-cnt-errors");
+      const cntWarn = document.getElementById("filter-cnt-warnings");
+      const cntInfo = document.getElementById("filter-cnt-info");
+
+      if (cntAll) cntAll.textContent = counts.total || 0;
+      if (cntIssues) cntIssues.textContent = totalIssues;
+      if (cntErrors) cntErrors.textContent = counts.errors || 0;
+      if (cntWarn) cntWarn.textContent = counts.warnings || 0;
+      if (cntInfo) cntInfo.textContent = counts.info || 0;
+
+      // Terminal Updated Time
+      const elTime = document.getElementById("terminal-updated-time");
+      if (elTime) elTime.textContent = new Date().toLocaleTimeString();
+
+      // Footer
+      const fShowing = document.getElementById("t-footer-showing");
+      const fTotal = document.getElementById("t-footer-total");
+      const fPath = document.getElementById("t-footer-path");
+      if (fShowing) fShowing.textContent = (data.logs || []).length;
+      if (fTotal) fTotal.textContent = counts.total || 0;
+      if (fPath && daemon.log_path) {
+        const parts = daemon.log_path.split(/[\\/]/);
+        fPath.textContent = parts[parts.length - 1];
+      }
+    }
+
+    function renderIssuesSpotlight(issues) {
+      const card = document.getElementById("issues-spotlight-card");
+      const body = document.getElementById("issues-spotlight-body");
+      const countEl = document.getElementById("issues-spotlight-count");
+
+      if (!card || !body) return;
+
+      if (!issues || issues.length === 0) {
+        card.style.display = "none";
+        return;
+      }
+
+      card.style.display = "block";
+      const hasErrors = issues.some(i => i.level === "ERROR" || i.level === "CRITICAL");
+      card.classList.toggle("has-errors", hasErrors);
+
+      if (countEl) countEl.textContent = issues.length;
+
+      let html = "";
+      issues.slice(0, 15).forEach((issue, idx) => {
+        const isErr = issue.level === "ERROR" || issue.level === "CRITICAL";
+        const lvlClass = isErr ? "lvl-error" : "lvl-warning";
+        const safeRaw = escapeHtml(issue.raw || issue.message || "");
+        html += `
+          <div class="issue-item-card">
+            <div class="issue-item-top">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="log-level-badge ${lvlClass}">${issue.level}</span>
+                <span style="color:#818CF8; font-weight:600;">[${escapeHtml(issue.logger || "system")}]</span>
+                <span style="color:#64748B; font-size:11px;">${escapeHtml(issue.timestamp || "recent")}</span>
+              </div>
+              <button class="btn-ui btn-ui-ghost btn-sm" style="padding:2px 8px; font-size:11px;" onclick="copySingleIssue(${idx})" title="Copy this issue">
+                Copy
+              </button>
+            </div>
+            <div class="issue-item-msg">${safeRaw}</div>
+          </div>
+        `;
+      });
+
+      if (issues.length > 15) {
+        html += `<div style="text-align:center; padding:6px; font-size:11px; color:var(--text-muted);">+ ${issues.length - 15} more issues in full stream</div>`;
+      }
+
+      body.innerHTML = html;
+    }
+
+    function toggleIssuesDrawer() {
+      const body = document.getElementById("issues-spotlight-body");
+      const btn = document.getElementById("btn-toggle-issues-drawer");
+      if (!body) return;
+      logsState.issuesDrawerOpen = !logsState.issuesDrawerOpen;
+      body.style.display = logsState.issuesDrawerOpen ? "flex" : "none";
+      if (btn) btn.style.transform = logsState.issuesDrawerOpen ? "rotate(0deg)" : "rotate(-90deg)";
+    }
+
+    function copySingleIssue(idx) {
+      const issue = logsState.cachedIssues[idx];
+      if (!issue) return;
+      const text = `[${issue.timestamp}] [${issue.level}] ${issue.logger}: ${issue.raw || issue.message}`;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast("📋 Copied issue to clipboard!");
+        }).catch(() => {
+          showToast("⚠️ Could not access clipboard");
+        });
+      } else {
+        showToast("Clipboard not accessible");
+      }
+    }
+
+    function copyAllCaughtIssues() {
+      const issues = logsState.cachedIssues;
+      if (!issues || issues.length === 0) {
+        showToast("No warnings or errors currently detected! 🟢");
+        return;
+      }
+
+      const daemon = logsState.daemonInfo || {};
+      let dump = `=== PRICETRACKER SCRAPER ISSUES DUMP (${issues.length} detected) ===\n`;
+      dump += `Generated: ${new Date().toISOString()}\n`;
+      dump += `Daemon Status: ${daemon.status_text || "ONLINE"} (File size: ${daemon.file_size_mb || 0} MB)\n\n`;
+
+      issues.forEach((it, i) => {
+        dump += `#${i+1} [${it.timestamp || "N/A"}] [${it.level}] ${it.logger}:\n${it.raw || it.message}\n\n`;
+      });
+
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(dump).then(() => {
+          showToast(`📋 Copied ${issues.length} issues to clipboard for debugging!`);
+        }).catch(() => {
+          showToast("⚠️ Could not access clipboard");
+        });
+      } else {
+        showToast("Clipboard not accessible");
+      }
+    }
+
+    function renderLogs(logs) {
+      const streamEl = document.getElementById("log-terminal-stream");
+      if (!streamEl) return;
+
+      if (!logs || logs.length === 0) {
+        streamEl.innerHTML = '<div style="text-align:center; padding:40px 20px; color:var(--text-muted); font-size:13px;">No log lines matching current filter or search criteria.</div>';
+        return;
+      }
+
+      let html = "";
+      logs.forEach((log) => {
+        const lvl = (log.level || "INFO").toUpperCase();
+        let lvlClass = "lvl-info";
+        let rowClass = "log-line-row";
+        if (lvl === "ERROR" || lvl === "CRITICAL") {
+          lvlClass = "lvl-error";
+          rowClass += " is-error";
+        } else if (lvl === "WARNING" || lvl === "WARN") {
+          lvlClass = "lvl-warning";
+          rowClass += " is-warning";
+        }
+
+        const formattedMsg = highlightLogSyntax(escapeHtml(log.message || log.raw || ""));
+        const rawAttr = escapeHtml(log.raw || log.message || "").replace(/"/g, "&quot;");
+
+        html += `
+          <div class="${rowClass}">
+            <span class="log-line-time">${escapeHtml(log.timestamp || "--:--:--")}</span>
+            <span class="log-level-badge ${lvlClass}">${lvl}</span>
+            <span class="log-line-logger">[${escapeHtml(log.logger || "system")}]</span>
+            <span class="log-line-msg">${formattedMsg}</span>
+            <button class="log-copy-btn" data-raw="${rawAttr}" onclick="copyLogLineBtn(this)" title="Copy raw line">Copy</button>
+          </div>
+        `;
+      });
+
+      streamEl.innerHTML = html;
+
+      // Handle auto-scroll
+      const chk = document.getElementById("chk-log-autoscroll");
+      if (chk && chk.checked) {
+        streamEl.scrollTop = streamEl.scrollHeight;
+      }
+    }
+
+    function highlightLogSyntax(msg) {
+      return msg
+        .replace(/(\b200 OK\b|\b201 Created\b|\bin stock\b)/gi, '<span style="color:#00FFA3; font-weight:600;">$1</span>')
+        .replace(/(\b404 Not Found\b|\bout of stock\b)/gi, '<span style="color:#FFB800; font-weight:600;">$1</span>')
+        .replace(/(Attempt \d+ failed|Connection was reset|curl: \(\d+\)|Recv failure|Error checking product)/gi, '<span style="color:#FF5252; font-weight:600; text-decoration:underline;">$1</span>')
+        .replace(/(INR\s+[0-9,]+(?:\.[0-9]+)?)/gi, '<span style="color:#38BDF8; font-weight:600;">$1</span>')
+        .replace(/(HTTP Request: (?:GET|POST|PATCH|DELETE))/g, '<span style="color:#818CF8;">$1</span>');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function copyLogLineBtn(btn) {
+      const rawText = btn.getAttribute("data-raw") || "";
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(rawText).then(() => {
+          showToast("📋 Log line copied!");
+        }).catch(() => {
+          showToast("⚠️ Could not copy");
+        });
+      }
+    }
+
+    function setLogLevelFilter(level, btnEl) {
+      logsState.currentLevelFilter = level;
+      document.querySelectorAll(".log-filter-btn").forEach(b => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      fetchLogsData(false);
+    }
+
+    let searchDebounceTimer = null;
+    function onLogSearchInput(val) {
+      const clearBtn = document.getElementById("btn-clear-log-search");
+      if (clearBtn) clearBtn.style.display = val ? "block" : "none";
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        logsState.searchQuery = val;
+        fetchLogsData(false);
+      }, 250);
+    }
+
+    function clearLogSearch() {
+      const input = document.getElementById("log-search-input");
+      if (input) input.value = "";
+      const clearBtn = document.getElementById("btn-clear-log-search");
+      if (clearBtn) clearBtn.style.display = "none";
+      logsState.searchQuery = "";
+      fetchLogsData(false);
+    }
+
+    function onLogLimitChange(val) {
+      logsState.lineLimit = parseInt(val, 10) || 250;
+      fetchLogsData(false);
+    }
+
+    function toggleLogsAutoRefresh() {
+      logsState.isAutoRefresh = !logsState.isAutoRefresh;
+      const btn = document.getElementById("btn-logs-autorefresh");
+      const lbl = document.getElementById("label-autorefresh");
+      if (btn) btn.classList.toggle("is-active", logsState.isAutoRefresh);
+      if (lbl) lbl.textContent = logsState.isAutoRefresh ? "Auto-refresh (3s)" : "Paused";
+      showToast(logsState.isAutoRefresh ? "Live log stream resumed 🟢" : "Live stream paused ⏸️");
+    }
+
+    async function clearLogsViewer() {
+      if (!confirm("Clear log display or truncate server log file? Click OK to reset.")) return;
+      try {
+        await fetch("/api/logs/clear", { method: "POST" });
+        showToast("Log stream reset successfully!");
+        fetchLogsData(false);
+      } catch (err) {
+        showToast("Could not reset logs: " + err.message);
+      }
+    }
+
+    // Periodic live streaming update for logs tab (every 3 seconds)
+    setInterval(() => {
+      if (currentUser && document.visibilityState === "visible" && currentActiveTab === "logs" && logsState.isAutoRefresh) {
+        fetchLogsData(true);
+      }
+    }, 3000);
+
     // Periodic Background Polling (Fluid CPU friendly: only polls when tab is visible)
     setInterval(() => {
       if (currentUser && document.visibilityState === "visible") {
@@ -4270,7 +5403,11 @@
     // Refresh immediately when user returns to the tab
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && currentUser) {
-        fetchDashboardData();
+        if (currentActiveTab === "logs") {
+          fetchLogsData(false);
+        } else {
+          fetchDashboardData();
+        }
       }
     });
 

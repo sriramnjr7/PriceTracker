@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import sys
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
@@ -170,6 +171,13 @@ async def root(request: Request):
         elif "sweep" in clean and method == "POST":
             return await api_sweep_running_shoes()
         return await api_get_running_shoes_status()
+    elif "logs" in clean:
+        if method == "DELETE" or "clear" in clean:
+            return await api_clear_logs()
+        limit = int(request.query_params.get("limit", 250))
+        level = request.query_params.get("level")
+        search = request.query_params.get("search")
+        return await api_get_logs(limit=limit, level=level, search=search)
     elif "sweep" in clean and method == "POST":
         return await manual_deal_sweep()
     elif re.search(r"products/(\d+)/check", clean) and method == "POST":
@@ -259,6 +267,7 @@ async def get_dashboard_data():
             "last_sweep_time": _format_datetime(last_sweep),
             "deal_radar_status": "ONLINE",
             "database": "Supabase PostgreSQL" if os.getenv("SUPABASE_URL") else "SQLite",
+            "daemon": get_daemon_quick_status(),
             "running_shoes_radar": {
                 "is_active": shoes_radar.is_active(),
                 "deals_count": len(shoes_deals),
@@ -946,6 +955,263 @@ async def set_telegram_webhook(request: Request, url: Optional[str] = None):
 
 
 # ==========================================
+# SYSTEM LOGS & TELEMETRY CONTROLLER
+# ==========================================
+
+def get_daemon_quick_status() -> dict[str, Any]:
+    """Lightweight check of radar daemon heartbeat and file update activity."""
+    candidates = [
+        os.path.join(root_dir, "radar_daemon.log"),
+        os.path.join(os.getcwd(), "radar_daemon.log"),
+        "radar_daemon.log",
+    ]
+    log_file = next((c for c in candidates if os.path.exists(c)), None)
+    if not log_file:
+        return {
+            "is_running": False,
+            "status_text": "OFFLINE",
+            "seconds_since_activity": None,
+            "has_log_file": False,
+            "size_mb": 0.0,
+        }
+
+    try:
+        stat = os.stat(log_file)
+        seconds_ago = int(time.time() - stat.st_mtime)
+        is_running = seconds_ago <= 180
+        status_text = "ACTIVE" if is_running else ("IDLE" if seconds_ago <= 600 else "STOPPED")
+        return {
+            "is_running": is_running,
+            "status_text": status_text,
+            "seconds_since_activity": seconds_ago,
+            "has_log_file": True,
+            "size_mb": round(stat.st_size / (1024 * 1024), 2),
+            "last_activity_time": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+        }
+    except Exception as exc:
+        return {
+            "is_running": False,
+            "status_text": "ERROR",
+            "seconds_since_activity": None,
+            "has_log_file": True,
+            "detail": str(exc),
+        }
+
+
+def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
+    """Parse recent entries from radar_daemon.log with error/warning extraction."""
+    candidates = [
+        os.path.join(root_dir, "radar_daemon.log"),
+        os.path.join(os.getcwd(), "radar_daemon.log"),
+        "radar_daemon.log",
+    ]
+    log_file = next((c for c in candidates if os.path.exists(c)), None)
+
+    if not log_file:
+        return {
+            "status": "serverless_active",
+            "daemon": {
+                "is_running": True,
+                "status_text": "SERVERLESS RUNNER",
+                "seconds_since_activity": 0,
+                "file_size_mb": 0.0,
+                "counts": {"total": 0, "errors": 0, "warnings": 0, "info": 0},
+                "note": "Radar daemon runs locally or via scheduled GitHub Actions runner.",
+            },
+            "logs": [],
+            "recent_issues": [],
+        }
+
+    try:
+        stat = os.stat(log_file)
+        mtime = stat.st_mtime
+        now = time.time()
+        seconds_ago = int(now - mtime)
+        is_running = seconds_ago <= 180
+        status_text = "ACTIVE & STREAMING" if is_running else ("STANDBY / IDLE" if seconds_ago <= 600 else "OFFLINE / STOPPED")
+
+        # Read last 350KB chunk for rapid, low-memory response
+        seek_bytes = min(stat.st_size, 350000)
+        with open(log_file, "rb") as f:
+            f.seek(stat.st_size - seek_bytes)
+            chunk = f.read().decode("utf-8", errors="ignore")
+
+        lines = chunk.splitlines()
+        if seek_bytes < stat.st_size and lines:
+            lines = lines[1:]  # Discard partial initial line
+
+        pat_std = re.compile(
+            r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,\.]\d{3})\s+\[(?P<level>[A-Z]+)\]\s+(?P<logger>[^:]+):\s+(?P<message>.*)$"
+        )
+        pat_bracket_lvl = re.compile(
+            r"^\[(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+(?P<level>[A-Z]+):\s+(?P<message>.*)$"
+        )
+        pat_bracket_msg = re.compile(
+            r"^\[(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+(?P<message>.*)$"
+        )
+
+        parsed_entries: list[dict[str, Any]] = []
+        total_errors = 0
+        total_warnings = 0
+        total_info = 0
+
+        for line in lines:
+            line_str = line.strip()
+            if not line_str:
+                continue
+
+            m1 = pat_std.match(line_str)
+            m2 = pat_bracket_lvl.match(line_str)
+            m3 = pat_bracket_msg.match(line_str)
+
+            if m1:
+                d = m1.groupdict()
+                lvl = d["level"].upper()
+                ts = d["timestamp"]
+                logger_name = d["logger"].strip()
+                msg = d["message"]
+            elif m2:
+                d = m2.groupdict()
+                lvl = d["level"].upper()
+                ts = d["timestamp"]
+                logger_name = "system"
+                msg = d["message"]
+            elif m3:
+                d = m3.groupdict()
+                lvl = "INFO"
+                ts = d["timestamp"]
+                logger_name = "radar"
+                msg = d["message"]
+            else:
+                low = line_str.lower()
+                if any(k in low for k in ("error", "traceback", "exception", "failed", "critical")):
+                    lvl = "ERROR"
+                elif any(k in low for k in ("warn", "warning", "retry", "timeout")):
+                    lvl = "WARNING"
+                else:
+                    lvl = "INFO"
+                ts = ""
+                logger_name = "stdout"
+                msg = line_str
+
+            if lvl in ("ERROR", "CRITICAL"):
+                total_errors += 1
+            elif lvl in ("WARNING", "WARN"):
+                total_warnings += 1
+            else:
+                total_info += 1
+
+            parsed_entries.append({
+                "id": len(parsed_entries) + 1,
+                "timestamp": ts,
+                "level": lvl,
+                "logger": logger_name,
+                "message": msg,
+                "raw": line_str,
+            })
+
+        # Extract recent issues (warnings + errors), newest first
+        recent_issues = [
+            e for e in parsed_entries
+            if e["level"] in ("ERROR", "CRITICAL", "WARNING", "WARN")
+        ]
+        recent_issues.reverse()
+        recent_issues = recent_issues[:50]
+
+        filtered = parsed_entries
+        if level:
+            lvl_k = level.lower().strip()
+            if lvl_k in ("error", "errors"):
+                filtered = [e for e in filtered if e["level"] in ("ERROR", "CRITICAL")]
+            elif lvl_k in ("warning", "warn", "warnings"):
+                filtered = [e for e in filtered if e["level"] in ("WARNING", "WARN")]
+            elif lvl_k in ("warning_error", "issues", "problems"):
+                filtered = [e for e in filtered if e["level"] in ("ERROR", "CRITICAL", "WARNING", "WARN")]
+            elif lvl_k in ("info",):
+                filtered = [e for e in filtered if e["level"] == "INFO"]
+
+        if search:
+            sq = search.lower().strip()
+            filtered = [
+                e for e in filtered
+                if sq in e["message"].lower() or sq in e["logger"].lower() or sq in e["raw"].lower()
+            ]
+
+        limit_val = max(10, min(limit or 250, 1000))
+        logs_slice = filtered[-limit_val:]
+
+        return {
+            "status": "success",
+            "daemon": {
+                "is_running": is_running,
+                "status_text": status_text,
+                "seconds_since_activity": seconds_ago,
+                "file_size_mb": round(stat.st_size / (1024 * 1024), 2),
+                "log_path": log_file,
+                "counts": {
+                    "total": len(parsed_entries),
+                    "errors": total_errors,
+                    "warnings": total_warnings,
+                    "info": total_info,
+                },
+            },
+            "logs": logs_slice,
+            "recent_issues": recent_issues,
+        }
+    except Exception as exc:
+        logger.error("Error parsing logs: %s", exc)
+        return {
+            "status": "error",
+            "daemon": {"is_running": False, "status_text": "READ ERROR"},
+            "message": str(exc),
+            "logs": [],
+            "recent_issues": [],
+        }
+
+
+@app.get("/api/logs")
+async def api_get_logs(
+    limit: int = Query(250, ge=1, le=1000),
+    level: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+):
+    """Retrieve structured parsed logs, daemon health status, and caught issues."""
+    data = get_parsed_logs(limit=limit, level=level, search=search)
+    return JSONResponse(
+        content=data,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+
+@app.delete("/api/logs")
+@app.post("/api/logs/clear")
+async def api_clear_logs():
+    """Truncate or reset radar_daemon.log to conserve space while keeping recent context."""
+    candidates = [
+        os.path.join(root_dir, "radar_daemon.log"),
+        os.path.join(os.getcwd(), "radar_daemon.log"),
+        "radar_daemon.log",
+    ]
+    log_file = next((c for c in candidates if os.path.exists(c)), None)
+    if not log_file:
+        return {"status": "ok", "message": "No log file found on host to truncate."}
+
+    try:
+        with open(log_file, "r+", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+            keep_lines = lines[-50:] if len(lines) > 50 else lines
+            f.seek(0)
+            f.truncate()
+            now_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{now_stamp}] [INFO] radar: Log stream reset by user from dashboard.\n")
+            f.writelines(keep_lines)
+        return {"status": "ok", "message": "Log file truncated successfully; recent 50 lines preserved."}
+    except Exception as exc:
+        logger.error("Error truncating log file: %s", exc)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+
+
+# ==========================================
 # CATCH-ALL REWRITE ROUTER
 # ==========================================
 
@@ -1024,6 +1290,15 @@ async def catch_all(request: Request, full_path: str):
             return await api_sweep_running_shoes()
         if "status" in clean:
             return await api_get_running_shoes_status()
+
+    # 7.8 Logs Sub-routes
+    if "logs" in clean:
+        if method == "DELETE" or "clear" in clean:
+            return await api_clear_logs()
+        limit = int(request.query_params.get("limit", 250))
+        level = request.query_params.get("level")
+        search = request.query_params.get("search")
+        return await api_get_logs(limit=limit, level=level, search=search)
 
     # 8. Root or Dashboard HTML fallback
     if method == "GET" and (is_browser_request(request) or clean in ("", "dashboard", "index", "index.py", "api", "api/index", "api/index.py")):
