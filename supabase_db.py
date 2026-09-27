@@ -6,6 +6,7 @@ Requires zero native C-extensions (works out of the box on Vercel Python serverl
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -56,18 +57,48 @@ class SupabaseDatabase:
     def is_configured(self) -> bool:
         return bool(self.url and self.key)
 
+    async def _request(
+        self,
+        method: str,
+        path_or_url: str,
+        max_retries: int = 3,
+        **kwargs,
+    ) -> httpx.Response:
+        """Resilient HTTP request to Supabase PostgREST with exponential retry on transport errors."""
+        url = path_or_url if path_or_url.startswith("http") else f"{self.base_rest}/{path_or_url.lstrip('/')}"
+        headers = kwargs.pop("headers", self._headers)
+        timeout = kwargs.pop("timeout", 15.0)
+
+        last_exc = None
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=timeout,
+                    limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
+                ) as client:
+                    resp = await client.request(method, url, headers=headers, timeout=timeout, **kwargs)
+                    return resp
+            except (httpx.TransportError, httpx.RemoteProtocolError, ConnectionResetError, Exception) as exc:
+                last_exc = exc
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(0.4 * (attempt + 1))
+                else:
+                    logger.warning("Supabase %s %s failed after %s attempts: %s", method, url, max_retries, exc)
+        if last_exc:
+            raise last_exc
+        raise RuntimeError(f"Request failed: {method} {url}")
+
     async def initialize(self) -> None:
         """Verify connectivity to Supabase."""
         if not self.is_configured:
             logger.warning("Supabase URL or Key not configured; client uninitialized.")
             return
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.get(f"{self.base_rest}/products?select=id&limit=1", headers=self._headers)
-                if r.status_code in (200, 206):
-                    logger.info("Connected to Supabase PostgreSQL successfully.")
-                else:
-                    logger.warning("Supabase test query returned HTTP %s: %s", r.status_code, r.text)
+            r = await self._request("GET", "/products?select=id&limit=1", timeout=10.0)
+            if r.status_code in (200, 206):
+                logger.info("Connected to Supabase PostgreSQL successfully.")
+            else:
+                logger.warning("Supabase test query returned HTTP %s: %s", r.status_code, r.text)
         except Exception as exc:
             logger.warning("Supabase connection check error: %s", exc)
 
@@ -99,124 +130,85 @@ class SupabaseDatabase:
         headers = dict(self._headers)
         headers["Prefer"] = "resolution=merge-duplicates,return=representation"
 
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                f"{self.base_rest}/products?on_conflict=url",
-                json=payload,
-                headers=headers,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            if data and isinstance(data, list):
-                return int(data[0]["id"])
+        resp = await self._request("POST", "/products?on_conflict=url", json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        if data and isinstance(data, list):
+            return int(data[0]["id"])
         raise RuntimeError("Failed to upsert product in Supabase")
 
     async def get_product(self, product_id: int) -> Optional[Product]:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                f"{self.base_rest}/products?id=eq.{product_id}&limit=1",
-                headers=self._headers,
-            )
-            if resp.status_code == 200:
-                rows = resp.json()
-                if rows:
-                    return _row_to_product(rows[0])
+        resp = await self._request("GET", f"/products?id=eq.{product_id}&limit=1")
+        if resp.status_code == 200:
+            rows = resp.json()
+            if rows:
+                return _row_to_product(rows[0])
         return None
 
     async def get_product_by_url(self, url: str) -> Optional[Product]:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                f"{self.base_rest}/products",
-                params={"url": f"eq.{url}", "limit": "1"},
-                headers=self._headers,
-            )
-            if resp.status_code == 200:
-                rows = resp.json()
-                if rows:
-                    return _row_to_product(rows[0])
+        resp = await self._request("GET", "/products", params={"url": f"eq.{url}", "limit": "1"})
+        if resp.status_code == 200:
+            rows = resp.json()
+            if rows:
+                return _row_to_product(rows[0])
         return None
 
     async def get_products(self, active_only: bool = False) -> List[Product]:
-        url = f"{self.base_rest}/products?select=*&order=id.asc"
+        url = "/products?select=*&order=id.asc"
         if active_only:
             url += "&is_active=eq.true"
 
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(url, headers=self._headers)
-            if resp.status_code == 200:
-                rows = resp.json()
-                return [_row_to_product(r) for r in rows]
+        resp = await self._request("GET", url)
+        if resp.status_code == 200:
+            rows = resp.json()
+            return [_row_to_product(r) for r in rows]
         return []
 
     async def remove_product(self, product_id: int) -> None:
-        async with httpx.AsyncClient(timeout=10) as client:
-            await client.delete(
-                f"{self.base_rest}/products?id=eq.{product_id}",
-                headers=self._headers,
-            )
+        await self._request("DELETE", f"/products?id=eq.{product_id}")
 
     async def set_active(self, product_id: int, active: bool) -> None:
         payload = {"is_active": active, "last_checked": _now()}
-        async with httpx.AsyncClient(timeout=10) as client:
-            await client.patch(
-                f"{self.base_rest}/products?id=eq.{product_id}",
-                json=payload,
-                headers=self._headers,
-            )
+        await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
 
     async def update_price(
         self, product_id: int, price: Optional[float], title: Optional[str] = None
     ) -> None:
         ts = _now()
-        async with httpx.AsyncClient(timeout=15) as client:
-            if price is not None:
-                # Log price history
-                await client.post(
-                    f"{self.base_rest}/price_logs",
+        if price is not None:
+            # Log price history
+            try:
+                await self._request(
+                    "POST",
+                    "/price_logs",
                     json={"product_id": product_id, "price": price, "timestamp": ts},
-                    headers=self._headers,
                 )
-                payload: dict[str, Any] = {"current_price": price, "last_checked": ts}
-                if title:
-                    payload["title"] = title
-                await client.patch(
-                    f"{self.base_rest}/products?id=eq.{product_id}",
-                    json=payload,
-                    headers=self._headers,
-                )
-            else:
-                payload = {
-                    "last_checked": ts,
-                    "current_price": None,
-                    "last_notified_price": None,
-                }
-                if title:
-                    payload["title"] = title
-                await client.patch(
-                    f"{self.base_rest}/products?id=eq.{product_id}",
-                    json=payload,
-                    headers=self._headers,
-                )
+            except Exception as exc:
+                logger.debug("Failed logging price_logs for %s: %s", product_id, exc)
 
+            payload: dict[str, Any] = {"current_price": price, "last_checked": ts}
+            if title:
+                payload["title"] = title
+            await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
+        else:
+            payload = {
+                "last_checked": ts,
+                "current_price": None,
+                "last_notified_price": None,
+            }
+            if title:
+                payload["title"] = title
+            await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
 
     async def set_last_notified(self, product_id: int, price: float) -> None:
         payload = {"last_notified_price": price}
-        async with httpx.AsyncClient(timeout=10) as client:
-            await client.patch(
-                f"{self.base_rest}/products?id=eq.{product_id}",
-                json=payload,
-                headers=self._headers,
-            )
+        await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
 
     async def price_history(self, product_id: int, limit: int = 20) -> List[tuple[float, str]]:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                f"{self.base_rest}/price_logs?product_id=eq.{product_id}&order=timestamp.desc&limit={limit}",
-                headers=self._headers,
-            )
-            if resp.status_code == 200:
-                rows = resp.json()
-                return [(float(r["price"]), r["timestamp"]) for r in rows]
+        resp = await self._request("GET", f"/price_logs?product_id=eq.{product_id}&order=timestamp.desc&limit={limit}")
+        if resp.status_code == 200:
+            rows = resp.json()
+            return [(float(r["price"]), r["timestamp"]) for r in rows]
         return []
 
     # -------------------------------------------------------- deal_alerts_log
@@ -242,21 +234,16 @@ class SupabaseDatabase:
             "order": "notified_at.desc",
             "limit": "1",
         }
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                f"{self.base_rest}/deal_alerts_log",
-                params=params,
-                headers=self._headers,
-            )
-            if resp.status_code == 200:
-                rows = resp.json()
-                if not rows:
+        resp = await self._request("GET", "/deal_alerts_log", params=params)
+        if resp.status_code == 200:
+            rows = resp.json()
+            if not rows:
+                return False
+            if current_price is not None:
+                last_eff = float(rows[0].get("effective_price") or rows[0].get("price") or 0)
+                if current_price < (last_eff - 2.0):
                     return False
-                if current_price is not None:
-                    last_eff = float(rows[0].get("effective_price") or rows[0].get("price") or 0)
-                    if current_price < (last_eff - 2.0):
-                        return False
-                return True
+            return True
         return False
 
     async def log_deal_alert(
@@ -279,33 +266,25 @@ class SupabaseDatabase:
             "platform": platform,
             "notified_at": _now(),
         }
-        async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(
-                f"{self.base_rest}/deal_alerts_log",
-                json=payload,
-                headers=self._headers,
-            )
+        await self._request("POST", "/deal_alerts_log", json=payload)
 
     async def get_recent_deal_alerts(self, limit: int = 15) -> List[dict[str, Any]]:
         """Fetch the most recent steal deals and glitch notifications."""
-        url = f"{self.base_rest}/deal_alerts_log?select=*&order=notified_at.desc&limit={limit}"
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url, headers=self._headers)
-            if resp.status_code == 200:
-                return resp.json()
+        resp = await self._request("GET", f"/deal_alerts_log?select=*&order=notified_at.desc&limit={limit}")
+        if resp.status_code == 200:
+            return resp.json()
         return []
 
     async def get_recent_price_logs(
         self, product_id: Optional[int] = None, limit: int = 20
     ) -> List[dict[str, Any]]:
         """Fetch recent price logs."""
-        url = f"{self.base_rest}/price_logs?select=*&order=timestamp.desc&limit={limit}"
+        url = f"/price_logs?select=*&order=timestamp.desc&limit={limit}"
         if product_id is not None:
             url += f"&product_id=eq.{product_id}"
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url, headers=self._headers)
-            if resp.status_code == 200:
-                return resp.json()
+        resp = await self._request("GET", url)
+        if resp.status_code == 200:
+            return resp.json()
         return []
 
     # --------------------------------------------------- custom_radar_rules
@@ -332,24 +311,18 @@ class SupabaseDatabase:
             "is_active": True,
             "created_at": _now(),
         }
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                f"{self.base_rest}/custom_radar_rules",
-                json=payload,
-                headers=self._headers,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            if data and isinstance(data, list):
-                return int(data[0]["id"])
+        resp = await self._request("POST", "/custom_radar_rules", json=payload)
+        resp.raise_for_status()
+        data = resp.json()
+        if data and isinstance(data, list):
+            return int(data[0]["id"])
         return 1
 
     async def get_custom_rules(self, active_only: bool = True) -> list[dict[str, Any]]:
-        url = f"{self.base_rest}/custom_radar_rules?select=*&order=id.asc"
+        url = "/custom_radar_rules?select=*&order=id.asc"
         if active_only:
             url += "&is_active=eq.true"
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url, headers=self._headers)
-            if resp.status_code == 200:
-                return resp.json()
+        resp = await self._request("GET", url)
+        if resp.status_code == 200:
+            return resp.json()
         return []

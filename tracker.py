@@ -43,17 +43,21 @@ class Tracker:
         # Prioritize VIP targets (e.g. GBD-H2000 member clearance) to run first
         products = sorted(products, key=lambda p: 0 if "gbd-h2000" in (getattr(p, "url", "") or "").lower() else 1)
 
-        sem = asyncio.Semaphore(6)
+        sem = asyncio.Semaphore(3)
 
-        async def _safe_check(p) -> bool:
+        async def _safe_check(p, delay: float = 0.0) -> bool:
+            if delay > 0:
+                await asyncio.sleep(delay)
             async with sem:
                 try:
                     return await self.check_product(p)
                 except Exception as exc:
-                    logger.warning("Error checking product %s: %s", getattr(p, "id", "?"), exc)
+                    err_msg = str(exc).strip() or repr(exc)
+                    logger.warning("Error checking product %s: %s", getattr(p, "id", "?"), err_msg)
                     return False
 
-        results = await asyncio.gather(*(_safe_check(p) for p in products), return_exceptions=False)
+        tasks = [_safe_check(p, idx * 0.25) for idx, p in enumerate(products)]
+        results = await asyncio.gather(*tasks, return_exceptions=False)
         return sum(1 for r in results if r)
 
     async def check_product(self, product) -> bool:
@@ -85,8 +89,9 @@ class Tracker:
         try:
             scraper = get_scraper(product.platform, self.config)
             result = await scraper.scrape(product.url)
-        except (ScrapeError, ValueError) as exc:
-            logger.warning("Skipping product %s: %s", product.id, exc)
+        except (ScrapeError, ValueError, Exception) as exc:
+            err_msg = str(exc).strip() or repr(exc)
+            logger.warning("Skipping product %s: %s", product.id, err_msg)
             return False
 
         if result.price is None or not result.in_stock:

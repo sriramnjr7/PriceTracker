@@ -274,7 +274,8 @@ class BaseScraper(ABC):
             from scrapling import Fetcher
             for attempt in range(retries):
                 try:
-                    response = Fetcher.get(
+                    response = await asyncio.to_thread(
+                        Fetcher.get,
                         url,
                         impersonate="chrome",
                         stealthy_headers=True,
@@ -332,7 +333,7 @@ class BaseScraper(ABC):
                     "[%s] static GET %s -> HTTP %s (len=%s, attempt %s/%s)",
                     self.platform, url, response.status_code, len(response.text), attempt + 1, retries,
                 )
-            except httpx.HTTPError as exc:
+            except (httpx.HTTPError, Exception) as exc:
                 logger.warning("[%s] static GET failed: %s", self.platform, exc)
             await self._polite_delay(backoff=attempt + 1)
         return None
