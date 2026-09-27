@@ -252,11 +252,23 @@ async def get_dashboard_data():
         products = await db.get_products(active_only=False)
         recent_deals = await db.get_recent_deal_alerts(limit=25)
         active_count = sum(1 for p in products if p.is_active)
+        daemon_info = get_daemon_quick_status()
 
         last_sweep = None
         for p in products:
             if p.last_checked and (last_sweep is None or str(p.last_checked) > str(last_sweep)):
                 last_sweep = p.last_checked
+
+        for d in recent_deals:
+            n_at = d.get("notified_at")
+            if n_at and (last_sweep is None or str(n_at) > str(last_sweep)):
+                last_sweep = n_at
+
+        if daemon_info.get("seconds_since_activity") is not None:
+            sec = daemon_info["seconds_since_activity"]
+            daemon_dt = datetime.now(timezone.utc) - timedelta(seconds=sec)
+            if last_sweep is None or daemon_dt.isoformat() > str(last_sweep):
+                last_sweep = daemon_dt
 
         shoes_cfg = shoes_radar.load_config()
         shoes_deals = shoes_radar.load_cached_deals()
@@ -267,7 +279,7 @@ async def get_dashboard_data():
             "last_sweep_time": _format_datetime(last_sweep),
             "deal_radar_status": "ONLINE",
             "database": "Supabase PostgreSQL" if os.getenv("SUPABASE_URL") else "SQLite",
-            "daemon": get_daemon_quick_status(),
+            "daemon": daemon_info,
             "running_shoes_radar": {
                 "is_active": shoes_radar.is_active(),
                 "deals_count": len(shoes_deals),

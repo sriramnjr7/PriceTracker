@@ -2569,6 +2569,8 @@
       border-radius: var(--radius-full);
       background: currentColor;
       display: inline-block;
+    }
+
     .logs-kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -4767,7 +4769,19 @@
         const sweepTimeEl = document.getElementById("kpi-last-sweep");
         if (activeCountEl) activeCountEl.textContent = rawProductsList.length;
         if (navBadgeEl) navBadgeEl.textContent = rawProductsList.length;
-        if (sweepTimeEl) sweepTimeEl.textContent = timeAgo(data.stats ? data.stats.last_sweep_time : null);
+        if (sweepTimeEl) {
+          const dInfo = data.stats ? data.stats.daemon : null;
+          if (dInfo && dInfo.is_running) {
+            sweepTimeEl.textContent = "Live";
+            sweepTimeEl.className = "cyber-stat-num highlight-emerald";
+          } else if (dInfo && dInfo.seconds_since_activity !== null && dInfo.seconds_since_activity <= 180) {
+            sweepTimeEl.textContent = "< 1m ago";
+            sweepTimeEl.className = "cyber-stat-num highlight-emerald";
+          } else {
+            sweepTimeEl.textContent = timeAgo(data.stats ? data.stats.last_sweep_time : null);
+            sweepTimeEl.className = "cyber-stat-num highlight-amber";
+          }
+        }
 
         updateCounts();
         applyFilters();
