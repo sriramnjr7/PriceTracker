@@ -222,16 +222,27 @@ async def probe_vip_watches(tracker: Tracker) -> int:
     import httpx
     from scrapers import get_scraper
 
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    import random
+    from scrapers.base import USER_AGENTS
+
     alerts_sent = 0
 
-    for watch in VIP_WATCHES:
+    for idx, watch in enumerate(VIP_WATCHES):
+        if idx > 0:
+            await asyncio.sleep(1.2)
+
         target_url = watch["url"]
         js_url = f"{target_url}.js"
         in_stock = False
         deal_price = watch["default_price"]
         r_status = 0
         detail_msg = ""
+        ua = random.choice(USER_AGENTS) if USER_AGENTS else "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        headers = {
+            "User-Agent": ua,
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "en-IN,en;q=0.9",
+        }
 
         try:
             async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
@@ -261,6 +272,8 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                         detail_msg = "Product un-redirected HTML 200"
                     else:
                         detail_msg = "Unlisted / Awaiting restock drop"
+                elif r.status_code == 429:
+                    detail_msg = "Rate limited (HTTP 429) - retrying next window"
 
             status_str = "IN_STOCK" if in_stock else "OUT_OF_STOCK"
 
