@@ -260,6 +260,15 @@ class Database:
                 )
         await self.conn.commit()
 
+    async def update_last_checked(self, product_id: int) -> None:
+        """Refresh last_checked timestamp when a product is checked."""
+        ts = _now()
+        await self.conn.execute(
+            "UPDATE products SET last_checked = ? WHERE id = ?",
+            (ts, product_id),
+        )
+        await self.conn.commit()
+
 
     async def set_last_notified(self, product_id: int, price: float) -> None:
         await self.conn.execute(
@@ -377,9 +386,9 @@ class Database:
         return cursor.lastrowid
 
     async def get_custom_rules(self, active_only: bool = True) -> list[dict[str, Any]]:
-        query = "SELECT * FROM custom_radar_rules"
+        query = "SELECT * FROM custom_radar_rules WHERE name NOT IN ('DAEMON_LOG', 'VIP_LOG')"
         if active_only:
-            query += " WHERE is_active = 1"
+            query += " AND is_active = 1"
         query += " ORDER BY id"
         cursor = await self.conn.execute(query)
         rows = await cursor.fetchall()

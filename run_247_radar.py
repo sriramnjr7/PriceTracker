@@ -132,6 +132,7 @@ async def supabase_log_shipper_loop(interval_seconds: int = 15):
                         "platforms": d["logger"].strip()[:50],
                         "query": d["message"][:1000],
                         "negative_keywords": l[:1500],
+                        "is_active": False,
                     })
                 elif m2:
                     d = m2.groupdict()
@@ -142,6 +143,7 @@ async def supabase_log_shipper_loop(interval_seconds: int = 15):
                         "platforms": "radar",
                         "query": d["message"][:1000],
                         "negative_keywords": l[:1500],
+                        "is_active": False,
                     })
 
             if batch:
@@ -188,6 +190,7 @@ async def ship_vip_log_to_supabase(watch: dict, status_str: str, price: float, h
             "platforms": watch.get("tag", "vip"),
             "query": f"{watch['name']} -> {status_str} (Price: ₹{price:g}, Target: ₹{watch['target_price']:g})",
             "negative_keywords": f"{now_stamp} [VIP SNIPER] {watch['name']} -> {status_str} [HTTP {http_code}] (Price: ₹{price:g} / Target: ₹{watch['target_price']:g}) {detail}".strip(),
+            "is_active": False,
         },
         {
             "name": "DAEMON_LOG",
@@ -195,6 +198,7 @@ async def ship_vip_log_to_supabase(watch: dict, status_str: str, price: float, h
             "platforms": "vip.sniper",
             "query": f"[VIP WATCH] {watch['name']} -> {status_str} (Target: ₹{watch['target_price']:g})",
             "negative_keywords": f"{now_stamp} [INFO] vip.sniper: {watch['name']} -> {status_str} (Price: ₹{price:g}, Target: ₹{watch['target_price']:g}, HTTP {http_code})",
+            "is_active": False,
         },
     ]
     headers = {
@@ -431,15 +435,24 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
 
             # On cycle 1, perform the full deal radar and running shoes sweep
             if cycle == 1:
+                # Priority 1: Check catalog products to update prices and last_checked
+                try:
+                    tracked_alerts = await asyncio.wait_for(tracker.run_once(), timeout=120.0)
+                    total_alerts += tracked_alerts
+                    print(f"[{now_str}] ✅ Tracked products check completed: {tracked_alerts} alert(s) dispatched.")
+                except Exception as e:
+                    logger.error("Cloud sweep cycle #1 tracked items error: %s", e)
+
+                # Priority 2: Clearance Deal Radar scan
                 try:
                     casio_alerts = await asyncio.wait_for(
                         radar.scan_all(only_platforms=["casio", "flipkart", "myntra"]),
                         timeout=90.0,
                     )
-                    tracked_alerts = await asyncio.wait_for(tracker.run_once(), timeout=120.0)
-                    total_alerts += casio_alerts + tracked_alerts
+                    total_alerts += casio_alerts
+                    print(f"[{now_str}] ✅ Deal Radar scan completed: {casio_alerts} alert(s) dispatched.")
                 except Exception as e:
-                    logger.debug("Cloud sweep cycle #1 partial: %s", e)
+                    logger.error("Cloud sweep cycle #1 radar error: %s", e)
 
                 try:
                     from running_shoes_radar import shoes_radar
@@ -480,30 +493,35 @@ async def run_repeating_sweep(repeats: int = 3, interval_seconds: int = 110) -> 
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"\n[{now_str}] ⚡ [PriceTracker Runner] Starting Pass {i}/{repeats}...")
             try:
-                casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
-                print(f"[{now_str}] ✅ Deal Radar scan: {casio_alerts} deal alert(s).")
                 tracked_alerts = await tracker.run_once()
                 print(f"[{now_str}] ✅ Tracked items check: {tracked_alerts} alert(s).")
-                total_alerts += casio_alerts + tracked_alerts
-
-                try:
-                    from running_shoes_radar import shoes_radar
-                    if shoes_radar.is_active():
-                        shoe_res = await shoes_radar.sweep()
-                        shoe_alerts = shoe_res.get("alerts_dispatched", 0)
-                        total_alerts += shoe_alerts
-                        print(f"[{now_str}] ✅ Running Shoes scan: {shoe_alerts} alert(s).")
-                except Exception as shoe_exc:
-                    logger.error("Error during running shoes sweep pass: %s", shoe_exc)
-                
-                # Check periodic heartbeat
-                try:
-                    from heartbeat import check_and_send_heartbeat
-                    await check_and_send_heartbeat(radar.db, radar.notifier, settings)
-                except Exception as hb_exc:
-                    logger.debug("Heartbeat check error: %s", hb_exc)
+                total_alerts += tracked_alerts
             except Exception as exc:
-                logger.error("Error during runner pass #%s: %s", i, exc)
+                logger.error("Error checking tracked items in pass #%s: %s", i, exc)
+
+            try:
+                casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart"])
+                print(f"[{now_str}] ✅ Deal Radar scan: {casio_alerts} deal alert(s).")
+                total_alerts += casio_alerts
+            except Exception as exc:
+                logger.error("Error in deal radar scan pass #%s: %s", i, exc)
+
+            try:
+                from running_shoes_radar import shoes_radar
+                if shoes_radar.is_active():
+                    shoe_res = await shoes_radar.sweep()
+                    shoe_alerts = shoe_res.get("alerts_dispatched", 0)
+                    total_alerts += shoe_alerts
+                    print(f"[{now_str}] ✅ Running Shoes scan: {shoe_alerts} alert(s).")
+            except Exception as shoe_exc:
+                logger.error("Error during running shoes sweep pass: %s", shoe_exc)
+            
+            # Check periodic heartbeat
+            try:
+                from heartbeat import check_and_send_heartbeat
+                await check_and_send_heartbeat(radar.db, radar.notifier, settings)
+            except Exception as hb_exc:
+                logger.debug("Heartbeat check error: %s", hb_exc)
 
 
             if i < repeats:

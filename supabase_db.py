@@ -206,6 +206,11 @@ class SupabaseDatabase:
                 payload["title"] = title
             await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
 
+    async def update_last_checked(self, product_id: int) -> None:
+        """Update last_checked timestamp when a product was probed/checked."""
+        ts = _now()
+        await self._request("PATCH", f"/products?id=eq.{product_id}", json={"last_checked": ts})
+
     async def set_last_notified(self, product_id: int, price: float) -> None:
         payload = {"last_notified_price": price}
         await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
@@ -325,7 +330,7 @@ class SupabaseDatabase:
         return 1
 
     async def get_custom_rules(self, active_only: bool = True) -> list[dict[str, Any]]:
-        url = "/custom_radar_rules?select=*&order=id.asc"
+        url = "/custom_radar_rules?select=*&name=not.in.(DAEMON_LOG,VIP_LOG)&order=id.asc"
         if active_only:
             url += "&is_active=eq.true"
         resp = await self._request("GET", url)

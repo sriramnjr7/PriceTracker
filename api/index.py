@@ -642,10 +642,20 @@ async def manual_deal_sweep():
     try:
         radar = StealRadar(settings, db=db)
         await radar.init()
-        casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart", "myntra"])
 
         tracker = Tracker(db, radar.notifier, settings)
-        manual_alerts = await tracker.run_once()
+        manual_alerts = 0
+        try:
+            manual_alerts = await tracker.run_once()
+        except Exception as e:
+            logger.error("Manual sweep tracker error: %s", e)
+
+        casio_alerts = 0
+        try:
+            casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart", "myntra"])
+        except Exception as e:
+            logger.error("Manual sweep radar error: %s", e)
+
         await radar.close()
 
         return {
@@ -1052,13 +1062,14 @@ def get_daemon_quick_status() -> dict[str, Any]:
         "radar_daemon.log",
     ]
     log_file = next((c for c in candidates if os.path.exists(c)), None)
+    local_info = None
     if log_file:
         try:
             stat = os.stat(log_file)
             seconds_ago = int(time.time() - stat.st_mtime)
             is_running = seconds_ago <= 180
             status_text = "ACTIVE" if is_running else ("IDLE" if seconds_ago <= 600 else "STOPPED")
-            return {
+            local_info = {
                 "is_running": is_running,
                 "status_text": status_text,
                 "seconds_since_activity": seconds_ago,
@@ -1066,10 +1077,12 @@ def get_daemon_quick_status() -> dict[str, Any]:
                 "size_mb": round(stat.st_size / (1024 * 1024), 2),
                 "last_activity_time": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
             }
+            if is_running:
+                return local_info
         except Exception:
             pass
 
-    # Cloud / Supabase fallback check (e.g. on Vercel)
+    # Cloud / Supabase check (e.g. GitHub Actions cloud runner activity)
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
     supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     if supabase_url and supabase_key:
@@ -1085,8 +1098,8 @@ def get_daemon_quick_status() -> dict[str, Any]:
                     dt = datetime.fromisoformat(p_ts.replace("Z", "+00:00"))
                     now = datetime.now(timezone.utc)
                     sec_ago = max(0, int((now - dt).total_seconds()))
-                    is_run = sec_ago <= 180
-                    return {
+                    is_run = sec_ago <= 360  # GitHub Actions 5-min runner
+                    cloud_info = {
                         "is_running": is_run,
                         "status_text": "ACTIVE" if is_run else ("IDLE" if sec_ago <= 600 else "STOPPED"),
                         "seconds_since_activity": sec_ago,
@@ -1094,8 +1107,13 @@ def get_daemon_quick_status() -> dict[str, Any]:
                         "size_mb": 0.0,
                         "last_activity_time": p_ts,
                     }
+                    if is_run or local_info is None or sec_ago < local_info.get("seconds_since_activity", 999999):
+                        return cloud_info
         except Exception:
             pass
+
+    if local_info is not None:
+        return local_info
 
     return {
         "is_running": False,

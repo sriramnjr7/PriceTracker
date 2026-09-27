@@ -54,6 +54,11 @@ class Tracker:
                 except Exception as exc:
                     err_msg = str(exc).strip() or repr(exc)
                     logger.warning("Error checking product %s: %s", getattr(p, "id", "?"), err_msg)
+                    try:
+                        if hasattr(self.db, "update_last_checked"):
+                            await self.db.update_last_checked(getattr(p, "id"))
+                    except Exception:
+                        pass
                     return False
 
         tasks = [_safe_check(p, idx * 0.25) for idx, p in enumerate(products)]
@@ -92,6 +97,11 @@ class Tracker:
         except (ScrapeError, ValueError, Exception) as exc:
             err_msg = str(exc).strip() or repr(exc)
             logger.warning("Skipping product %s: %s", product.id, err_msg)
+            try:
+                if hasattr(self.db, "update_last_checked"):
+                    await self.db.update_last_checked(product.id)
+            except Exception:
+                pass
             return False
 
         if result.price is None or not result.in_stock:
