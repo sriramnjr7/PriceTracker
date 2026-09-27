@@ -423,58 +423,78 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
         tracker = Tracker(radar.db, radar.notifier, settings)
         loop = asyncio.get_running_loop()
         start_time = loop.time()
-        cycle = 0
+        stop_event = asyncio.Event()
         total_alerts = 0
+        vip_alerts_total = 0
 
-        while (loop.time() - start_time) < (duration_seconds - 15):
-            cycle += 1
-            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now_str}] 🎯 [Cloud Runner VIP Sniper Pass #{cycle}] Probing GBD-H2000 & GBD-300-9DR...")
-            vip_alerts = await probe_vip_watches(tracker)
-            total_alerts += vip_alerts
-
-            # On cycle 1, perform the full deal radar and running shoes sweep
-            if cycle == 1:
-                # Priority 1: Check catalog products to update prices and last_checked
+        # Dedicated 60-Second VIP Sniper Loop running concurrently in the background
+        async def _vip_sniper_loop():
+            nonlocal vip_alerts_total
+            pass_num = 0
+            while not stop_event.is_set():
+                pass_num += 1
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                print(f"[{now_str}] 🎯 [Cloud Runner VIP Sniper Pass #{pass_num}] Probing GBD-H2000 & GBD-300-9DR...")
                 try:
-                    tracked_alerts = await asyncio.wait_for(tracker.run_once(), timeout=120.0)
-                    total_alerts += tracked_alerts
-                    print(f"[{now_str}] ✅ Tracked products check completed: {tracked_alerts} alert(s) dispatched.")
+                    v_alerts = await probe_vip_watches(tracker)
+                    vip_alerts_total += v_alerts
                 except Exception as e:
-                    logger.error("Cloud sweep cycle #1 tracked items error: %s", e)
+                    logger.error("VIP sniper probe error: %s", e)
 
-                # Priority 2: Clearance Deal Radar scan
+                # Wait exactly 60 seconds (or wake up immediately if stop_event is set)
                 try:
-                    casio_alerts = await asyncio.wait_for(
-                        radar.scan_all(only_platforms=["casio", "flipkart", "myntra"]),
-                        timeout=90.0,
-                    )
-                    total_alerts += casio_alerts
-                    print(f"[{now_str}] ✅ Deal Radar scan completed: {casio_alerts} alert(s) dispatched.")
-                except Exception as e:
-                    logger.error("Cloud sweep cycle #1 radar error: %s", e)
+                    await asyncio.wait_for(stop_event.wait(), timeout=60.0)
+                except asyncio.TimeoutError:
+                    pass
 
-                try:
-                    from running_shoes_radar import shoes_radar
-                    if shoes_radar.is_active():
-                        shoe_res = await asyncio.wait_for(shoes_radar.sweep(), timeout=60.0)
-                        total_alerts += shoe_res.get("alerts_dispatched", 0)
-                except Exception as e:
-                    logger.debug("Cloud shoe sweep: %s", e)
+        vip_task = asyncio.create_task(_vip_sniper_loop())
 
-                try:
-                    from heartbeat import check_and_send_heartbeat
-                    await check_and_send_heartbeat(radar.db, radar.notifier, settings)
-                except Exception as hb_exc:
-                    logger.debug("Heartbeat check error: %s", hb_exc)
+        # In parallel: Perform catalog sweeps and deal checks
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            tracked_alerts = await asyncio.wait_for(tracker.run_once(), timeout=120.0)
+            total_alerts += tracked_alerts
+            print(f"[{now_str}] ✅ Tracked products check completed: {tracked_alerts} alert(s) dispatched.")
+        except Exception as e:
+            logger.error("Cloud sweep tracked items error: %s", e)
 
-            # Sleep 60 seconds between VIP probes
-            remaining = duration_seconds - (loop.time() - start_time)
-            if remaining > 60:
-                print(f"⏳ Sleeping 60s until next VIP probe in cloud runner (Window remaining: {int(remaining)}s)...")
-                await asyncio.sleep(60)
-            else:
-                break
+        try:
+            casio_alerts = await asyncio.wait_for(
+                radar.scan_all(only_platforms=["casio", "flipkart", "myntra"]),
+                timeout=90.0,
+            )
+            total_alerts += casio_alerts
+            print(f"[{now_str}] ✅ Deal Radar scan completed: {casio_alerts} alert(s) dispatched.")
+        except Exception as e:
+            logger.error("Cloud sweep radar error: %s", e)
+
+        try:
+            from running_shoes_radar import shoes_radar
+            if shoes_radar.is_active():
+                shoe_res = await asyncio.wait_for(shoes_radar.sweep(), timeout=60.0)
+                total_alerts += shoe_res.get("alerts_dispatched", 0)
+        except Exception as e:
+            logger.debug("Cloud shoe sweep: %s", e)
+
+        try:
+            from heartbeat import check_and_send_heartbeat
+            await check_and_send_heartbeat(radar.db, radar.notifier, settings)
+        except Exception as hb_exc:
+            logger.debug("Heartbeat check error: %s", hb_exc)
+
+        # Maintain active VIP vigilance every 60s for the entire duration_seconds surveillance window
+        elapsed = loop.time() - start_time
+        remaining = duration_seconds - elapsed - 5
+        if remaining > 0:
+            print(f"⏳ Cloud Runner maintaining active sub-minute VIP vigilance for {int(remaining)}s remaining...")
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=remaining)
+            except asyncio.TimeoutError:
+                pass
+
+        stop_event.set()
+        await vip_task
+        total_alerts += vip_alerts_total
 
         print(f"\n✅ [Cloud Runner] Surveillance window concluded. Total alerts dispatched: {total_alerts}")
         return total_alerts
