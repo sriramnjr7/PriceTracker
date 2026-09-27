@@ -5,7 +5,6 @@ import pytest
 from brand_validator import BrandStatus, BrandValidationResult
 from config import Settings
 from database import Database
-from gemini_validator import DealValidationResult, GeminiDealValidator
 from notifier import Notifier
 from radar import StealRadar
 from radar_rules import DEFAULT_RADAR_RULES, RadarRule
@@ -46,7 +45,6 @@ def test_default_radar_rules_integrity():
 async def test_scan_rule_filtering(mock_db, mock_notifier):
     """Test scan_rule applies brand validator, negative keywords, and price floor filters."""
     radar = StealRadar(Settings(), db=mock_db, notifier=mock_notifier)
-    radar.ai_validator = MagicMock(spec=GeminiDealValidator)
 
     rule = RadarRule(
         name="Casio Watch Test",
@@ -119,14 +117,6 @@ async def test_process_and_notify_deals(mock_db, mock_notifier):
         telegram_chat_id="12345",
     )
     radar = StealRadar(test_settings, db=mock_db, notifier=mock_notifier)
-    radar.ai_validator.validate_deal = AsyncMock(return_value=DealValidationResult(
-        is_genuine_steal=True,
-        is_genuine_brand=True,
-        is_accessory_or_knockoff=False,
-        confidence_score=10,
-        reason="Genuine Casio G-Shock deal.",
-        model_used="Cloudflare DeepSeek R1",
-    ))
 
     rule = RadarRule(
         name="Casio Watch Test",

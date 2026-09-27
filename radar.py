@@ -15,7 +15,6 @@ from typing import Any, List, Optional
 from brand_validator import BrandValidator, BrandStatus
 from config import Settings, settings
 from database import Database, get_database
-from gemini_validator import GeminiDealValidator
 from notifier import Notifier
 from radar_rules import DEFAULT_RADAR_RULES, RadarRule
 from scrapers import get_scraper
@@ -30,7 +29,6 @@ class StealRadar:
         self.config = config
         self.db = db or get_database(config)
         self.notifier = notifier or Notifier(config)
-        self.ai_validator = GeminiDealValidator(config)
         self.brand_validator = BrandValidator(allow_unknown=False)
 
     async def init(self) -> None:
