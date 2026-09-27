@@ -5109,9 +5109,10 @@
 
       if (kpiSub) {
         if (secAgo !== null && secAgo !== undefined) {
-          if (secAgo < 5) kpiSub.textContent = "Active event < 5s ago • " + (daemon.file_size_mb || 0) + " MB";
-          else if (secAgo < 60) kpiSub.textContent = "Active event " + secAgo + "s ago • " + (daemon.file_size_mb || 0) + " MB";
-          else kpiSub.textContent = "Last event " + Math.floor(secAgo / 60) + "m ago • " + (daemon.file_size_mb || 0) + " MB";
+          const sizeSuffix = (daemon.file_size_mb && daemon.file_size_mb > 0) ? `${daemon.file_size_mb} MB` : "Cloud Synced";
+          if (secAgo < 5) kpiSub.textContent = `Active event < 5s ago • ${sizeSuffix}`;
+          else if (secAgo < 60) kpiSub.textContent = `Active event ${secAgo}s ago • ${sizeSuffix}`;
+          else kpiSub.textContent = `Last event ${Math.floor(secAgo / 60)}m ago • ${sizeSuffix}`;
         } else {
           kpiSub.textContent = daemon.note || "No log activity detected";
         }
@@ -5126,7 +5127,7 @@
 
       if (elWarn) elWarn.textContent = counts.warnings || 0;
       if (elErr) elErr.textContent = counts.errors || 0;
-      if (elSize) elSize.textContent = (daemon.file_size_mb || 0) + " MB";
+      if (elSize) elSize.textContent = (daemon.file_size_mb && daemon.file_size_mb > 0) ? `${daemon.file_size_mb} MB` : "Cloud Synced";
       if (elLines) elLines.textContent = (counts.total || 0).toLocaleString() + " lines in buffer";
 
       const totalIssues = (counts.errors || 0) + (counts.warnings || 0);

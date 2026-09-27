@@ -966,48 +966,66 @@ def get_daemon_quick_status() -> dict[str, Any]:
         "radar_daemon.log",
     ]
     log_file = next((c for c in candidates if os.path.exists(c)), None)
-    if not log_file:
-        return {
-            "is_running": False,
-            "status_text": "OFFLINE",
-            "seconds_since_activity": None,
-            "has_log_file": False,
-            "size_mb": 0.0,
-        }
+    if log_file:
+        try:
+            stat = os.stat(log_file)
+            seconds_ago = int(time.time() - stat.st_mtime)
+            is_running = seconds_ago <= 180
+            status_text = "ACTIVE" if is_running else ("IDLE" if seconds_ago <= 600 else "STOPPED")
+            return {
+                "is_running": is_running,
+                "status_text": status_text,
+                "seconds_since_activity": seconds_ago,
+                "has_log_file": True,
+                "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                "last_activity_time": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+            }
+        except Exception:
+            pass
 
-    try:
-        stat = os.stat(log_file)
-        seconds_ago = int(time.time() - stat.st_mtime)
-        is_running = seconds_ago <= 180
-        status_text = "ACTIVE" if is_running else ("IDLE" if seconds_ago <= 600 else "STOPPED")
-        return {
-            "is_running": is_running,
-            "status_text": status_text,
-            "seconds_since_activity": seconds_ago,
-            "has_log_file": True,
-            "size_mb": round(stat.st_size / (1024 * 1024), 2),
-            "last_activity_time": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
-        }
-    except Exception as exc:
-        return {
-            "is_running": False,
-            "status_text": "ERROR",
-            "seconds_since_activity": None,
-            "has_log_file": True,
-            "detail": str(exc),
-        }
+    # Cloud / Supabase fallback check (e.g. on Vercel)
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if supabase_url and supabase_key:
+        try:
+            headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+            with httpx.Client(timeout=3.5) as client:
+                r = client.get(
+                    f"{supabase_url}/rest/v1/price_logs?select=timestamp&order=timestamp.desc&limit=1",
+                    headers=headers,
+                )
+                if r.status_code == 200 and r.json():
+                    p_ts = r.json()[0]["timestamp"]
+                    dt = datetime.fromisoformat(p_ts.replace("Z", "+00:00"))
+                    now = datetime.now(timezone.utc)
+                    sec_ago = max(0, int((now - dt).total_seconds()))
+                    is_run = sec_ago <= 180
+                    return {
+                        "is_running": is_run,
+                        "status_text": "ACTIVE" if is_run else ("IDLE" if sec_ago <= 600 else "STOPPED"),
+                        "seconds_since_activity": sec_ago,
+                        "has_log_file": False,
+                        "size_mb": 0.0,
+                        "last_activity_time": p_ts,
+                    }
+        except Exception:
+            pass
+
+    return {
+        "is_running": False,
+        "status_text": "OFFLINE",
+        "seconds_since_activity": None,
+        "has_log_file": False,
+        "size_mb": 0.0,
+    }
 
 
-def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
-    """Parse recent entries from radar_daemon.log with error/warning extraction."""
-    candidates = [
-        os.path.join(root_dir, "radar_daemon.log"),
-        os.path.join(os.getcwd(), "radar_daemon.log"),
-        "radar_daemon.log",
-    ]
-    log_file = next((c for c in candidates if os.path.exists(c)), None)
+def _fetch_supabase_logs_and_status(limit: int = 250, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
+    """Retrieve synced daemon logs and activity from Supabase cloud database for serverless environments."""
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-    if not log_file:
+    if not supabase_url or not supabase_key:
         return {
             "status": "serverless_active",
             "daemon": {
@@ -1021,6 +1039,166 @@ def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optio
             "logs": [],
             "recent_issues": [],
         }
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+    }
+
+    parsed_entries: list[dict[str, Any]] = []
+    total_errors = 0
+    total_warnings = 0
+    total_info = 0
+    seconds_ago = None
+    is_running = False
+
+    try:
+        with httpx.Client(timeout=6.0) as client:
+            # 1. Fetch synced daemon logs
+            resp = client.get(
+                f"{supabase_url}/rest/v1/custom_radar_rules?name=eq.DAEMON_LOG&order=id.desc&limit=300",
+                headers=headers,
+            )
+            rows = resp.json() if resp.status_code == 200 else []
+
+            # 2. Fetch latest price logs for telemetry & backup activity
+            resp_p = client.get(
+                f"{supabase_url}/rest/v1/price_logs?select=timestamp,price,products(title,platform)&order=timestamp.desc&limit=30",
+                headers=headers,
+            )
+            price_rows = resp_p.json() if resp_p.status_code == 200 else []
+
+            # Determine latest activity
+            latest_iso = None
+            if rows and rows[0].get("created_at"):
+                latest_iso = rows[0]["created_at"]
+            if price_rows and price_rows[0].get("timestamp"):
+                p_ts = price_rows[0]["timestamp"]
+                if not latest_iso or p_ts > latest_iso:
+                    latest_iso = p_ts
+
+            if latest_iso:
+                try:
+                    dt = datetime.fromisoformat(latest_iso.replace("Z", "+00:00"))
+                    now = datetime.now(timezone.utc)
+                    seconds_ago = max(0, int((now - dt).total_seconds()))
+                    is_running = seconds_ago <= 180
+                except Exception:
+                    seconds_ago = 5
+                    is_running = True
+
+            # Convert synced daemon logs (stored newest first; reverse to ascending order for terminal)
+            for row in reversed(rows):
+                lvl = (row.get("category") or "INFO").upper()
+                ts_raw = row.get("created_at", "")
+                ts_clean = ts_raw[:19].replace("T", " ") if ts_raw else ""
+                logger_name = row.get("platforms") or "daemon"
+                msg = row.get("query") or ""
+                raw_line = row.get("negative_keywords") or msg
+
+                if lvl in ("ERROR", "CRITICAL"):
+                    total_errors += 1
+                elif lvl in ("WARNING", "WARN"):
+                    total_warnings += 1
+                else:
+                    total_info += 1
+
+                parsed_entries.append({
+                    "id": row.get("id", len(parsed_entries) + 1),
+                    "timestamp": ts_clean,
+                    "level": lvl,
+                    "logger": logger_name,
+                    "message": msg,
+                    "raw": raw_line,
+                })
+
+            # If no DAEMON_LOG entries exist, fallback to synthesized price check logs
+            if not parsed_entries and price_rows:
+                for prow in reversed(price_rows):
+                    p_info = prow.get("products") or {}
+                    title = p_info.get("title") or "Tracked Product"
+                    plat = p_info.get("platform") or "online"
+                    price = prow.get("price")
+                    p_ts = prow.get("timestamp", "")[:19].replace("T", " ")
+                    msg = f"[{plat}] {title} -> INR {price} (in stock)"
+                    total_info += 1
+                    parsed_entries.append({
+                        "id": len(parsed_entries) + 1,
+                        "timestamp": p_ts,
+                        "level": "INFO",
+                        "logger": "tracker",
+                        "message": msg,
+                        "raw": f"{p_ts} [INFO] tracker: {msg}",
+                    })
+
+    except Exception as exc:
+        logger.warning("Error fetching cloud logs from Supabase: %s", exc)
+
+    status_text = "ACTIVE & STREAMING" if is_running else ("STANDBY / IDLE" if (seconds_ago is not None and seconds_ago <= 600) else "OFFLINE / STOPPED")
+
+    # Extract recent issues (errors + warnings), newest first
+    recent_issues = [
+        e for e in parsed_entries
+        if e["level"] in ("ERROR", "CRITICAL", "WARNING", "WARN")
+    ]
+    recent_issues.reverse()
+    recent_issues = recent_issues[:50]
+
+    # Filter by level
+    filtered = parsed_entries
+    if level:
+        lvl_k = level.lower().strip()
+        if lvl_k in ("error", "errors"):
+            filtered = [e for e in filtered if e["level"] in ("ERROR", "CRITICAL")]
+        elif lvl_k in ("warning", "warn", "warnings"):
+            filtered = [e for e in filtered if e["level"] in ("WARNING", "WARN")]
+        elif lvl_k in ("warning_error", "issues", "problems"):
+            filtered = [e for e in filtered if e["level"] in ("ERROR", "CRITICAL", "WARNING", "WARN")]
+        elif lvl_k in ("info",):
+            filtered = [e for e in filtered if e["level"] == "INFO"]
+
+    if search:
+        sq = search.lower().strip()
+        filtered = [
+            e for e in filtered
+            if sq in e["message"].lower() or sq in e["logger"].lower() or sq in e["raw"].lower()
+        ]
+
+    limit_val = max(10, min(limit or 250, 1000))
+    logs_slice = filtered[-limit_val:]
+
+    return {
+        "status": "success",
+        "daemon": {
+            "is_running": is_running,
+            "status_text": status_text,
+            "seconds_since_activity": seconds_ago,
+            "file_size_mb": 0.0,
+            "log_path": "supabase://custom_radar_rules (Cloud Stream)",
+            "counts": {
+                "total": len(parsed_entries),
+                "errors": total_errors,
+                "warnings": total_warnings,
+                "info": total_info,
+            },
+        },
+        "logs": logs_slice,
+        "recent_issues": recent_issues,
+    }
+
+
+def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
+    """Parse recent entries from radar_daemon.log or fallback to Supabase cloud sync."""
+    candidates = [
+        os.path.join(root_dir, "radar_daemon.log"),
+        os.path.join(os.getcwd(), "radar_daemon.log"),
+        "radar_daemon.log",
+    ]
+    log_file = next((c for c in candidates if os.path.exists(c)), None)
+
+    if not log_file:
+        return _fetch_supabase_logs_and_status(limit=limit, level=level, search=search)
 
     try:
         stat = os.stat(log_file)

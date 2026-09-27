@@ -7,8 +7,10 @@ user commands (/track, /list, /status, and natural language tracking).
 import asyncio
 import logging
 import os
+import re
 import sys
 from datetime import datetime
+import httpx
 
 workspace_dir = os.path.dirname(os.path.abspath(__file__))
 if workspace_dir not in sys.path:
@@ -65,6 +67,89 @@ async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 300):
 
         print(f"💤 Sleeping {interval_seconds}s until next manual tracker pass...\n")
         await asyncio.sleep(interval_seconds)
+
+
+async def supabase_log_shipper_loop(interval_seconds: int = 15):
+    """Continuously flush new radar daemon log entries to Supabase so Vercel UI sees them in real-time."""
+    supabase_url = getattr(settings, "supabase_url", None) or os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = getattr(settings, "supabase_key", None) or os.getenv("SUPABASE_KEY")
+    if not supabase_url or not supabase_key:
+        return
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+    }
+
+    log_path = "radar_daemon.log"
+    last_pos = 0
+    if os.path.exists(log_path):
+        try:
+            last_pos = max(0, os.path.getsize(log_path) - 80000)
+        except Exception:
+            last_pos = 0
+
+    pat_std = re.compile(
+        r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,\.]\d{3})\s+\[(?P<level>[A-Z]+)\]\s+(?P<logger>[^:]+):\s+(?P<message>.*)$"
+    )
+    pat_bracket = re.compile(
+        r"^\[(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+(?P<message>.*)$"
+    )
+
+    while True:
+        try:
+            await asyncio.sleep(interval_seconds)
+            if not os.path.exists(log_path):
+                continue
+
+            current_size = os.path.getsize(log_path)
+            if current_size < last_pos:
+                last_pos = 0
+
+            if current_size == last_pos:
+                continue
+
+            read_bytes = min(current_size - last_pos, 200000)
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                f.seek(last_pos)
+                chunk = f.read(read_bytes)
+                last_pos = f.tell()
+
+            lines = [l.strip() for l in chunk.splitlines() if l.strip()]
+            if not lines:
+                continue
+
+            batch = []
+            for l in lines[-60:]:
+                m1 = pat_std.match(l)
+                m2 = pat_bracket.match(l)
+                if m1:
+                    d = m1.groupdict()
+                    batch.append({
+                        "name": "DAEMON_LOG",
+                        "category": d["level"].upper(),
+                        "platforms": d["logger"].strip()[:50],
+                        "query": d["message"][:1000],
+                        "negative_keywords": l[:1500],
+                    })
+                elif m2:
+                    d = m2.groupdict()
+                    lvl = "WARNING" if "warn" in l.lower() else "INFO"
+                    batch.append({
+                        "name": "DAEMON_LOG",
+                        "category": lvl,
+                        "platforms": "radar",
+                        "query": d["message"][:1000],
+                        "negative_keywords": l[:1500],
+                    })
+
+            if batch:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    await client.post(f"{supabase_url}/rest/v1/custom_radar_rules", headers=headers, json=batch)
+
+        except Exception as exc:
+            logger.debug("Supabase log shipper tick error: %s", exc)
 
 
 VIP_WATCHES = [
@@ -437,6 +522,7 @@ async def main():
             casio_deal_radar_loop(radar, interval_seconds=casio_interval),
             manual_tracker_loop(tracker, interval_seconds=manual_interval),
             running_shoes_radar_loop(interval_seconds=shoes_interval),
+            supabase_log_shipper_loop(interval_seconds=15),
             tg_bot.listen_loop(),
         )
     except (KeyboardInterrupt, SystemExit):
