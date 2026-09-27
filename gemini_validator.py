@@ -220,6 +220,79 @@ Respond ONLY in valid JSON matching this schema:
             model_used="Heuristic Brand Gatekeeper",
         )
 
+    async def validate_shoe_steal(
+        self,
+        brand: str,
+        model: str,
+        full_title: str,
+        current_price: float,
+        our_street_price: float,
+        our_steal_price: float,
+        our_atl: float,
+        platform: str,
+    ) -> Optional[DealValidationResult]:
+        """Ask AI: Is this running shoe price genuinely exceptional in the Indian market?
+
+        Uses Cloudflare DeepSeek R1 (primary) or Gemini (fallback) to validate
+        whether a detected price is a real steal vs. a normal discounted price.
+        """
+        # Hard Rule Pre-Check: If price is above our researched steal threshold, reject immediately
+        if our_steal_price > 0 and current_price > our_steal_price:
+            return DealValidationResult(
+                is_genuine_steal=False,
+                is_genuine_brand=True,
+                is_accessory_or_knockoff=False,
+                confidence_score=10,
+                reason=f"Rejected: Price ₹{current_price:,.0f} exceeds researched steal threshold of ₹{our_steal_price:,.0f} for {brand} {model}.",
+                model_used="Catalog Researched Rule Gatekeeper",
+            )
+
+        prompt = f"""Running shoe price verification for the Indian market.
+
+Product: {brand} {model}
+Full Title: "{full_title}"
+Detected Price: ₹{current_price:,.0f}
+Platform: {platform}
+Our Reference Data: street_price=₹{our_street_price:,.0f}, steal_threshold=₹{our_steal_price:,.0f}, known_ATL=₹{our_atl:,.0f}
+
+Based on your knowledge of typical Indian retail pricing for {brand} {model}:
+1. What is the typical actual selling price (not inflated MRP) in India on Flipkart/Myntra/TataCliq?
+2. Is ₹{current_price:,.0f} genuinely below normal market rates for this exact model?
+3. Is this an actual deal worth alerting a buyer about?
+
+Respond ONLY in valid JSON:
+{{
+  "is_genuine_steal": boolean,
+  "is_genuine_brand": true,
+  "is_accessory_or_knockoff": false,
+  "confidence_score": integer (1-10),
+  "reason": "concise 1-sentence explanation of whether this price is exceptional"
+}}"""
+
+        # Try Cloudflare first, then Gemini
+        if self.cf_token and self.cf_token.strip():
+            result = await self._evaluate_with_cloudflare(prompt)
+            if result:
+                return result
+
+        if self.gemini_client is not None:
+            result = await self._evaluate_with_gemini(prompt)
+            if result:
+                return result
+
+        # Fallback: if price is already <= our_steal_price, it is verified by researched catalog
+        if our_steal_price > 0 and current_price <= our_steal_price:
+            return DealValidationResult(
+                is_genuine_steal=True,
+                is_genuine_brand=True,
+                is_accessory_or_knockoff=False,
+                confidence_score=9,
+                reason=f"Verified: Price ₹{current_price:,.0f} is within researched steal threshold ₹{our_steal_price:,.0f}.",
+                model_used="Catalog Baseline Verification",
+            )
+
+        return None
+
     async def parse_tracking_intent(self, text: str) -> Dict[str, Any]:
         """Parse natural language command from Telegram into structured tracking targets."""
         prompt = f"""Parse this user request to track a product into structured JSON:

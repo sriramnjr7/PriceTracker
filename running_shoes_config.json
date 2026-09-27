@@ -1,5 +1,5 @@
 {
-  "is_active": true,
+  "is_active": false,
   "min_price": 4000.0,
   "max_price": 5999.0,
   "target_sizes": [
@@ -26,6 +26,6 @@
     "New Balance": true,
     "Skechers": true
   },
-  "last_sweep": "2026-09-27T10:39:58.277744+00:00",
-  "last_updated": "2026-09-27T10:45:22.120667+00:00"
+  "last_sweep": "2026-09-27T12:02:00.630674+00:00",
+  "last_updated": "2026-09-27T12:58:18.739837+00:00"
 }

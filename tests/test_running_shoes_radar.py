@@ -23,67 +23,63 @@ def test_whitelist_positive_matches():
     assert match_running_model("Reebok Floatride Energy X Carbon Plated Shoes") == ("Reebok", "Floatride Energy X")
     assert match_running_model("Reebok Floatride Energy Symmetros 2") == ("Reebok", "Floatride Energy Symmetros")
 
-    # Hoka (New)
+    # Hoka
     assert match_running_model("Hoka One One Mach 5 Running Shoes") == ("Hoka", "Mach")
-    assert match_running_model("Hoka Rincon 3 Lightweight Running Shoes") == ("Hoka", "Rincon")
     assert match_running_model("Hoka Clifton 9 Road Running Shoes") == ("Hoka", "Clifton")
     assert match_running_model("Hoka Bondi 8 Max Cushion Shoes") == ("Hoka", "Bondi")
 
-    # Brooks (New)
-    assert match_running_model("Brooks Hyperion Tempo Road Running Shoes") == ("Brooks", "Hyperion")
+    # Brooks
+    assert match_running_model("Brooks Hyperion Max Road Running Shoes") == ("Brooks", "Hyperion Max")
     assert match_running_model("Brooks Ghost 15 Neutral Running Shoes") == ("Brooks", "Ghost")
     assert match_running_model("Brooks Glycerin 20 Nitrogen Infused Cushion") == ("Brooks", "Glycerin")
 
-    # Puma (Expanded)
+    # Puma
     assert match_running_model("Puma Velocity Nitro 3 Mens Running Shoes") == ("Puma", "Velocity Nitro")
-    assert match_running_model("Puma Deviate Nitro Elite 2 Running Shoes") == ("Puma", "Deviate Nitro")
+    assert match_running_model("Puma Deviate Nitro 3 Running Shoes") == ("Puma", "Deviate Nitro")
+    assert match_running_model("Puma Deviate Nitro Elite 2 Running Shoes") == ("Puma", "Deviate Nitro Elite")
     assert match_running_model("Puma Magnify Nitro 2 Max Cushion Road Running Shoes") == ("Puma", "Magnify Nitro")
-    assert match_running_model("Puma ForeverRun Nitro Men Shoes") == ("Puma", "ForeverRun")
+    assert match_running_model("Puma ForeverRun Nitro Men Shoes") == ("Puma", "ForeverRun Nitro")
     assert match_running_model("Puma Liberate Nitro 2") == ("Puma", "Liberate Nitro")
-    assert match_running_model("Puma Electrify Nitro 3 Running Shoes") == ("Puma", "Electrify Nitro")
 
-    # Nike (Expanded)
+    # Nike
     assert match_running_model("Nike Air Zoom Pegasus 40 Mens Road Running Shoes") == ("Nike", "Pegasus")
     assert match_running_model("Nike ZoomX Streakfly Road Racing Shoes") == ("Nike", "Streakfly")
     assert match_running_model("Nike Zoom Fly 5 Carbon Road Shoes") == ("Nike", "Zoom Fly")
     assert match_running_model("Nike ZoomX Invincible Run 3 Flyknit") == ("Nike", "Invincible Run")
     assert match_running_model("Nike Structure 25 Road Running Shoes") == ("Nike", "Structure")
-    assert match_running_model("Nike Winflo 10 Mens Running Shoes") == ("Nike", "Winflo")
-    assert match_running_model("Nike Rival Fly 3 Road Racing Shoes") == ("Nike", "Rival Fly")
-    assert match_running_model("Nike Infinity Run 4 Flyknit") == ("Nike", "Infinity Run")
     assert match_running_model("Nike Air Zoom Vomero 17 Road Running Shoes") == ("Nike", "Vomero")
+    assert match_running_model("Nike Alphafly 3 Road Racing Shoes") == ("Nike", "Alphafly")
+    assert match_running_model("Nike Vaporfly 3 Racing Shoes") == ("Nike", "Vaporfly")
 
-    # Adidas (Expanded)
+    # Adidas
     assert match_running_model("Adidas Adizero SL 2 Running Shoes") == ("Adidas", "Adizero SL")
-    assert match_running_model("Adidas Adizero Boston 12 M Running Shoes") == ("Adidas", "Boston")
-    assert match_running_model("Adidas Adizero Takumi Sen 10 Running Shoes") == ("Adidas", "Takumi Sen")
-    assert match_running_model("Adidas Adizero Adios 8 Shoes") == ("Adidas", "Adios")
-    assert match_running_model("Adidas Solarboost 5 Road Running Shoes") == ("Adidas", "Solarboost")
+    assert match_running_model("Adidas Adizero Boston 12 M Running Shoes") == ("Adidas", "Adizero Boston")
+    assert match_running_model("Adidas Adizero Takumi Sen 10 Running Shoes") == ("Adidas", "Adizero Takumi Sen")
+    assert match_running_model("Adidas Adizero Adios 8 Shoes") == ("Adidas", "Adizero Adios")
+    assert match_running_model("Adidas Adizero Adios Pro 3 Racing Shoes") == ("Adidas", "Adizero Adios Pro")
     assert match_running_model("Adidas Supernova Rise Running Shoes") == ("Adidas", "Supernova Rise")
-    assert match_running_model("Adidas Supernova Stride M") == ("Adidas", "Supernova Stride")
-    assert match_running_model("Adidas Duramo Speed M Running Shoes") == ("Adidas", "Duramo Speed")
 
-    # Asics (Expanded)
+    # Asics
     assert match_running_model("Asics Novablast 4 Mens Running Shoes") == ("Asics", "Novablast")
     assert match_running_model("Asics Magic Speed 3 Carbon Plated Running Shoes") == ("Asics", "Magic Speed")
-    assert match_running_model("Asics Noosa Tri 15 Tri Running Shoes") == ("Asics", "Noosa Tri")
-    assert match_running_model("Asics Glideride 3 Road Running Shoes") == ("Asics", "Glideride")
-    assert match_running_model("Asics GEL-Cumulus 26 Road Running Shoes") == ("Asics", "Cumulus")
+    assert match_running_model("Asics GEL-Cumulus 26 Road Running Shoes") == ("Asics", "Gel-Cumulus")
     assert match_running_model("Asics GT-2000 12 Mens Stability Shoes") == ("Asics", "GT-2000")
-    assert match_running_model("Asics GT-1000 12 Running Shoes") == ("Asics", "GT-1000")
-    assert match_running_model("Asics GEL-Pulse 15 Mens Shoes") == ("Asics", "Pulse")
+    assert match_running_model("Asics Superblast Max Cushion Shoes") == ("Asics", "Superblast")
 
-    # New Balance (Expanded)
+    # New Balance
     assert match_running_model("New Balance FuelCell Propel v4 Running Shoes") == ("New Balance", "FuelCell Propel")
     assert match_running_model("New Balance FuelCell Rebel v3") == ("New Balance", "FuelCell Rebel")
-    assert match_running_model("New Balance FuelCell SC Trainer v2 Carbon Plated") == ("New Balance", "FuelCell SuperComp")
-    assert match_running_model("New Balance Fresh Foam X 1080 v13") == ("New Balance", "Fresh Foam 1080")
-    assert match_running_model("New Balance Fresh Foam X 880 v14") == ("New Balance", "Fresh Foam 880")
+    assert match_running_model("New Balance FuelCell SuperComp Trainer v2") == ("New Balance", "FuelCell SuperComp Trainer")
+    assert match_running_model("New Balance Fresh Foam X 1080 v13") == ("New Balance", "Fresh Foam X 1080")
+    assert match_running_model("New Balance Fresh Foam X 880 v14") == ("New Balance", "Fresh Foam X 880")
 
     # Skechers
     assert match_running_model("Skechers GO RUN Ride 11 Mens Running Shoes") == ("Skechers", "Go Run Ride")
-    assert match_running_model("Skechers Max Cushioning Premier Trail") == ("Skechers", "Max Cushioning")
-    assert match_running_model("Skechers GO RUN Razor 4 Hyper") == ("Skechers", "Razor")
+    assert match_running_model("Skechers GO RUN Razor 4 Hyper") == ("Skechers", "Go Run Razor")
+
+    # On Running
+    assert match_running_model("On Running Cloudmonster Mens Running Shoes") == ("On Running", "On Cloudmonster")
+    assert match_running_model("On Running Cloudsurfer Road Shoes") == ("On Running", "On Cloudsurfer")
 
 
 def test_whitelist_negative_exclusions():

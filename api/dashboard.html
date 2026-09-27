@@ -3677,10 +3677,10 @@
                   <div class="shoes-switch-wrap">
                     <div class="switch-meta">
                       <span class="switch-title">HARVESTER RADAR</span>
-                      <span class="switch-status-text" id="shoes-status-text">MONITORING ACTIVE</span>
+                      <span class="switch-status-text is-paused" id="shoes-status-text">RADAR PAUSED</span>
                     </div>
                     <label class="rocker-switch" title="Toggle Running Shoes Radar ON/OFF">
-                      <input type="checkbox" id="shoes-master-toggle" checked onchange="handleShoesToggle(this.checked)">
+                      <input type="checkbox" id="shoes-master-toggle" onchange="handleShoesToggle(this.checked)">
                       <span class="rocker-slider"></span>
                     </label>
                   </div>
@@ -3705,8 +3705,8 @@
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
                   </svg>
                 </div>
-                <div class="metric-value highlight-emerald" id="kpi-shoes-status">ONLINE</div>
-                <div class="metric-caption" id="shoes-last-sweep-time">24/7 background scheduler active</div>
+                <div class="metric-value" id="kpi-shoes-status" style="color: var(--accent-amber);">PAUSED</div>
+                <div class="metric-caption" id="shoes-last-sweep-time">Harvester paused in settings</div>
               </div>
 
               <div class="metric-card">
@@ -3740,7 +3740,7 @@
                   </svg>
                 </div>
                 <div class="metric-value highlight-emerald" id="kpi-shoes-deals-count">0</div>
-                <div class="metric-caption">56 Whitelist silhouettes tracked</div>
+                <div class="metric-caption">94 Performance silhouettes monitored</div>
               </div>
             </section>
 
@@ -3795,19 +3795,20 @@
             <div class="whitelist-drawer">
               <div class="whitelist-header">
                 <span class="whitelist-title">Guarded Whitelist Models (Casual / Lifestyle Filter Gate)</span>
-                <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">56 Models</span>
+                <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">94 Models</span>
               </div>
               <div class="whitelist-cloud">
-                <span class="model-chip"><strong>SAUCONY:</strong> Endorphin Speed/Pro, Triumph, Kinvara, Ride, Tempus, Guide</span>
-                <span class="model-chip"><strong>REEBOK:</strong> Floatride Energy (1-5, X, Symmetros)</span>
-                <span class="model-chip"><strong>HOKA:</strong> Mach, Rincon, Clifton, Bondi</span>
-                <span class="model-chip"><strong>BROOKS:</strong> Hyperion, Ghost, Glycerin</span>
-                <span class="model-chip"><strong>PUMA:</strong> Velocity Nitro, Deviate Nitro, Magnify Nitro, ForeverRun, Liberate Nitro, Electrify Nitro</span>
-                <span class="model-chip"><strong>NIKE:</strong> Pegasus, Winflo, Rival Fly, Infinity Run, Vomero, Streakfly, Zoom Fly, Invincible Run</span>
-                <span class="model-chip"><strong>ADIDAS:</strong> Adizero SL, Boston, Takumi Sen, Adios, Solarboost, Supernova Rise/Stride</span>
-                <span class="model-chip"><strong>ASICS:</strong> Novablast, Magic Speed, Noosa Tri, Glideride, Cumulus, GT-2000, GT-1000, Pulse</span>
-                <span class="model-chip"><strong>NEW BALANCE:</strong> FuelCell Propel, FuelCell Rebel, FuelCell SuperComp, Fresh Foam 1080/880</span>
-                <span class="model-chip"><strong>SKECHERS:</strong> Go Run Ride, Max Cushioning, Razor</span>
+                <span class="model-chip"><strong>SAUCONY:</strong> Endorphin Elite/Pro/Speed, Triumph, Kinvara Pro, Tempus, Guide, Ride</span>
+                <span class="model-chip"><strong>REEBOK:</strong> Floatride Energy 3-6, X, Symmetros</span>
+                <span class="model-chip"><strong>HOKA:</strong> Cielo X1, Rocket X, Mach X, Mach, Rincon, Clifton, Bondi, Skyward X</span>
+                <span class="model-chip"><strong>BROOKS:</strong> Hyperion Elite/Max, Ghost Max, Ghost, Glycerin GTS, Adrenaline GTS</span>
+                <span class="model-chip"><strong>PUMA:</strong> Fast-R, Deviate Nitro Elite, Deviate Nitro, MagMax, Velocity, Magnify, ForeverRun</span>
+                <span class="model-chip"><strong>NIKE:</strong> Alphafly, Vaporfly, Ultrafly, Zoom Fly, Streakfly, Invincible Run, Pegasus, Vomero, Structure</span>
+                <span class="model-chip"><strong>ADIDAS:</strong> Adios Pro, Prime X Strung, Takumi Sen, Boston, Adios, Supernova Prima/Rise, Adizero SL</span>
+                <span class="model-chip"><strong>ASICS:</strong> Metaspeed Sky/Edge, Superblast, Magic Speed, Gel-Nimbus, Gel-Kayano, Novablast, Cumulus, GT-2000</span>
+                <span class="model-chip"><strong>NEW BALANCE:</strong> SuperComp Elite/Trainer/Pacer, 1080, More, Rebel, 880, Propel</span>
+                <span class="model-chip"><strong>SKECHERS:</strong> Go Run Speed Beast/Elite, Razor, Max Road, Ride, Pure, Persistence</span>
+                <span class="model-chip"><strong>ON RUNNING:</strong> Cloudboom Echo/Strike, Cloudsurfer Next, Cloudflow, Cloudmonster Hyper, Cloudrunner</span>
               </div>
             </div>
 
@@ -3945,6 +3946,18 @@
                     <span class="mini-slider"></span>
                   </label>
                 </div>
+
+                <!-- 11. On Running -->
+                <div class="brand-control-card" id="brand-card-onrunning">
+                  <div class="brand-info">
+                    <span class="brand-name">ON RUNNING</span>
+                    <span class="brand-meta">Cloudmonster, Cloudsurfer</span>
+                  </div>
+                  <label class="mini-rocker" title="Toggle On Running Tracking">
+                    <input type="checkbox" id="brand-toggle-onrunning" checked onchange="toggleBrandTracking('On Running', this.checked)">
+                    <span class="mini-slider"></span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -3956,8 +3969,8 @@
                   <span class="mode-count-tag" id="badge-mode-deals-count">0</span>
                 </button>
                 <button type="button" class="shoes-mode-btn" id="btn-mode-all" onclick="setShoeViewMode('all_tracked')">
-                  <span>👟 All Tracked Shoes (56 Silhouettes)</span>
-                  <span class="mode-count-tag" id="badge-mode-all-count">56</span>
+                  <span>👟 All Tracked Shoes (94 Silhouettes)</span>
+                  <span class="mode-count-tag" id="badge-mode-all-count">94</span>
                 </button>
               </div>
 
@@ -3980,6 +3993,7 @@
               <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('New Balance', this)">New Balance</button>
               <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('Brooks', this)">Brooks</button>
               <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('Skechers', this)">Skechers</button>
+              <button class="filter-btn shoe-filter-btn" onclick="setShoeBrandFilter('On Running', this)">On Running</button>
             </div>
 
             <!-- Deals Stream & Product Grid -->
@@ -4644,7 +4658,8 @@
       const badgeDeals = document.getElementById("badge-mode-deals-count");
       const badgeAll = document.getElementById("badge-mode-all-count");
 
-      const isActive = data.is_active;
+      const isActive = Boolean(data.is_active);
+      runningShoesState.is_active = isActive;
       if (toggle) toggle.checked = isActive;
       
       if (statusLabel) {
@@ -4658,7 +4673,7 @@
       }
 
       const totalDeals = (data.deals || []).length;
-      const totalTracked = (data.tracked_shoes || []).length || 56;
+      const totalTracked = (data.tracked_shoes || []).length || 94;
       if (kpiCount) kpiCount.textContent = totalDeals;
       if (badgeDeals) badgeDeals.textContent = totalDeals;
       if (badgeAll) badgeAll.textContent = totalTracked;
@@ -4713,9 +4728,17 @@
 
     async function handleShoesToggle(checked) {
       const statusLabel = document.getElementById("shoes-status-text");
+      const kpiStatus = document.getElementById("kpi-shoes-status");
+      const toggle = document.getElementById("shoes-master-toggle");
+
+      if (toggle) toggle.checked = checked;
       if (statusLabel) {
         statusLabel.textContent = checked ? "MONITORING ACTIVE" : "RADAR PAUSED";
         statusLabel.className = "switch-status-text" + (checked ? "" : " is-paused");
+      }
+      if (kpiStatus) {
+        kpiStatus.textContent = checked ? "ONLINE" : "PAUSED";
+        kpiStatus.style.color = checked ? "var(--accent-emerald)" : "var(--accent-amber)";
       }
 
       try {
@@ -4725,8 +4748,16 @@
           body: JSON.stringify({ active: checked })
         });
         const result = await res.json();
-        runningShoesState.is_active = result.is_active;
-        fetchRunningShoesData();
+        runningShoesState.is_active = Boolean(result.is_active);
+        if (toggle) toggle.checked = runningShoesState.is_active;
+        if (statusLabel) {
+          statusLabel.textContent = runningShoesState.is_active ? "MONITORING ACTIVE" : "RADAR PAUSED";
+          statusLabel.className = "switch-status-text" + (runningShoesState.is_active ? "" : " is-paused");
+        }
+        if (kpiStatus) {
+          kpiStatus.textContent = runningShoesState.is_active ? "ONLINE" : "PAUSED";
+          kpiStatus.style.color = runningShoesState.is_active ? "var(--accent-emerald)" : "var(--accent-amber)";
+        }
         showToast(result.is_active ? "Running Shoes Radar: Activated (Monitoring 24/7)" : "Running Shoes Radar: Paused");
       } catch (err) {
         console.error("Toggle request failed:", err);
@@ -4824,7 +4855,7 @@
                 Autonomous Radar Scanning for Steal Deals &amp; ATLs
               </h3>
               <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
-                The harvester automatically catches All-Time Lows (ATL), deep clearances (50%+ OFF), and deals under ₹5,999 across all 56 performance models.
+                The harvester automatically catches All-Time Lows (ATL) and genuine Steal Deals across performance running shoe models based on researched market thresholds.
               </p>
               <div style="display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
                 <button class="btn-ui btn-ui-primary" onclick="handleShoesSweepClick()">
@@ -4834,7 +4865,7 @@
                   <span>Trigger On-Demand Sweep</span>
                 </button>
                 <button class="btn-ui btn-ui-secondary" onclick="setShoeViewMode('all_tracked')">
-                  <span>👟 View All 56 Tracked Silhouettes</span>
+                  <span>👟 View All Tracked Silhouettes</span>
                 </button>
               </div>
             </div>
@@ -4844,7 +4875,7 @@
       }
 
       container.innerHTML = list.map(item => {
-        const isDeal = !isAllTrackedMode || item.deal_type === "all_time_low" || item.deal_type === "deep_clearance" || item.deal_type === "target_met" || (item.current_price && item.current_price <= 5999);
+        const isDeal = !isAllTrackedMode || item.deal_type === "all_time_low" || item.deal_type === "steal_deal" || item.status === "ALL-TIME LOW" || item.status === "STEAL DEAL";
         const sizesHtml = (item.available_sizes || []).map(sz => `<span class="shoe-size-pill">${escapeHtml(sz)}</span>`).join("");
         
         // Price displays
@@ -4855,13 +4886,16 @@
         const discountHtml = discount ? `<span class="shoe-price-discount">${discount}% OFF</span>` : "";
 
         // Status badge
+        const isShoeActive = item.is_active !== false && item.status !== "PAUSED";
         let badgeHtml = "";
-        if (item.deal_type === "all_time_low" || item.status === "ALL-TIME LOW") {
+        if (!isShoeActive) {
+          badgeHtml = `<span class="shoe-badge-tracking" style="color:var(--accent-amber); border-color:rgba(245,158,11,0.4);">⏸️ PAUSED</span>`;
+        } else if (item.deal_type === "all_time_low" || item.status === "ALL-TIME LOW") {
           badgeHtml = `<span class="shoe-badge-atl">🚨 ALL-TIME LOW</span>`;
-        } else if (item.deal_type === "deep_clearance" || item.status === "STEAL DEAL") {
+        } else if (item.deal_type === "steal_deal" || item.deal_type === "deep_clearance" || item.status === "STEAL DEAL") {
           badgeHtml = `<span class="shoe-badge-steal">🔥 STEAL DEAL</span>`;
-        } else if (item.deal_type === "target_met" || item.status === "DEAL ACTIVE" || (price && price <= 5999)) {
-          badgeHtml = `<span class="shoe-badge-atl" style="background:rgba(59,130,246,0.18); color:#60a5fa; border-color:rgba(59,130,246,0.4);">🎯 UNDER ₹6K</span>`;
+        } else if (item.deal_type === "good_deal" || item.status === "GOOD DEAL") {
+          badgeHtml = `<span class="shoe-badge-atl" style="background:rgba(59,130,246,0.18); color:#60a5fa; border-color:rgba(59,130,246,0.4);">👟 GOOD DEAL</span>`;
         } else if (price) {
           badgeHtml = `<span class="shoe-badge-tracking">📡 TRACKED</span>`;
         } else {
@@ -4899,16 +4933,18 @@
         `;
 
         // ATL info row
-        const atlPrice = item.lowest_price_seen || (item.deal_type === "all_time_low" ? price : null);
+        const atlPrice = item.known_atl || item.lowest_price_seen || (item.deal_type === "all_time_low" ? price : null);
+        const stealTarget = item.steal_price ? `<span style="font-size:11px;color:var(--text-dim);margin-left:auto;">Steal: ≤₹${Number(item.steal_price).toLocaleString('en-IN')}</span>` : '';
         const atlRow = atlPrice ? `
           <div class="shoe-atl-row">
-            <span>Historical ATL:</span>
+            <span>Known ATL:</span>
             <strong style="color: var(--accent-emerald);">₹${Number(atlPrice).toLocaleString('en-IN')}</strong>
+            ${stealTarget}
           </div>
         ` : '';
 
         return `
-          <div class="shoe-card">
+          <div class="shoe-card ${isShoeActive ? '' : 'is-disabled'}" style="${isShoeActive ? '' : 'opacity: 0.65; border-color: rgba(245,158,11,0.25);'}">
             <div class="shoe-card-media">
               ${imgHtml}
               <span class="shoe-card-platform-badge">${escapeHtml(item.platform || '4 STORES')}</span>
@@ -4933,10 +4969,30 @@
               </div>
 
               ${actionBtn}
+
+              <button type="button" class="btn-ui btn-ui-ghost btn-sm" style="padding: 4px 8px; font-size: 11px; margin-top: 6px; width: 100%; border: 1px dashed var(--border-subtle); color: ${isShoeActive ? 'var(--text-muted)' : 'var(--accent-amber)'};" onclick="toggleSingleShoeTracking('${escapeHtml(item.id || item.model)}', ${!isShoeActive})">
+                ${isShoeActive ? '⏸️ Pause Silhouette' : '▶️ Resume Silhouette'}
+              </button>
             </div>
           </div>
         `;
       }).join("");
+    }
+
+    async function toggleSingleShoeTracking(shoeKey, newActive) {
+      try {
+        const res = await fetch("/api/running-shoes/toggle-shoe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ shoe_key: shoeKey, active: newActive })
+        });
+        const result = await res.json();
+        showToast(result.is_active ? `Tracking resumed for ${shoeKey}` : `Tracking paused for ${shoeKey}`);
+        await fetchRunningShoesData();
+      } catch (err) {
+        console.error("Single shoe toggle failed:", err);
+        showToast("⚠️ Failed to toggle shoe tracking");
+      }
     }
 
     // ==========================================================================

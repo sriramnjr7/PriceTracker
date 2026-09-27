@@ -170,7 +170,11 @@ async def root(request: Request):
     elif clean == "api/status":
         return await get_status()
     elif "running-shoes" in clean or "running_shoes" in clean:
-        if "toggle" in clean and method == "POST":
+        if "toggle-shoe" in clean and method == "POST":
+            return await api_toggle_single_shoe(request)
+        elif "toggle-brand" in clean and method == "POST":
+            return await api_toggle_shoe_brand(request)
+        elif "toggle" in clean and method == "POST":
             return await api_toggle_running_shoes(request)
         elif "sweep" in clean and method == "POST":
             return await api_sweep_running_shoes()
@@ -677,7 +681,7 @@ async def api_get_running_shoes_status():
             "total_tracked": len(tracked_shoes),
             "deals": deals,
             "tracked_shoes": tracked_shoes,
-            "whitelist_brands": ["Saucony", "Reebok", "Hoka", "Brooks", "Puma", "Nike", "Adidas", "Asics", "New Balance", "Skechers"],
+            "whitelist_brands": ["Saucony", "Reebok", "Hoka", "Brooks", "Puma", "Nike", "Adidas", "Asics", "New Balance", "Skechers", "On Running"],
             "enabled_brands": cfg.get("enabled_brands", {
                 "Saucony": True,
                 "Reebok": True,
@@ -689,6 +693,7 @@ async def api_get_running_shoes_status():
                 "Asics": True,
                 "New Balance": True,
                 "Skechers": True,
+                "On Running": True,
             }),
         },
         headers={"Cache-Control": "no-cache"},
@@ -731,6 +736,24 @@ async def api_toggle_shoe_brand(request: Request):
                 "enabled": enabled,
                 "enabled_brands": updated_brands,
             }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/running-shoes/toggle-shoe")
+@app.post("/api/index.py/api/running-shoes/toggle-shoe")
+async def api_toggle_single_shoe(request: Request):
+    """Enable or disable tracking for a specific shoe model."""
+    try:
+        body = await request.json()
+        shoe_key = body.get("shoe_key")
+        active = body.get("active")
+        if not shoe_key:
+            raise HTTPException(status_code=400, detail="shoe_key parameter required")
+        new_active = shoes_radar.toggle_shoe(shoe_key, active)
+        return JSONResponse(
+            content={"status": "success", "shoe_key": shoe_key, "is_active": new_active}
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1820,6 +1843,8 @@ async def catch_all(request: Request, full_path: str):
 
     # 7.5 Running Shoes Sub-routes
     if "running-shoes" in clean:
+        if "toggle-shoe" in clean:
+            return await api_toggle_single_shoe(request)
         if "toggle-brand" in clean:
             return await api_toggle_shoe_brand(request)
         if "toggle" in clean:
