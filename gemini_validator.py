@@ -65,25 +65,30 @@ class GeminiDealValidator:
         if self.cf_token and self.cf_account_id:
             logger.info("Cloudflare Workers AI Arbiter configured as Primary (%s).", self.cf_model)
 
-    async def _evaluate_with_cloudflare(self, prompt: str) -> Optional[DealValidationResult]:
-        """Query Cloudflare Workers AI OpenAI-compatible endpoint (Primary)."""
-        if not self.cf_token or not self.cf_account_id:
+    async def _query_cloudflare_json(
+        self,
+        prompt: str,
+        system_prompt: str = "You are an elite e-commerce price error validator for Indian platforms. Respond ONLY in valid JSON format: {\"is_genuine_steal\": boolean, \"is_genuine_brand\": boolean, \"is_accessory_or_knockoff\": boolean, \"confidence_score\": integer, \"reason\": \"concise explanation\"}",
+    ) -> Optional[dict]:
+        """Query Cloudflare Workers AI with full 1500-token budget for DeepSeek R1 reasoning."""
+        if not self.cf_token or not self.cf_token.strip() or not self.cf_account_id:
             return None
         url = f"https://api.cloudflare.com/client/v4/accounts/{self.cf_account_id}/ai/v1/chat/completions"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.cf_token}",
+            "Authorization": f"Bearer {self.cf_token.strip()}",
         }
         payload = {
             "model": self.cf_model,
             "messages": [
-                {"role": "system", "content": "You are an elite e-commerce price error validator for Indian platforms. Respond in valid JSON format: {\"is_genuine_steal\": boolean, \"is_genuine_brand\": boolean, \"is_accessory_or_knockoff\": boolean, \"confidence_score\": integer, \"reason\": \"concise explanation\"}"},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.1,
+            "max_tokens": 1500,
         }
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=35) as client:
                 resp = await client.post(url, json=payload, headers=headers)
             if resp.status_code == 200:
                 data = resp.json()
@@ -92,21 +97,27 @@ class GeminiDealValidator:
                 cleaned_content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
                 json_match = re.search(r"\{.*\}", cleaned_content, re.DOTALL)
                 if json_match:
-                    parsed = json.loads(json_match.group(0))
-                    return DealValidationResult(
-                        is_genuine_steal=bool(parsed.get("is_genuine_steal", True)),
-                        is_genuine_brand=bool(parsed.get("is_genuine_brand", True)),
-                        is_accessory_or_knockoff=bool(parsed.get("is_accessory_or_knockoff", False)),
-                        confidence_score=int(parsed.get("confidence_score", 9)),
-                        reason=parsed.get("reason", "Verified high-value steal deal."),
-                        model_used="Cloudflare DeepSeek R1",
-                    )
+                    return json.loads(json_match.group(0))
         except Exception as exc:
             logger.warning("[cloudflare_ai] Error: %s (falling back to Gemini)", exc)
         return None
 
+    async def _evaluate_with_cloudflare(self, prompt: str) -> Optional[DealValidationResult]:
+        """Query Cloudflare Workers AI OpenAI-compatible endpoint (Primary)."""
+        parsed = await self._query_cloudflare_json(prompt)
+        if parsed:
+            return DealValidationResult(
+                is_genuine_steal=bool(parsed.get("is_genuine_steal", True)),
+                is_genuine_brand=bool(parsed.get("is_genuine_brand", True)),
+                is_accessory_or_knockoff=bool(parsed.get("is_accessory_or_knockoff", False)),
+                confidence_score=int(parsed.get("confidence_score", 9)),
+                reason=parsed.get("reason", "Verified high-value steal deal."),
+                model_used="Cloudflare DeepSeek R1",
+            )
+        return None
+
     async def _evaluate_with_gemini(self, prompt: str) -> Optional[DealValidationResult]:
-        """Query Google Gemini 3.5 Flash Lite (Fallback)."""
+        """Query Google Gemini 2.5 Flash (Fallback)."""
         if self.gemini_client is None:
             return None
         try:
@@ -315,18 +326,21 @@ Respond ONLY in valid JSON:
 }}
 """
         # Try Cloudflare first, then Gemini
-        if self.cf_token:
+        if self.cf_token and self.cf_token.strip():
             try:
-                res = await self._evaluate_with_cloudflare(prompt)
-                if res and res.reason:
-                    pass
-            except Exception:
-                pass
+                parsed = await self._query_cloudflare_json(
+                    prompt,
+                    system_prompt="You are an intelligent NLP shopping assistant. Parse natural language intent into JSON."
+                )
+                if parsed and parsed.get("query"):
+                    return parsed
+            except Exception as e:
+                logger.warning("[cloudflare_ai] parse_tracking_intent error: %s", e)
 
         if self.gemini_client is not None:
             try:
                 response = self.gemini_client.models.generate_content(
-                    model="gemini-3.5-flash-lite",
+                    model="gemini-2.5-flash",
                     contents=prompt,
                 )
                 raw = response.text.strip()
