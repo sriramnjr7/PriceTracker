@@ -220,6 +220,15 @@ class Database:
         )
         await self.conn.commit()
 
+    async def update_target_price(self, product_id: int, target_price: float) -> bool:
+        """Update target price threshold for an active product."""
+        await self.conn.execute(
+            "UPDATE products SET target_price = ? WHERE id = ?",
+            (float(target_price), product_id),
+        )
+        await self.conn.commit()
+        return True
+
     async def update_price(self, product_id: int, price: Optional[float], title: Optional[str] = None) -> None:
         """Record a newly observed price in ``price_logs`` and refresh the row."""
         ts = _now()

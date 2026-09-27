@@ -26,11 +26,12 @@ logger = logging.getLogger("running_shoes_radar")
 # Target Constraints
 TARGET_PRICE_MIN = 4000.0
 TARGET_PRICE_MAX = 5999.0
-MAX_PRICE_THRESHOLD = 6000.0
+MAX_PRICE_THRESHOLD = 25000.0
 TARGET_SIZES: Set[float] = {9.5, 10.0, 10.5, 11.0}
 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_config.json")
 DEALS_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_deals.json")
+CATALOG_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_catalog.json")
 
 # Global Trap Model Blacklist Filter (Cheap EVA, lifestyle sneakers, or diffusion lines to strictly exclude)
 TRAP_MODELS_BLACKLIST = re.compile(
@@ -477,6 +478,8 @@ class RunningShoeDeal:
     image_url: Optional[str]
     detected_at: str
     is_notified: bool = False
+    deal_type: str = "target_met"  # "all_time_low" | "deep_clearance" | "target_met"
+    lowest_price_seen: Optional[float] = None
 
 
 class RunningShoesRadar:
@@ -594,6 +597,122 @@ class RunningShoesRadar:
                 json.dump(deals, f, indent=2)
         except Exception as e:
             logger.error("Failed to save running shoes deals cache: %s", e)
+
+    def load_catalog(self) -> dict[str, dict[str, Any]]:
+        """Load 56 tracked shoe models and their current price / historical ATL status."""
+        catalog: dict[str, dict[str, Any]] = {}
+        if os.path.exists(CATALOG_CACHE_PATH):
+            try:
+                with open(CATALOG_CACHE_PATH, "r", encoding="utf-8") as f:
+                    catalog = json.load(f)
+            except Exception as e:
+                logger.error("Failed to read running shoes catalog cache: %s", e)
+
+        # Baseline list of standard silhouettes and typical MRPs for high-end models
+        baseline_mrps = {
+            "Endorphin Speed": 17999.0,
+            "Endorphin Pro": 21999.0,
+            "Triumph": 15999.0,
+            "Kinvara": 11999.0,
+            "Ride": 12999.0,
+            "Tempus": 16999.0,
+            "Guide": 13999.0,
+            "Floatride Energy X": 14999.0,
+            "Floatride Energy Symmetros": 10999.0,
+            "Floatride Energy": 8999.0,
+            "Mach": 14999.0,
+            "Rincon": 11999.0,
+            "Clifton": 14999.0,
+            "Bondi": 16999.0,
+            "Hyperion": 14999.0,
+            "Ghost": 13999.0,
+            "Glycerin": 16999.0,
+            "Velocity Nitro": 11999.0,
+            "Deviate Nitro": 16999.0,
+            "Magnify Nitro": 13999.0,
+            "ForeverRun": 14999.0,
+            "Liberate Nitro": 9999.0,
+            "Electrify Nitro": 7999.0,
+            "Pegasus": 10999.0,
+            "Streakfly": 14999.0,
+            "Zoom Fly": 14999.0,
+            "Invincible Run": 17999.0,
+            "Structure": 11999.0,
+            "Winflo": 8695.0,
+            "Rival Fly": 7995.0,
+            "Infinity Run": 14999.0,
+            "Vomero": 15999.0,
+            "Adizero SL": 9999.0,
+            "Boston": 14999.0,
+            "Takumi Sen": 17999.0,
+            "Adios": 12999.0,
+            "Solarboost": 15999.0,
+            "Supernova Rise": 13999.0,
+            "Supernova Stride": 10999.0,
+            "Duramo Speed": 7999.0,
+            "Novablast": 13999.0,
+            "Magic Speed": 14999.0,
+            "Noosa Tri": 12999.0,
+            "Glideride": 14999.0,
+            "Cumulus": 12999.0,
+            "GT-2000": 12999.0,
+            "GT-1000": 8999.0,
+            "Pulse": 7999.0,
+            "FuelCell Propel": 10999.0,
+            "FuelCell Rebel": 13999.0,
+            "FuelCell SuperComp": 21999.0,
+            "Fresh Foam 1080": 16999.0,
+            "Fresh Foam 880": 13999.0,
+            "Go Run Ride": 9999.0,
+            "Max Cushioning": 9499.0,
+            "Razor": 11999.0,
+        }
+
+        # Ensure all 56 canonical models from WHITELIST_RULES are represented
+        for rule in WHITELIST_RULES:
+            brand = rule["brand"]
+            model = rule["model"]
+            key = f"{brand}_{model}".lower().replace(" ", "_").replace("-", "_")
+            if key not in catalog:
+                mrp_val = baseline_mrps.get(model, 11999.0)
+                catalog[key] = {
+                    "id": f"shoe_{key}",
+                    "brand": brand,
+                    "model": model,
+                    "current_price": None,
+                    "mrp": mrp_val,
+                    "lowest_price_seen": None,
+                    "discount_percent": None,
+                    "available_sizes": ["UK 9.5", "UK 10", "UK 10.5", "UK 11"],
+                    "platform": None,
+                    "url": None,
+                    "image_url": None,
+                    "last_seen": None,
+                    "deal_type": "tracking",
+                    "status": "TRACKING",
+                }
+        return catalog
+
+    def save_catalog(self, catalog: dict[str, dict[str, Any]]) -> None:
+        """Save tracked shoe catalog cache to JSON file."""
+        try:
+            with open(CATALOG_CACHE_PATH, "w", encoding="utf-8") as f:
+                json.dump(catalog, f, indent=2)
+        except Exception as e:
+            logger.error("Failed to save running shoes catalog cache: %s", e)
+
+    def get_tracked_catalog(self) -> List[dict[str, Any]]:
+        """Return full list of 56 monitored shoe silhouettes with real-time status."""
+        cat = self.load_catalog()
+        items = list(cat.values())
+        status_rank = {"ALL-TIME LOW": 0, "STEAL DEAL": 1, "DEAL ACTIVE": 2, "TRACKING": 3}
+        items.sort(key=lambda x: (
+            status_rank.get(x.get("status", "TRACKING"), 4),
+            0 if x.get("current_price") else 1,
+            x.get("brand", ""),
+            x.get("model", "")
+        ))
+        return items
 
     # ==========================================
     # PLATFORM HARVESTERS
@@ -971,18 +1090,86 @@ class RunningShoesRadar:
         # Filter deals by active enabled brands
         fresh_deals = [d for d in fresh_deals if self.is_brand_enabled(d.brand)]
 
-        # Merge with cached deals
+        # Process against 56-model tracked catalog & detect ATLs / Steal Deals
+        catalog = self.load_catalog()
         cached = self.load_cached_deals()
         cached_dict = {d["id"]: d for d in cached}
+        qualified_deals: List[RunningShoeDeal] = []
 
-        new_alerts = 0
         for deal in fresh_deals:
+            key = f"{deal.brand}_{deal.model}".lower().replace(" ", "_").replace("-", "_")
+            cat_entry = catalog.get(key)
+            if not cat_entry:
+                cat_entry = {
+                    "id": f"shoe_{key}",
+                    "brand": deal.brand,
+                    "model": deal.model,
+                    "current_price": deal.price,
+                    "mrp": deal.mrp,
+                    "lowest_price_seen": deal.price,
+                    "discount_percent": deal.discount_percent,
+                    "available_sizes": deal.available_sizes,
+                    "platform": deal.platform,
+                    "url": deal.url,
+                    "image_url": deal.image_url,
+                    "last_seen": deal.detected_at,
+                    "deal_type": "tracking",
+                    "status": "TRACKING",
+                }
+
+            prev_lowest = cat_entry.get("lowest_price_seen")
+            is_atl = (prev_lowest is not None and deal.price < float(prev_lowest))
+            is_deep_clearance = bool(deal.discount_percent and deal.discount_percent >= 50.0 and (deal.mrp or 0) >= 8000)
+            is_target_met = (TARGET_PRICE_MIN <= deal.price <= TARGET_PRICE_MAX)
+
+            new_lowest = min(float(prev_lowest), deal.price) if prev_lowest is not None else deal.price
+            cat_entry["lowest_price_seen"] = new_lowest
+            deal.lowest_price_seen = new_lowest
+
+            # Check if this qualifies as an active steal deal or ATL
+            if is_atl or is_deep_clearance or is_target_met:
+                if is_atl:
+                    deal.deal_type = "all_time_low"
+                    cat_entry["status"] = "ALL-TIME LOW"
+                elif is_deep_clearance:
+                    deal.deal_type = "deep_clearance"
+                    cat_entry["status"] = "STEAL DEAL"
+                else:
+                    deal.deal_type = "target_met"
+                    cat_entry["status"] = "DEAL ACTIVE"
+
+                cat_entry["deal_type"] = deal.deal_type
+                qualified_deals.append(deal)
+            else:
+                if cat_entry.get("status") not in ("ALL-TIME LOW", "STEAL DEAL", "DEAL ACTIVE"):
+                    cat_entry["status"] = "TRACKING"
+                    cat_entry["deal_type"] = "tracking"
+
+            # Update latest catalog market observation
+            if cat_entry.get("current_price") is None or deal.price <= float(cat_entry["current_price"]):
+                cat_entry["current_price"] = deal.price
+                if deal.mrp:
+                    cat_entry["mrp"] = deal.mrp
+                cat_entry["discount_percent"] = deal.discount_percent
+                cat_entry["available_sizes"] = deal.available_sizes
+                cat_entry["platform"] = deal.platform
+                cat_entry["url"] = deal.url
+                if deal.image_url:
+                    cat_entry["image_url"] = deal.image_url
+                cat_entry["last_seen"] = deal.detected_at
+
+            catalog[key] = cat_entry
+
+        self.save_catalog(catalog)
+
+        # Merge qualified deals with cache and alert on new drops
+        new_alerts = 0
+        for deal in qualified_deals:
             deal_dict = asdict(deal)
             existing = cached_dict.get(deal.id)
             
-            # If within alert trigger range (₹4,000 – ₹5,999) and new / dropped
-            should_alert = TARGET_PRICE_MIN <= deal.price <= TARGET_PRICE_MAX
-            if should_alert and (not existing or float(deal.price) < float(existing.get("price", 99999))):
+            should_alert = not existing or float(deal.price) < float(existing.get("price", 99999))
+            if should_alert:
                 deal_dict["is_notified"] = True
                 await self._dispatch_telegram_alert(deal)
                 new_alerts += 1
@@ -1003,7 +1190,8 @@ class RunningShoesRadar:
             "status": "success",
             "active": True,
             "total_deals": len(merged_deals),
-            "new_deals_found": len(fresh_deals),
+            "new_deals_found": len(qualified_deals),
+            "total_tracked_silhouettes": len(catalog),
             "alerts_dispatched": new_alerts,
             "last_sweep": cfg["last_sweep"],
             "deals": merged_deals,
@@ -1015,11 +1203,24 @@ class RunningShoesRadar:
         discount_str = f" • *{deal.discount_percent}% OFF*" if deal.discount_percent else ""
         mrp_str = f" ~₹{deal.mrp:,.0f}~" if deal.mrp and deal.mrp > deal.price else ""
 
+        if deal.deal_type == "all_time_low":
+            header = "🚨 *ALL-TIME LOW (ATL) RUNNING SHOE DETECTED!*"
+            deal_badge = "📉 *RECORD ALL-TIME LOW PRICE!*"
+        elif deal.deal_type == "deep_clearance":
+            header = "🔥 *DEEP CLEARANCE RUNNING SHOE STEAL!*"
+            deal_badge = "⚡ *MASSIVE CLEARANCE DISCOUNT (50%+ OFF)*"
+        else:
+            header = "👟 *RUNNING SHOE DEAL DETECTED (UNDER ₹6,000)!*"
+            deal_badge = "🎯 *TARGET THRESHOLD HIT*"
+
+        atl_str = f"\n📉 *Lowest Price Recorded:* ₹{deal.lowest_price_seen:,.0f}" if deal.lowest_price_seen else ""
+
         message = (
-            f"👟 *RUNNING SHOE DEAL DETECTED!*\n\n"
+            f"{header}\n\n"
             f"🔥 *Model:* {deal.brand} {deal.model}\n"
             f"🏷️ *Full Title:* {deal.title}\n"
             f"💰 *Price:* ₹{deal.price:,.0f}{mrp_str}{discount_str}\n"
+            f"{deal_badge}{atl_str}\n"
             f"📏 *Verified Sizes:* `{sizes_str}`\n"
             f"🏪 *Store:* {deal.platform.upper()}\n\n"
             f"🛒 *Direct Link:* [Buy on {deal.platform.capitalize()}]({deal.url})"

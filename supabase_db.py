@@ -171,6 +171,12 @@ class SupabaseDatabase:
         payload = {"is_active": active, "last_checked": _now()}
         await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
 
+    async def update_target_price(self, product_id: int, target_price: float) -> bool:
+        """Update target price threshold in Supabase PostgREST with retries."""
+        payload = {"target_price": float(target_price)}
+        resp = await self._request("PATCH", f"/products?id=eq.{product_id}", json=payload)
+        return resp.status_code in (200, 204)
+
     async def update_price(
         self, product_id: int, price: Optional[float], title: Optional[str] = None
     ) -> None:

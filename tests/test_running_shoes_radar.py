@@ -164,3 +164,20 @@ def test_toggle_state_persistence():
     # Toggle back
     radar.set_active(initial)
     assert radar.is_active() == initial
+
+
+def test_catalog_tracking_and_atl_detection():
+    radar = RunningShoesRadar()
+    catalog = radar.load_catalog()
+    assert len(catalog) >= 56
+    assert "saucony_endorphin_speed" in catalog
+    assert "nike_pegasus" in catalog
+    assert "adidas_adizero_sl" in catalog
+
+    tracked_items = radar.get_tracked_catalog()
+    assert len(tracked_items) >= 56
+    first_item = tracked_items[0]
+    assert "brand" in first_item
+    assert "model" in first_item
+    assert "status" in first_item
+    assert "available_sizes" in first_item

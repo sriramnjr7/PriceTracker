@@ -2497,6 +2497,133 @@
       color: var(--accent-primary);
       opacity: 0.8;
     }
+
+    /* Target Price Click-To-Edit Styling */
+    .target-price-clickable {
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+      border-radius: var(--radius-sm);
+      padding: 1px 4px;
+      margin: -1px -4px;
+    }
+    .target-price-clickable:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .target-price-clickable:hover .price-box-label {
+      color: var(--accent-emerald);
+    }
+    .target-price-clickable:hover .price-box-val-target {
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
+    }
+
+    /* Running Shoes Mode Switcher & Card Enhancements */
+    .shoes-view-mode-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .shoes-mode-pills {
+      display: inline-flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      gap: 3px;
+    }
+    .shoes-mode-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+    .shoes-mode-btn.active {
+      background: var(--accent-primary);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+    }
+    .shoes-mode-btn .mode-count-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+    .shoes-search-wrap {
+      flex: 1;
+      max-width: 320px;
+      min-width: 200px;
+    }
+    .shoes-search-wrap .form-input-sm {
+      height: 34px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .shoe-badge-atl {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.18);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      font-family: var(--font-mono);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .shoe-badge-steal {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(239, 68, 68, 0.18);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      font-family: var(--font-mono);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .shoe-badge-tracking {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+    }
+    .shoe-atl-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: var(--space-3);
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+    }
+
     /* ==========================================================================
        TAB 3: SYSTEM LOGS & TELEMETRY STYLES
        ========================================================================== */
@@ -3821,6 +3948,25 @@
               </div>
             </div>
 
+            <!-- Running Shoes View Switcher & Live Search -->
+            <div class="shoes-view-mode-bar">
+              <div class="shoes-mode-pills">
+                <button type="button" class="shoes-mode-btn active" id="btn-mode-deals" onclick="setShoeViewMode('deals')">
+                  <span>🔥 Active Steal Deals</span>
+                  <span class="mode-count-tag" id="badge-mode-deals-count">0</span>
+                </button>
+                <button type="button" class="shoes-mode-btn" id="btn-mode-all" onclick="setShoeViewMode('all_tracked')">
+                  <span>👟 All Tracked Shoes (56 Silhouettes)</span>
+                  <span class="mode-count-tag" id="badge-mode-all-count">56</span>
+                </button>
+              </div>
+
+              <!-- Shoe Quick Search Box -->
+              <div class="shoes-search-wrap">
+                <input type="text" id="shoes-search-input" class="form-input form-input-sm" placeholder="Search shoes (e.g. Pegasus, Novablast, SL2)..." oninput="onShoeSearchInput(this.value)">
+              </div>
+            </div>
+
             <!-- Brand Filter Chips -->
             <div class="filter-bar" style="margin-bottom: var(--space-5);">
               <button class="filter-btn shoe-filter-btn active" onclick="setShoeBrandFilter('all', this)">All Brands</button>
@@ -4322,6 +4468,58 @@
       </div>
     </div>
 
+    <!-- ========================================================================
+         MODAL: QUICK-EDIT TARGET ALERT PRICE
+         ======================================================================== -->
+    <div class="modal-backdrop" id="modal-edit-target" role="dialog" aria-modal="true" aria-labelledby="edit-target-modal-title">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="edit-target-modal-title">Edit Target Alert Price</h2>
+            <div id="edit-target-product-title" style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Product</div>
+          </div>
+          <button class="modal-close-btn" onclick="closeEditTargetModal()" aria-label="Close dialog">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <form id="edit-target-form" onsubmit="submitEditTargetPrice(event)">
+          <input type="hidden" id="edit-target-product-id">
+
+          <!-- Price context box -->
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: var(--space-4); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-secondary);">Current Observed Price:</span>
+            <span id="edit-target-curr-price-badge" style="font-size: 13.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary);">₹0</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-target-input">New Target Alert Floor (₹ INR)</label>
+            <input type="number" step="1" id="edit-target-input" class="form-input" placeholder="e.g. 3500" required>
+            
+            <!-- Quick Adjustment Delta Chips -->
+            <div class="preset-pill-row" style="margin-top: 8px;">
+              <button type="button" class="pill-btn" onclick="adjustEditTargetDelta(-500)">-₹500</button>
+              <button type="button" class="pill-btn" onclick="adjustEditTargetDelta(-1000)">-₹1,000</button>
+              <button type="button" class="pill-btn" onclick="adjustEditTargetPercent(-0.10)">-10%</button>
+              <button type="button" class="pill-btn" onclick="adjustEditTargetPercent(-0.20)">-20%</button>
+              <button type="button" class="pill-btn" id="btn-match-current" onclick="matchCurrentPrice()">Match Current</button>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-ui btn-ui-secondary" style="flex: 1; justify-content: center;" onclick="closeEditTargetModal()">Cancel</button>
+            <button type="submit" class="btn-ui btn-ui-primary" style="flex: 1; justify-content: center;" id="btn-edit-target-submit">
+              <span id="edit-target-submit-text">Update Target Floor</span>
+              <svg id="edit-target-spinner" style="display:none;" class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast-pill" class="toast-pill" role="status" aria-live="polite"></div>
 
@@ -4416,7 +4614,10 @@
     let runningShoesState = {
       is_active: true,
       deals: [],
+      tracked_shoes: [],
+      viewMode: "deals", // "deals" | "all_tracked"
       filterBrand: "all",
+      searchQuery: "",
     };
 
     async function fetchRunningShoesData() {
@@ -4426,6 +4627,7 @@
         const data = await res.json();
         runningShoesState.is_active = data.is_active;
         runningShoesState.deals = data.deals || [];
+        runningShoesState.tracked_shoes = data.tracked_shoes || [];
         updateRunningShoesUI(data);
       } catch (err) {
         console.error("Failed to fetch running shoes status:", err);
@@ -4439,6 +4641,8 @@
       const kpiCount = document.getElementById("kpi-shoes-deals-count");
       const navBadge = document.getElementById("nav-shoes-count-badge");
       const lastSweepEl = document.getElementById("shoes-last-sweep-time");
+      const badgeDeals = document.getElementById("badge-mode-deals-count");
+      const badgeAll = document.getElementById("badge-mode-all-count");
 
       const isActive = data.is_active;
       if (toggle) toggle.checked = isActive;
@@ -4454,7 +4658,11 @@
       }
 
       const totalDeals = (data.deals || []).length;
+      const totalTracked = (data.tracked_shoes || []).length || 56;
       if (kpiCount) kpiCount.textContent = totalDeals;
+      if (badgeDeals) badgeDeals.textContent = totalDeals;
+      if (badgeAll) badgeAll.textContent = totalTracked;
+
       if (navBadge) {
         navBadge.textContent = totalDeals;
         navBadge.style.display = totalDeals > 0 ? "inline-flex" : "none";
@@ -4547,6 +4755,20 @@
       }
     }
 
+    function setShoeViewMode(mode) {
+      runningShoesState.viewMode = mode;
+      const btnDeals = document.getElementById("btn-mode-deals");
+      const btnAll = document.getElementById("btn-mode-all");
+      if (btnDeals) btnDeals.classList.toggle("active", mode === "deals");
+      if (btnAll) btnAll.classList.toggle("active", mode === "all_tracked");
+      renderRunningShoeCards();
+    }
+
+    function onShoeSearchInput(val) {
+      runningShoesState.searchQuery = (val || "").trim().toLowerCase();
+      renderRunningShoeCards();
+    }
+
     function setShoeBrandFilter(brand, btnEl) {
       runningShoesState.filterBrand = brand;
       document.querySelectorAll(".shoe-filter-btn").forEach(b => b.classList.remove("active"));
@@ -4558,86 +4780,269 @@
       const container = document.getElementById("shoes-deals-container");
       if (!container) return;
 
-      let deals = runningShoesState.deals || [];
+      const isAllTrackedMode = runningShoesState.viewMode === "all_tracked";
+      let list = isAllTrackedMode ? (runningShoesState.tracked_shoes || []) : (runningShoesState.deals || []);
+
+      // Apply Brand filter
       if (runningShoesState.filterBrand && runningShoesState.filterBrand !== "all") {
-        deals = deals.filter(d => (d.brand || "").toLowerCase() === runningShoesState.filterBrand.toLowerCase());
+        list = list.filter(d => (d.brand || "").toLowerCase() === runningShoesState.filterBrand.toLowerCase());
       }
 
-      if (!deals.length) {
-        container.innerHTML = `
-          <div class="shoe-empty-state" style="grid-column: 1 / -1;">
-            <div class="shoe-empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 16v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
-                <path d="M2 16h20v4H2z"></path>
-                <path d="M7 10l2-4h6l2 4"></path>
-              </svg>
+      // Apply Search filter
+      if (runningShoesState.searchQuery) {
+        const q = runningShoesState.searchQuery;
+        list = list.filter(d => 
+          (d.model || "").toLowerCase().includes(q) ||
+          (d.brand || "").toLowerCase().includes(q) ||
+          (d.title || "").toLowerCase().includes(q)
+        );
+      }
+
+      if (!list.length) {
+        if (isAllTrackedMode) {
+          container.innerHTML = `
+            <div class="shoe-empty-state" style="grid-column: 1 / -1;">
+              <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+                No Tracked Shoes Match Search
+              </h3>
+              <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+                Try clearing your search query or choosing another brand from the filter bar above.
+              </p>
             </div>
-            <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
-              Autonomous Radar Armed &amp; Scanning
-            </h3>
-            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
-              The engine is actively probing Myntra, Flipkart, Tata CLiQ, and Ajio for the 26 whitelist performance models. Verified deals trigger alerts when priced between ₹4,000 – ₹5,999 in UK 9.5, 10, 10.5, or 11.
-            </p>
-            <div style="display: inline-flex; gap: 8px;">
-              <button class="btn-ui btn-ui-primary" onclick="handleShoesSweepClick()">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          `;
+        } else {
+          container.innerHTML = `
+            <div class="shoe-empty-state" style="grid-column: 1 / -1;">
+              <div class="shoe-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M4 16v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
+                  <path d="M2 16h20v4H2z"></path>
+                  <path d="M7 10l2-4h6l2 4"></path>
                 </svg>
-                <span>Trigger On-Demand Sweep</span>
-              </button>
+              </div>
+              <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+                Autonomous Radar Scanning for Steal Deals &amp; ATLs
+              </h3>
+              <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
+                The harvester automatically catches All-Time Lows (ATL), deep clearances (50%+ OFF), and deals under ₹5,999 across all 56 performance models.
+              </p>
+              <div style="display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                <button class="btn-ui btn-ui-primary" onclick="handleShoesSweepClick()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                  </svg>
+                  <span>Trigger On-Demand Sweep</span>
+                </button>
+                <button class="btn-ui btn-ui-secondary" onclick="setShoeViewMode('all_tracked')">
+                  <span>👟 View All 56 Tracked Silhouettes</span>
+                </button>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
         return;
       }
 
-      container.innerHTML = deals.map(deal => {
-        const sizesHtml = (deal.available_sizes || []).map(sz => `<span class="shoe-size-pill">${escapeHtml(sz)} IN STOCK</span>`).join("");
-        const mrpHtml = deal.mrp && deal.mrp > deal.price ? `<span class="shoe-price-mrp">₹${Number(deal.mrp).toLocaleString('en-IN')}</span>` : "";
-        const discountHtml = deal.discount_percent ? `<span class="shoe-price-discount">${deal.discount_percent}% OFF</span>` : "";
-        const imgHtml = deal.image_url ? `<img src="${escapeHtml(deal.image_url)}" alt="${escapeHtml(deal.title)}" loading="lazy">` : `
-          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      container.innerHTML = list.map(item => {
+        const isDeal = !isAllTrackedMode || item.deal_type === "all_time_low" || item.deal_type === "deep_clearance" || item.deal_type === "target_met" || (item.current_price && item.current_price <= 5999);
+        const sizesHtml = (item.available_sizes || []).map(sz => `<span class="shoe-size-pill">${escapeHtml(sz)}</span>`).join("");
+        
+        // Price displays
+        const price = item.current_price || item.price;
+        const mrp = item.mrp;
+        const mrpHtml = mrp && price && mrp > price ? `<span class="shoe-price-mrp">₹${Number(mrp).toLocaleString('en-IN')}</span>` : "";
+        const discount = item.discount_percent || (mrp && price && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : null);
+        const discountHtml = discount ? `<span class="shoe-price-discount">${discount}% OFF</span>` : "";
+
+        // Status badge
+        let badgeHtml = "";
+        if (item.deal_type === "all_time_low" || item.status === "ALL-TIME LOW") {
+          badgeHtml = `<span class="shoe-badge-atl">🚨 ALL-TIME LOW</span>`;
+        } else if (item.deal_type === "deep_clearance" || item.status === "STEAL DEAL") {
+          badgeHtml = `<span class="shoe-badge-steal">🔥 STEAL DEAL</span>`;
+        } else if (item.deal_type === "target_met" || item.status === "DEAL ACTIVE" || (price && price <= 5999)) {
+          badgeHtml = `<span class="shoe-badge-atl" style="background:rgba(59,130,246,0.18); color:#60a5fa; border-color:rgba(59,130,246,0.4);">🎯 UNDER ₹6K</span>`;
+        } else if (price) {
+          badgeHtml = `<span class="shoe-badge-tracking">📡 TRACKED</span>`;
+        } else {
+          badgeHtml = `<span class="shoe-badge-tracking" style="color:var(--text-dim);">⏳ AWAITING SWEEP</span>`;
+        }
+
+        // Image or placeholder icon
+        const imgHtml = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.title || item.model)}" loading="lazy">` : `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:4px;">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M4 16v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
               <path d="M2 16h20v4H2z"></path>
               <path d="M7 10l2-4h6l2 4"></path>
             </svg>
+            <span style="font-size:10px; font-family:var(--font-mono); text-transform:uppercase;">${escapeHtml(item.brand)}</span>
           </div>
         `;
+
+        // Direct store button vs sweep trigger
+        const storeName = (item.platform || "RETAILER").toUpperCase();
+        const actionBtn = item.url ? `
+          <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="shoe-btn-buy">
+            <span>Buy on ${storeName}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        ` : `
+          <button type="button" class="shoe-btn-buy" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid var(--border-subtle);" onclick="handleShoesSweepClick()">
+            <span>Check Stores Now</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </button>
+        `;
+
+        // ATL info row
+        const atlPrice = item.lowest_price_seen || (item.deal_type === "all_time_low" ? price : null);
+        const atlRow = atlPrice ? `
+          <div class="shoe-atl-row">
+            <span>Historical ATL:</span>
+            <strong style="color: var(--accent-emerald);">₹${Number(atlPrice).toLocaleString('en-IN')}</strong>
+          </div>
+        ` : '';
 
         return `
           <div class="shoe-card">
             <div class="shoe-card-media">
               ${imgHtml}
-              <span class="shoe-card-platform-badge">${escapeHtml(deal.platform || 'STORE')}</span>
+              <span class="shoe-card-platform-badge">${escapeHtml(item.platform || '4 STORES')}</span>
             </div>
             <div class="shoe-card-body">
               <div class="shoe-card-brand-row">
-                <span class="shoe-card-brand">${escapeHtml(deal.brand || '')}</span>
-                <span class="shoe-card-model-badge">${escapeHtml(deal.model || '')}</span>
+                <span class="shoe-card-brand">${escapeHtml(item.brand || '')}</span>
+                ${badgeHtml}
               </div>
-              <h3 class="shoe-card-title" title="${escapeHtml(deal.title || '')}">${escapeHtml(deal.title || '')}</h3>
+              <h3 class="shoe-card-title" title="${escapeHtml(item.title || item.model)}">${escapeHtml(item.model || item.title)}</h3>
+              
               <div class="shoe-card-sizes-row">
                 ${sizesHtml}
               </div>
+
+              ${atlRow}
+
               <div class="shoe-card-price-row">
-                <span class="shoe-price-current">₹${Number(deal.price).toLocaleString('en-IN')}</span>
+                <span class="shoe-price-current">${price ? '₹' + Number(price).toLocaleString('en-IN') : '<span style="font-size:13px;color:var(--text-dim);">Checking...</span>'}</span>
                 ${mrpHtml}
                 ${discountHtml}
               </div>
-              <a href="${escapeHtml(deal.url || '#')}" target="_blank" rel="noopener noreferrer" class="shoe-btn-buy">
-                <span>Buy on ${(deal.platform || 'Store').toUpperCase()}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
+
+              ${actionBtn}
             </div>
           </div>
         `;
       }).join("");
+    }
+
+    // ==========================================================================
+    // TARGET PRICE EDIT CONTROLLER (In-Place / Optimistic)
+    // ==========================================================================
+    let currentEditTargetId = null;
+    let currentEditProductPrice = 0;
+
+    function openEditTargetModal(productId, currentTarget, title, currentPrice) {
+      currentEditTargetId = productId;
+      currentEditProductPrice = Number(currentPrice) || 0;
+      
+      const modal = document.getElementById("modal-edit-target");
+      const titleEl = document.getElementById("edit-target-product-title");
+      const idEl = document.getElementById("edit-target-product-id");
+      const currPriceBadge = document.getElementById("edit-target-curr-price-badge");
+      const inputEl = document.getElementById("edit-target-input");
+
+      if (idEl) idEl.value = productId;
+      if (titleEl) titleEl.textContent = title || "Product #" + productId;
+      if (currPriceBadge) {
+        currPriceBadge.textContent = currentEditProductPrice > 0 ? `₹${currentEditProductPrice.toLocaleString('en-IN')}` : "Out of Stock / Pending";
+      }
+      if (inputEl) {
+        inputEl.value = currentTarget ? Math.round(Number(currentTarget)) : (currentEditProductPrice > 0 ? Math.round(currentEditProductPrice * 0.9) : "");
+        setTimeout(() => {
+          inputEl.focus();
+          inputEl.select();
+        }, 80);
+      }
+
+      if (modal) modal.classList.add("is-open");
+    }
+
+    function closeEditTargetModal() {
+      const modal = document.getElementById("modal-edit-target");
+      if (modal) modal.classList.remove("is-open");
+      currentEditTargetId = null;
+    }
+
+    function adjustEditTargetDelta(delta) {
+      const inputEl = document.getElementById("edit-target-input");
+      if (!inputEl) return;
+      let val = Number(inputEl.value) || currentEditProductPrice || 0;
+      val = Math.max(1, Math.round(val + delta));
+      inputEl.value = val;
+    }
+
+    function adjustEditTargetPercent(pct) {
+      const inputEl = document.getElementById("edit-target-input");
+      if (!inputEl) return;
+      const base = currentEditProductPrice > 0 ? currentEditProductPrice : (Number(inputEl.value) || 1000);
+      const val = Math.max(1, Math.round(base * (1 + pct)));
+      inputEl.value = val;
+    }
+
+    function matchCurrentPrice() {
+      const inputEl = document.getElementById("edit-target-input");
+      if (!inputEl || currentEditProductPrice <= 0) {
+        showToast("⚠️ Current price is not available yet");
+        return;
+      }
+      inputEl.value = Math.round(currentEditProductPrice);
+    }
+
+    async function submitEditTargetPrice(e) {
+      e.preventDefault();
+      if (!currentEditTargetId) return;
+
+      const inputEl = document.getElementById("edit-target-input");
+      const newTarget = parseFloat(inputEl.value);
+      if (!newTarget || newTarget <= 0) {
+        showToast("⚠️ Target price must be greater than 0");
+        return;
+      }
+
+      const btnText = document.getElementById("edit-target-submit-text");
+      const spinner = document.getElementById("edit-target-spinner");
+      if (btnText) btnText.style.display = "none";
+      if (spinner) spinner.style.display = "inline";
+
+      try {
+        const res = await fetch(`/api/products/${currentEditTargetId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target_price: newTarget })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to update target price");
+
+        // Optimistic in-place update in rawProductsList without full page refresh
+        const p = rawProductsList.find(x => Number(x.id) === Number(currentEditTargetId));
+        if (p) {
+          p.target_price = newTarget;
+        }
+
+        closeEditTargetModal();
+        showToast(`🎯 Target price updated to ₹${Number(newTarget).toLocaleString('en-IN')}`);
+        applyFilters(); // Re-renders cards with updated target & progress bar instantly!
+      } catch (err) {
+        console.error("Target update failed:", err);
+        showToast("⚠️ " + err.message);
+      } finally {
+        if (btnText) btnText.style.display = "inline";
+        if (spinner) spinner.style.display = "none";
+      }
     }
 
     function setTargetPreset(val) {
@@ -4935,9 +5340,9 @@
                   <span class="price-box-label">Current</span>
                   <span class="price-box-val-current ${isTargetMet ? 'target-reached' : ''}">${currentPriceStr}</span>
                 </div>
-                <div class="price-box-col" style="text-align: right;">
-                  <span class="price-box-label">Target Floor</span>
-                  <span class="price-box-val-target">${targetPriceStr}</span>
+                <div class="price-box-col target-price-clickable" style="text-align: right;" onclick="openEditTargetModal(${p.id}, ${p.target_price || 0}, '${escapeHtml(p.title || p.url).replace(/'/g, "\\'")}', ${p.current_price || 0})" title="Click to edit target price">
+                  <span class="price-box-label">Target Floor <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:middle; opacity:0.6;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span>
+                  <span class="price-box-val-target cursor-pointer">${targetPriceStr}</span>
                 </div>
               </div>
 
@@ -4955,6 +5360,9 @@
             <div class="product-footer">
               <span class="last-checked-label">${timeAgo(p.last_checked)}</span>
               <div class="card-actions">
+                <button class="btn-action-icon edit-target-btn" title="Edit Target Alert Price" onclick="openEditTargetModal(${p.id}, ${p.target_price || 0}, '${escapeHtml(p.title || p.url).replace(/'/g, "\\'")}', ${p.current_price || 0})" aria-label="Edit target price">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
                 <button class="btn-action-icon" title="Price History Graph" onclick="openPriceHistoryModal(${p.id})" aria-label="Price history graph">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                 </button>

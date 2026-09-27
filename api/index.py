@@ -99,6 +99,10 @@ class AddProductPayload(BaseModel):
     target_price: float
 
 
+class UpdateTargetPricePayload(BaseModel):
+    target_price: float
+
+
 class LoginPayload(BaseModel):
     email: Optional[str] = None
     password: str
@@ -186,6 +190,19 @@ async def root(request: Request):
     elif re.search(r"products/(\d+)/toggle", clean) and method == "POST":
         match = re.search(r"products/(\d+)/toggle", clean)
         return await toggle_single_product(int(match.group(1)))
+    elif re.search(r"products/(\d+)/target-price", clean) and method == "POST":
+        match = re.search(r"products/(\d+)/target-price", clean)
+        data = await request.json()
+        payload = UpdateTargetPricePayload(**data)
+        return await api_update_product_target_price(int(match.group(1)), payload)
+    elif re.search(r"products/(\d+)$", clean) and method == "PATCH":
+        match = re.search(r"products/(\d+)$", clean)
+        data = await request.json()
+        payload = UpdateTargetPricePayload(**data)
+        return await api_update_product_target_price(int(match.group(1)), payload)
+    elif re.search(r"products/(\d+)$", clean) and method == "DELETE":
+        match = re.search(r"products/(\d+)$", clean)
+        return await delete_single_product(int(match.group(1)))
     elif clean in ("api/products", "products"):
         if method == "POST":
             data = await request.json()
@@ -456,6 +473,37 @@ async def delete_single_product(product_id: int):
         await db.close()
 
 
+@app.patch("/api/products/{product_id}")
+@app.post("/api/products/{product_id}/target-price")
+@app.patch("/api/index.py/api/products/{product_id}")
+@app.post("/api/index.py/api/products/{product_id}/target-price")
+async def api_update_product_target_price(product_id: int, payload: UpdateTargetPricePayload):
+    """Update target alert price for an existing monitored product."""
+    if payload.target_price <= 0:
+        raise HTTPException(status_code=400, detail="Target price must be greater than zero")
+
+    db = get_database(settings)
+    await db.initialize()
+    try:
+        product = await db.get_product(product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        ok = await db.update_target_price(product_id, payload.target_price)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Failed to update target price")
+
+        updated = await db.get_product(product_id)
+        return {
+            "status": "success",
+            "id": product_id,
+            "target_price": updated.target_price if updated else payload.target_price,
+            "current_price": updated.current_price if updated else None,
+        }
+    finally:
+        await db.close()
+
+
 @app.get("/api/products/{product_id}/history")
 @app.get("/products/{product_id}/history")
 @app.get("/api/index.py/products/{product_id}/history")
@@ -616,6 +664,7 @@ async def api_get_running_shoes_status():
     """Fetch real-time telemetry, configuration, and detected deals for running shoes."""
     cfg = shoes_radar.load_config()
     deals = shoes_radar.load_cached_deals()
+    tracked_shoes = shoes_radar.get_tracked_catalog()
     return JSONResponse(
         content={
             "status": "online",
@@ -625,7 +674,9 @@ async def api_get_running_shoes_status():
             "max_price": cfg.get("max_price", 5999),
             "target_sizes": cfg.get("target_sizes", ["UK 9.5", "UK 10", "UK 10.5", "UK 11"]),
             "total_deals": len(deals),
+            "total_tracked": len(tracked_shoes),
             "deals": deals,
+            "tracked_shoes": tracked_shoes,
             "whitelist_brands": ["Saucony", "Reebok", "Hoka", "Brooks", "Puma", "Nike", "Adidas", "Asics", "New Balance", "Skechers"],
             "enabled_brands": cfg.get("enabled_brands", {
                 "Saucony": True,
