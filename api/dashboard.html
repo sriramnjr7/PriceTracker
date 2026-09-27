@@ -628,6 +628,24 @@
       border-color: var(--border-medium);
     }
 
+    .btn-ui-ghost {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    .btn-ui-ghost:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--border-medium);
+      color: var(--text-primary);
+    }
+
+    .btn-sm {
+      height: 26px;
+      padding: 0 8px;
+      font-size: 11px;
+    }
+
     .btn-ui-primary {
       background: #ffffff;
       color: #090a0f;
@@ -2551,6 +2569,234 @@
       border-radius: var(--radius-full);
       background: currentColor;
       display: inline-block;
+    .logs-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4);
+      margin-bottom: var(--space-5);
+    }
+    @media (max-width: 1024px) {
+      .logs-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 600px) {
+      .logs-kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 108px;
+      transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    .kpi-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-2);
+    }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .kpi-icon-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.9;
+    }
+    .kpi-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: var(--space-1);
+    }
+
+    /* VIP Steal Checker Panel */
+    .vip-sniper-panel {
+      background: rgba(14, 20, 32, 0.7);
+      border: 1px solid rgba(0, 255, 163, 0.22);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4) var(--space-5);
+      margin-bottom: var(--space-5);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+    .vip-sniper-panel::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 163, 0.6), rgba(0, 240, 255, 0.6), transparent);
+    }
+    .vip-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+    .vip-header-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .vip-header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 255, 163, 0.12);
+      border: 1px solid rgba(0, 255, 163, 0.3);
+      color: var(--accent-emerald);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+    .vip-panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+    .vip-panel-subtitle {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .vip-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-4);
+    }
+    @media (max-width: 860px) {
+      .vip-cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .vip-watch-card {
+      background: rgba(8, 11, 18, 0.7);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+    .vip-watch-card:hover {
+      border-color: rgba(0, 255, 163, 0.35);
+      background: rgba(12, 17, 28, 0.85);
+    }
+    .vip-watch-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .vip-watch-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #F8FAFC;
+      line-height: 1.35;
+    }
+    .vip-watch-tag {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      display: inline-block;
+      margin-top: 3px;
+    }
+    .vip-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .vip-status-pill.out-of-stock {
+      background: rgba(100, 116, 139, 0.15);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #94A3B8;
+    }
+    .vip-status-pill.in-stock {
+      background: rgba(0, 255, 163, 0.2);
+      border: 1px solid rgba(0, 255, 163, 0.5);
+      color: #00FFA3;
+      box-shadow: 0 0 12px rgba(0, 255, 163, 0.25);
+    }
+    .vip-metrics-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: var(--radius-sm);
+    }
+    .vip-metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .vip-metric-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .vip-metric-val {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .vip-watch-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .lvl-vip {
+      background: rgba(0, 255, 163, 0.16);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(0, 255, 163, 0.4);
     }
 
     .issues-spotlight-card {
@@ -3717,6 +3963,112 @@
               </div>
             </div>
 
+            <!-- VIP Watch Steal Checker Hub (Casio GBD-H2000 & GBD-300-9DR) -->
+            <div class="vip-sniper-panel" id="vip-sniper-panel">
+              <div class="vip-panel-header">
+                <div class="vip-header-title-wrap">
+                  <div class="vip-header-badge">
+                    <span class="status-pulse-dot" style="background:#00FFA3; box-shadow:0 0 8px #00FFA3;"></span>
+                    <span>VIP STEAL CHECKER • 60S LOOP</span>
+                  </div>
+                  <div>
+                    <div class="vip-panel-title">Casio G-Shock GBD-H2000 &amp; GBD-300 Surveillance Hub</div>
+                    <div class="vip-panel-subtitle">Dedicated ultra-high-frequency 60s probe for member-only silent restocks &amp; zero-dedupe Telegram sniper.</div>
+                  </div>
+                </div>
+                <div class="logs-header-actions" style="gap:8px;">
+                  <button class="btn-ui btn-ui-secondary btn-sm" id="btn-probe-vip" onclick="probeVIPNow()" title="Trigger instant live probe of both watches">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="22" y1="12" x2="18" y2="12"></line>
+                      <line x1="6" y1="12" x2="2" y2="12"></line>
+                      <line x1="12" y1="6" x2="12" y2="2"></line>
+                      <line x1="12" y1="22" x2="12" y2="18"></line>
+                    </svg>
+                    <span id="label-probe-vip">Probe VIP Now</span>
+                  </button>
+                  <button class="filter-btn log-filter-btn btn-sm" id="filter-btn-vip-header" onclick="setLogLevelFilter('vip', document.getElementById('filter-btn-vip'))" title="Filter terminal to show exclusively VIP probe events">
+                    🎯 View VIP Probe Stream
+                  </button>
+                </div>
+              </div>
+
+              <!-- Dual Watch Real-Time Cards -->
+              <div class="vip-cards-grid">
+                <!-- Watch 1: GBD-H2000-1A9 -->
+                <div class="vip-watch-card" id="vip-card-gbdh2000">
+                  <div class="vip-watch-top">
+                    <div>
+                      <div class="vip-watch-name">CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD</div>
+                      <span class="vip-watch-tag">TAG: gbd-h2000 • ID #58</span>
+                    </div>
+                    <span class="vip-status-pill out-of-stock" id="vip-badge-h2000">
+                      <span class="status-pulse-dot"></span>
+                      <span id="vip-status-text-h2000">OUT OF STOCK</span>
+                    </span>
+                  </div>
+                  <div class="vip-metrics-row">
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Target Floor</span>
+                      <span class="vip-metric-val" style="color: var(--accent-emerald);">₹14,000</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Retail MRP</span>
+                      <span class="vip-metric-val" style="color: var(--text-muted); text-decoration: line-through;">₹44,995</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Steal Discount</span>
+                      <span class="vip-metric-val" style="color: var(--accent-cyan);">70% OFF</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Current Check</span>
+                      <span class="vip-metric-val" id="vip-price-h2000">₹13,499</span>
+                    </div>
+                  </div>
+                  <div class="vip-watch-footer">
+                    <span>Last probed: <strong id="vip-time-h2000" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-h2000" style="color:#64748B;">(HTTP 200)</span></span>
+                    <a href="https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Store &rarr;</a>
+                  </div>
+                </div>
+
+                <!-- Watch 2: GBD-300-9DR -->
+                <div class="vip-watch-card" id="vip-card-gbd300">
+                  <div class="vip-watch-top">
+                    <div>
+                      <div class="vip-watch-name">CASIO G-SHOCK GBD-300-9DR VIBRANT YELLOW</div>
+                      <span class="vip-watch-tag">TAG: gbd-300-9dr • ID #5</span>
+                    </div>
+                    <span class="vip-status-pill out-of-stock" id="vip-badge-300">
+                      <span class="status-pulse-dot"></span>
+                      <span id="vip-status-text-300">OUT OF STOCK</span>
+                    </span>
+                  </div>
+                  <div class="vip-metrics-row">
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Target Floor</span>
+                      <span class="vip-metric-val" style="color: var(--accent-emerald);">₹4,000</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Retail MRP</span>
+                      <span class="vip-metric-val" style="color: var(--text-muted); text-decoration: line-through;">₹11,495</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Steal Discount</span>
+                      <span class="vip-metric-val" style="color: var(--accent-cyan);">65% OFF</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Current Check</span>
+                      <span class="vip-metric-val" id="vip-price-300">₹3,495</span>
+                    </div>
+                  </div>
+                  <div class="vip-watch-footer">
+                    <span>Last probed: <strong id="vip-time-300" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-300" style="color:#64748B;">(HTTP 404)</span></span>
+                    <a href="https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-9dr-watch" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Store &rarr;</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Caught Issues Spotlight / Debugging Drawer (Collapsible) -->
             <div class="issues-spotlight-card" id="issues-spotlight-card" style="display: none;">
               <div class="issues-spotlight-header" onclick="toggleIssuesDrawer()">
@@ -3760,6 +4112,9 @@
                 <button class="filter-btn log-filter-btn active" id="filter-btn-all" onclick="setLogLevelFilter('all', this)">
                   All Logs <span class="filter-chip-num" id="filter-cnt-all">0</span>
                 </button>
+                <button class="filter-btn log-filter-btn" id="filter-btn-vip" onclick="setLogLevelFilter('vip', this)">
+                  🎯 VIP Sniper <span class="filter-chip-num" id="filter-cnt-vip" style="color: var(--accent-emerald);">0</span>
+                </button>
                 <button class="filter-btn log-filter-btn" id="filter-btn-issues" onclick="setLogLevelFilter('warning_error', this)">
                   ⚠️ Issues <span class="filter-chip-num" id="filter-cnt-issues" style="color: var(--accent-amber);">0</span>
                 </button>
@@ -3787,9 +4142,9 @@
 
                 <div class="logs-limit-select-wrap">
                   <select id="log-limit-select" class="log-limit-select" onchange="onLogLimitChange(this.value)">
-                    <option value="100">100 lines</option>
-                    <option value="250" selected>250 lines</option>
-                    <option value="500">500 lines</option>
+                    <option value="50">50 lines</option>
+                    <option value="100" selected>100 lines (Latest)</option>
+                    <option value="200">200 lines</option>
                   </select>
                 </div>
 
@@ -5001,9 +5356,10 @@
       refreshIntervalMs: 3000,
       currentLevelFilter: "all",
       searchQuery: "",
-      lineLimit: 250,
+      lineLimit: 100,
       cachedLogs: [],
       cachedIssues: [],
+      cachedVip: null,
       daemonInfo: null,
       isFetching: false,
       issuesDrawerOpen: true,
@@ -5034,6 +5390,7 @@
 
         logsState.cachedLogs = data.logs || [];
         logsState.cachedIssues = data.recent_issues || [];
+        logsState.cachedVip = data.vip || null;
         logsState.daemonInfo = data.daemon || {};
 
         updateLogsTelemetryUI(data);
@@ -5049,9 +5406,89 @@
       }
     }
 
+    async function probeVIPNow() {
+      const btn = document.getElementById("btn-probe-vip");
+      const label = document.getElementById("label-probe-vip");
+      if (btn) btn.disabled = true;
+      if (label) label.textContent = "Probing Bhawar API...";
+
+      try {
+        const res = await fetch("/api/logs/vip/probe", { method: "POST" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        showToast("🎯 VIP Probe Completed! Checked Casio GBD-H2000 & GBD-300.");
+        await fetchLogsData(false);
+      } catch (err) {
+        console.error("VIP probe error:", err);
+        showToast("⚠️ VIP Probe failed: " + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (label) label.textContent = "Probe VIP Now";
+      }
+    }
+
     function updateLogsTelemetryUI(data) {
       const daemon = data.daemon || {};
       const counts = daemon.counts || { total: 0, errors: 0, warnings: 0, info: 0 };
+
+      // VIP Watch Telemetry Cards
+      const vipData = data.vip || {};
+      const vipWatches = vipData.watches || [];
+      const vipLogs = vipData.logs || [];
+
+      // Update VIP count chip in toolbar
+      const cntVip = document.getElementById("filter-cnt-vip");
+      if (cntVip) cntVip.textContent = vipLogs.length || 0;
+
+      // Watch 1: GBD-H2000
+      const wH2000 = vipWatches.find(w => (w.tag || "").includes("h2000") || (w.short_name || "").includes("H2000")) || vipWatches[0];
+      if (wH2000) {
+        const badge = document.getElementById("vip-badge-h2000");
+        const statusText = document.getElementById("vip-status-text-h2000");
+        const priceEl = document.getElementById("vip-price-h2000");
+        const timeEl = document.getElementById("vip-time-h2000");
+        const httpEl = document.getElementById("vip-http-h2000");
+
+        if (badge && statusText) {
+          const inStock = wH2000.in_stock || wH2000.status === "IN_STOCK";
+          badge.className = `vip-status-pill ${inStock ? "in-stock" : "out-of-stock"}`;
+          statusText.textContent = inStock ? "🚨 IN STOCK NOW!" : "OUT OF STOCK";
+        }
+        if (priceEl && wH2000.price) {
+          priceEl.textContent = `₹${Number(wH2000.price).toLocaleString('en-IN')}`;
+        }
+        if (timeEl) {
+          timeEl.textContent = wH2000.last_checked || "Live";
+        }
+        if (httpEl && wH2000.http_status) {
+          httpEl.textContent = `(HTTP ${wH2000.http_status})`;
+        }
+      }
+
+      // Watch 2: GBD-300
+      const w300 = vipWatches.find(w => (w.tag || "").includes("300") || (w.short_name || "").includes("300")) || vipWatches[1];
+      if (w300) {
+        const badge = document.getElementById("vip-badge-300");
+        const statusText = document.getElementById("vip-status-text-300");
+        const priceEl = document.getElementById("vip-price-300");
+        const timeEl = document.getElementById("vip-time-300");
+        const httpEl = document.getElementById("vip-http-300");
+
+        if (badge && statusText) {
+          const inStock = w300.in_stock || w300.status === "IN_STOCK";
+          badge.className = `vip-status-pill ${inStock ? "in-stock" : "out-of-stock"}`;
+          statusText.textContent = inStock ? "🚨 IN STOCK NOW!" : "OUT OF STOCK";
+        }
+        if (priceEl && w300.price) {
+          priceEl.textContent = `₹${Number(w300.price).toLocaleString('en-IN')}`;
+        }
+        if (timeEl) {
+          timeEl.textContent = w300.last_checked || "Live";
+        }
+        if (httpEl && w300.http_status) {
+          httpEl.textContent = `(HTTP ${w300.http_status})`;
+        }
+      }
 
       // Sidebar Logs Badge
       const navLogsBadge = document.getElementById("nav-logs-badge");
@@ -5274,7 +5711,10 @@
         const lvl = (log.level || "INFO").toUpperCase();
         let lvlClass = "lvl-info";
         let rowClass = "log-line-row";
-        if (lvl === "ERROR" || lvl === "CRITICAL") {
+        if (lvl === "VIP" || (log.logger || "").includes("vip") || (log.raw || "").includes("[VIP SNIPER]")) {
+          lvlClass = "lvl-vip";
+          rowClass += " is-vip";
+        } else if (lvl === "ERROR" || lvl === "CRITICAL") {
           lvlClass = "lvl-error";
           rowClass += " is-error";
         } else if (lvl === "WARNING" || lvl === "WARN") {
@@ -5307,6 +5747,8 @@
 
     function highlightLogSyntax(msg) {
       return msg
+        .replace(/(\[VIP SNIPER\]|\[VIP WATCH\])/gi, '<span style="color:#00FFA3; font-weight:700;">$1</span>')
+        .replace(/(GBD-H2000-1A9|GBD-300-9DR)/gi, '<span style="color:#38BDF8; font-weight:700;">$1</span>')
         .replace(/(\b200 OK\b|\b201 Created\b|\bin stock\b)/gi, '<span style="color:#00FFA3; font-weight:600;">$1</span>')
         .replace(/(\b404 Not Found\b|\bout of stock\b)/gi, '<span style="color:#FFB800; font-weight:600;">$1</span>')
         .replace(/(Attempt \d+ failed|Connection was reset|curl: \(\d+\)|Recv failure|Error checking product)/gi, '<span style="color:#FF5252; font-weight:600; text-decoration:underline;">$1</span>')
@@ -5363,7 +5805,7 @@
     }
 
     function onLogLimitChange(val) {
-      logsState.lineLimit = parseInt(val, 10) || 250;
+      logsState.lineLimit = parseInt(val, 10) || 100;
       fetchLogsData(false);
     }
 

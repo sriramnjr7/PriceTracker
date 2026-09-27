@@ -174,6 +174,41 @@ VIP_WATCHES = [
 ]
 
 
+async def ship_vip_log_to_supabase(watch: dict, status_str: str, price: float, http_code: int, detail: str = ""):
+    """Instantly flush a structured VIP probe log into Supabase for Vercel/UI live view."""
+    supabase_url = getattr(settings, "supabase_url", None) or os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = getattr(settings, "supabase_key", None) or os.getenv("SUPABASE_KEY")
+    if not supabase_url or not supabase_key:
+        return
+    now_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    payload = [
+        {
+            "name": "VIP_LOG",
+            "category": status_str,
+            "platforms": watch.get("tag", "vip"),
+            "query": f"{watch['name']} -> {status_str} (Price: ₹{price:g}, Target: ₹{watch['target_price']:g})",
+            "negative_keywords": f"{now_stamp} [VIP SNIPER] {watch['name']} -> {status_str} [HTTP {http_code}] (Price: ₹{price:g} / Target: ₹{watch['target_price']:g}) {detail}".strip(),
+        },
+        {
+            "name": "DAEMON_LOG",
+            "category": "CRITICAL" if status_str == "IN_STOCK" else "INFO",
+            "platforms": "vip.sniper",
+            "query": f"[VIP WATCH] {watch['name']} -> {status_str} (Target: ₹{watch['target_price']:g})",
+            "negative_keywords": f"{now_stamp} [INFO] vip.sniper: {watch['name']} -> {status_str} (Price: ₹{price:g}, Target: ₹{watch['target_price']:g}, HTTP {http_code})",
+        },
+    ]
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            await client.post(f"{supabase_url}/rest/v1/custom_radar_rules", headers=headers, json=payload)
+    except Exception as exc:
+        logger.debug("Failed to ship VIP log to Supabase: %s", exc)
+
+
 async def probe_vip_watches(tracker: Tracker) -> int:
     """Perform a single instantaneous probe of all VIP target watches (GBD-H2000 & GBD-300-9DR).
     
@@ -191,10 +226,13 @@ async def probe_vip_watches(tracker: Tracker) -> int:
         js_url = f"{target_url}.js"
         in_stock = False
         deal_price = watch["default_price"]
+        r_status = 0
+        detail_msg = ""
 
         try:
             async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
                 r = await client.get(js_url, headers=headers)
+                r_status = r.status_code
                 if r.status_code == 200:
                     try:
                         data = r.json()
@@ -208,51 +246,65 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                                     if p_val > 0:
                                         deal_price = p_val
                                         break
-                    except Exception:
-                        pass
+                        detail_msg = f"Available: {is_avail}"
+                    except Exception as parse_e:
+                        detail_msg = f"JSON parse note: {parse_e}"
                 elif r.status_code == 404:
                     r_html = await client.get(target_url, headers=headers)
+                    r_status = r_html.status_code
                     if r_html.status_code == 200 and "404" not in r_html.text[:300].lower():
                         in_stock = True
+                        detail_msg = "Product un-redirected HTML 200"
+                    else:
+                        detail_msg = "Unlisted / Awaiting restock drop"
 
-                if in_stock:
-                    logger.info("🚨🚨 [VIP SNIPER] %s IS IN STOCK! Triggering alert...", watch["name"])
-                    try:
-                        scraper = get_scraper("casio", tracker.config)
-                        res = await scraper.scrape(target_url)
-                        if res.price and res.price > 0:
-                            deal_price = res.price
-                    except Exception:
-                        pass
+            status_str = "IN_STOCK" if in_stock else "OUT_OF_STOCK"
 
-                    alert_msg = (
-                        "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
-                        f"📦 *Watch:* {watch['name']}\n"
-                        "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
-                        f"💰 *Deal Price:* ₹{deal_price:g} (MRP: ₹{watch['mrp']:,})\n"
-                        f"🎯 *Target:* ₹{watch['target_price']:g} (Target Met!)\n"
-                        f"🛒 *ORDER INSTANTLY:* {target_url}\n"
-                        "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
-                        "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock!*"
+            if in_stock:
+                logger.info("🚨🚨 [VIP SNIPER] %s IS IN STOCK! Deal Price: ₹%s (Target: ₹%s)", watch["name"], deal_price, watch["target_price"])
+            else:
+                logger.info("[VIP SNIPER] %s -> OUT OF STOCK (Target: ₹%s | Price: ₹%s | HTTP %s)", watch["name"], watch["target_price"], deal_price, r_status)
+
+            # Ship VIP log to Supabase for instant real-time telemetry on both local & server runs
+            await ship_vip_log_to_supabase(watch, status_str, deal_price, r_status, detail_msg)
+
+            if in_stock:
+                try:
+                    scraper = get_scraper("casio", tracker.config)
+                    res = await scraper.scrape(target_url)
+                    if res.price and res.price > 0:
+                        deal_price = res.price
+                except Exception:
+                    pass
+
+                alert_msg = (
+                    "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
+                    f"📦 *Watch:* {watch['name']}\n"
+                    "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
+                    f"💰 *Deal Price:* ₹{deal_price:g} (MRP: ₹{watch['mrp']:,})\n"
+                    f"🎯 *Target:* ₹{watch['target_price']:g} (Target Met!)\n"
+                    f"🛒 *ORDER INSTANTLY:* {target_url}\n"
+                    "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
+                    "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock!*"
+                )
+                await tracker.notifier.send_telegram(alert_msg)
+                alerts_sent += 1
+
+                try:
+                    products = await tracker.db.get_products()
+                    vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
+                    if vip_prod:
+                        await tracker.db.update_price(vip_prod.id, deal_price, title=f"{watch['name']} (IN STOCK!)")
+                    await tracker.db.log_deal_alert(
+                        product_url=target_url,
+                        title=f"{watch['name']} (VIP IN STOCK)",
+                        price=deal_price,
+                        effective_price=deal_price,
+                        discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
+                        platform="casio",
                     )
-                    await tracker.notifier.send_telegram(alert_msg)
-                    alerts_sent += 1
-
-                    try:
-                        products = await tracker.db.get_products()
-                        vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
-                        if vip_prod:
-                            await tracker.db.update_price(vip_prod.id, deal_price, title=f"{watch['name']} (IN STOCK!)")
-                        await tracker.db.log_deal_alert(
-                            product_url=target_url,
-                            title=f"{watch['name']} (VIP IN STOCK)",
-                            price=deal_price,
-                            effective_price=deal_price,
-                            discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
-                            platform="casio",
-                        )
-                    except Exception as db_err:
-                        logger.debug("[VIP Sniper] DB update error: %s", db_err)
+                except Exception as db_err:
+                    logger.debug("[VIP Sniper] DB update error: %s", db_err)
 
         except Exception as exc:
             logger.debug("[VIP Sniper] %s error: %s", watch["name"], exc)

@@ -59,3 +59,25 @@ def test_logs_api_search_filter(client):
     body = res.json()
     for log in body["logs"]:
         assert "http" in log["message"].lower() or "http" in log["logger"].lower() or "http" in log["raw"].lower()
+
+
+def test_vip_logs_api_endpoint(client):
+    res = client.get("/api/logs/vip")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "success"
+    assert "watches" in body
+    assert isinstance(body["watches"], list)
+    assert len(body["watches"]) == 2
+    tags = [w["tag"] for w in body["watches"]]
+    assert "gbd-h2000" in tags
+    assert "gbd-300-9dr" in tags
+    assert "logs" in body
+
+
+def test_vip_in_main_logs_response(client):
+    res = client.get("/api/logs?limit=10")
+    assert res.status_code == 200
+    body = res.json()
+    assert "vip" in body
+    assert len(body["vip"]["watches"]) == 2

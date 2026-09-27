@@ -1020,7 +1020,269 @@ def get_daemon_quick_status() -> dict[str, Any]:
     }
 
 
-def _fetch_supabase_logs_and_status(limit: int = 250, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
+VIP_WATCHES_DEF = [
+    {
+        "id": 58,
+        "name": "CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD",
+        "short_name": "GBD-H2000-1A9",
+        "url": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch",
+        "target_price": 14000.0,
+        "default_price": 13499.0,
+        "mrp": 44995,
+        "tag": "gbd-h2000",
+    },
+    {
+        "id": 5,
+        "name": "CASIO G-SHOCK GBD-300-9DR",
+        "short_name": "GBD-300-9DR",
+        "url": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-9dr-watch",
+        "target_price": 4000.0,
+        "default_price": 3495.0,
+        "mrp": 11495,
+        "tag": "gbd-300-9dr",
+    },
+]
+
+
+def get_vip_logs_and_telemetry() -> dict[str, Any]:
+    """Retrieve dedicated VIP Steal Checker logs and live state for GBD-H2000 and GBD-300."""
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+    vip_entries: list[dict[str, Any]] = []
+
+    # 1. Fetch from Supabase cloud
+    if supabase_url and supabase_key:
+        try:
+            headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+            with httpx.Client(timeout=4.0) as client:
+                resp = client.get(
+                    f"{supabase_url}/rest/v1/custom_radar_rules?name=eq.VIP_LOG&order=id.desc&limit=60",
+                    headers=headers,
+                )
+                if resp.status_code == 200:
+                    for row in resp.json():
+                        ts = (row.get("created_at") or "")[:19].replace("T", " ")
+                        raw = row.get("negative_keywords") or row.get("query") or ""
+                        category = (row.get("category") or "OUT_OF_STOCK").upper()
+                        vip_entries.append({
+                            "id": row.get("id"),
+                            "timestamp": ts,
+                            "level": "VIP",
+                            "logger": "vip.casio",
+                            "category": category,
+                            "tag": row.get("platforms") or "vip",
+                            "message": row.get("query") or "",
+                            "raw": raw,
+                        })
+        except Exception as exc:
+            logger.debug("Supabase VIP log read error: %s", exc)
+
+    # 2. Also check local radar_daemon.log for any lines matching VIP sniper
+    candidates = [
+        os.path.join(root_dir, "radar_daemon.log"),
+        os.path.join(os.getcwd(), "radar_daemon.log"),
+        "radar_daemon.log",
+    ]
+    log_file = next((c for c in candidates if os.path.exists(c)), None)
+    if log_file:
+        try:
+            with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()[-400:]
+            for line in reversed(lines):
+                line_str = line.strip()
+                if any(k in line_str for k in ("[VIP SNIPER]", "vip.sniper", "gbd-h2000", "gbd-300", "[VIP WATCH]")):
+                    ts = line_str[:19] if (len(line_str) >= 19 and line_str[4] == "-") else ""
+                    tag = "gbd-h2000" if "gbd-h2000" in line_str.lower() else ("gbd-300-9dr" if "gbd-300" in line_str.lower() else "vip")
+                    cat = "IN_STOCK" if "IN STOCK" in line_str else "OUT_OF_STOCK"
+                    # Deduplicate with already collected entries
+                    if not any(e["raw"] == line_str for e in vip_entries):
+                        vip_entries.append({
+                            "id": len(vip_entries) + 1,
+                            "timestamp": ts,
+                            "level": "VIP",
+                            "logger": "vip.sniper",
+                            "category": cat,
+                            "tag": tag,
+                            "message": line_str,
+                            "raw": line_str,
+                        })
+        except Exception as exc:
+            logger.debug("Local VIP log scan note: %s", exc)
+
+    # Sort newest first
+    vip_entries.sort(key=lambda x: x.get("timestamp") or "", reverse=True)
+    vip_entries = vip_entries[:60]
+
+    # Synthesize watch status
+    watches = []
+    for w in VIP_WATCHES_DEF:
+        tag = w["tag"]
+        recent_probe = next((e for e in vip_entries if tag in e.get("tag", "").lower() or tag in e.get("raw", "").lower() or w["short_name"].lower() in e.get("raw", "").lower()), None)
+
+        in_stock = False
+        last_price = w["default_price"]
+        http_code = 200
+        last_time = "Recent check"
+        detail = "60-second ultra-high frequency priority guard active"
+
+        if recent_probe:
+            last_time = recent_probe.get("timestamp") or last_time
+            in_stock = recent_probe.get("category") == "IN_STOCK"
+            raw_text = recent_probe.get("raw") or ""
+            if "HTTP 404" in raw_text:
+                http_code = 404
+                detail = "HTTP 404 (Unlisted / Waiting Drop)"
+            elif "HTTP 200" in raw_text:
+                http_code = 200
+                detail = "Shopify API 200 OK (available: false)"
+            if "Price: ₹" in raw_text:
+                try:
+                    p_str = raw_text.split("Price: ₹")[1].split()[0].replace(",", "")
+                    last_price = float(p_str)
+                except Exception:
+                    pass
+
+        watches.append({
+            "id": w["id"],
+            "name": w["name"],
+            "short_name": w["short_name"],
+            "tag": w["tag"],
+            "url": w["url"],
+            "target_price": w["target_price"],
+            "mrp": w["mrp"],
+            "price": last_price,
+            "in_stock": in_stock,
+            "status": "IN_STOCK" if in_stock else "OUT_OF_STOCK",
+            "status_badge": "RESTOCKED! IN STOCK" if in_stock else "OUT OF STOCK",
+            "last_checked": last_time,
+            "http_status": http_code,
+            "detail": detail,
+        })
+
+    return {
+        "status": "success",
+        "watches": watches,
+        "logs": vip_entries,
+    }
+
+
+async def probe_vip_watches_live() -> dict[str, Any]:
+    """Execute instantaneous real-time probe of both Casio VIP watches."""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    watches_res = []
+    new_logs = []
+
+    sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+    async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+        for w in VIP_WATCHES_DEF:
+            target_url = w["url"]
+            js_url = f"{target_url}.js"
+            in_stock = False
+            deal_price = w["default_price"]
+            r_status = 0
+            detail = ""
+
+            try:
+                r = await client.get(js_url, headers=headers)
+                r_status = r.status_code
+                if r.status_code == 200:
+                    try:
+                        data = r.json()
+                        is_avail = bool(data.get("available", False))
+                        variants = data.get("variants", [])
+                        if is_avail or any(bool(v.get("available", False)) for v in variants):
+                            in_stock = True
+                            for v in variants:
+                                if v.get("price"):
+                                    p_val = float(v["price"]) / 100.0 if float(v["price"]) > 100000 else float(v["price"])
+                                    if p_val > 0:
+                                        deal_price = p_val
+                                        break
+                        detail = f"Shopify API HTTP 200 (Available: {is_avail})"
+                    except Exception as e:
+                        detail = f"JSON parse note: {e}"
+                elif r.status_code == 404:
+                    r_html = await client.get(target_url, headers=headers)
+                    r_status = r_html.status_code
+                    if r_html.status_code == 200 and "404" not in r_html.text[:300].lower():
+                        in_stock = True
+                        detail = "HTML Page 200 OK (Product Un-hidden)"
+                    else:
+                        detail = "HTTP 404 (Unlisted / Waiting Drop)"
+                else:
+                    detail = f"HTTP {r.status_code}"
+            except Exception as exc:
+                detail = f"Probe connection error: {exc}"
+
+            status_str = "IN_STOCK" if in_stock else "OUT_OF_STOCK"
+            raw_log = f"{now_str} [VIP SNIPER] {w['name']} -> {status_str} [HTTP {r_status}] (Price: ₹{deal_price:g} / Target: ₹{w['target_price']:g}) {detail}".strip()
+
+            watch_obj = {
+                "id": w["id"],
+                "name": w["name"],
+                "short_name": w["short_name"],
+                "tag": w["tag"],
+                "url": w["url"],
+                "target_price": w["target_price"],
+                "mrp": w["mrp"],
+                "price": deal_price,
+                "in_stock": in_stock,
+                "status": status_str,
+                "status_badge": "RESTOCKED! IN STOCK" if in_stock else "OUT OF STOCK",
+                "last_checked": now_str,
+                "http_status": r_status,
+                "detail": detail,
+            }
+            watches_res.append(watch_obj)
+
+            log_entry = {
+                "timestamp": now_str,
+                "level": "VIP",
+                "logger": "vip.sniper",
+                "category": status_str,
+                "tag": w["tag"],
+                "message": f"{w['name']} -> {status_str} (Price: ₹{deal_price:g}, Target: ₹{w['target_price']:g})",
+                "raw": raw_log,
+            }
+            new_logs.append(log_entry)
+
+            # Ship to Supabase
+            if sb_url and sb_key:
+                try:
+                    sb_headers = {"apikey": sb_key, "Authorization": f"Bearer {sb_key}", "Content-Type": "application/json"}
+                    sb_payload = [
+                        {
+                            "name": "VIP_LOG",
+                            "category": status_str,
+                            "platforms": w["tag"],
+                            "query": log_entry["message"],
+                            "negative_keywords": raw_log,
+                        },
+                        {
+                            "name": "DAEMON_LOG",
+                            "category": "CRITICAL" if in_stock else "INFO",
+                            "platforms": "vip.sniper",
+                            "query": f"[VIP WATCH] {w['name']} -> {status_str} (Target: ₹{w['target_price']:g})",
+                            "negative_keywords": f"{now_str} [INFO] vip.sniper: {w['name']} -> {status_str} (Price: ₹{deal_price:g}, Target: ₹{w['target_price']:g}, HTTP {r_status})",
+                        },
+                    ]
+                    await client.post(f"{sb_url}/rest/v1/custom_radar_rules", headers=sb_headers, json=sb_payload)
+                except Exception as sb_err:
+                    logger.debug("Live probe Supabase upload note: %s", sb_err)
+
+    return {
+        "status": "success",
+        "timestamp": now_str,
+        "watches": watches_res,
+        "logs": new_logs,
+    }
+
+
+def _fetch_supabase_logs_and_status(limit: int = 100, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
     """Retrieve synced daemon logs and activity from Supabase cloud database for serverless environments."""
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
     supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
@@ -1038,6 +1300,7 @@ def _fetch_supabase_logs_and_status(limit: int = 250, level: Optional[str] = Non
             },
             "logs": [],
             "recent_issues": [],
+            "vip": get_vip_logs_and_telemetry(),
         }
 
     headers = {
@@ -1157,6 +1420,8 @@ def _fetch_supabase_logs_and_status(limit: int = 250, level: Optional[str] = Non
             filtered = [e for e in filtered if e["level"] in ("ERROR", "CRITICAL", "WARNING", "WARN")]
         elif lvl_k in ("info",):
             filtered = [e for e in filtered if e["level"] == "INFO"]
+        elif lvl_k in ("vip", "vip_sniper"):
+            filtered = [e for e in filtered if any(k in e["raw"].lower() for k in ("vip", "gbd-h2000", "gbd-300"))]
 
     if search:
         sq = search.lower().strip()
@@ -1165,7 +1430,7 @@ def _fetch_supabase_logs_and_status(limit: int = 250, level: Optional[str] = Non
             if sq in e["message"].lower() or sq in e["logger"].lower() or sq in e["raw"].lower()
         ]
 
-    limit_val = max(10, min(limit or 250, 1000))
+    limit_val = max(10, min(limit or 100, 1000))
     logs_slice = filtered[-limit_val:]
 
     return {
@@ -1185,10 +1450,11 @@ def _fetch_supabase_logs_and_status(limit: int = 250, level: Optional[str] = Non
         },
         "logs": logs_slice,
         "recent_issues": recent_issues,
+        "vip": get_vip_logs_and_telemetry(),
     }
 
 
-def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
+def get_parsed_logs(limit: int = 100, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
     """Parse recent entries from radar_daemon.log or fallback to Supabase cloud sync."""
     candidates = [
         os.path.join(root_dir, "radar_daemon.log"),
@@ -1207,6 +1473,12 @@ def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optio
         seconds_ago = int(now - mtime)
         is_running = seconds_ago <= 180
         status_text = "ACTIVE & STREAMING" if is_running else ("STANDBY / IDLE" if seconds_ago <= 600 else "OFFLINE / STOPPED")
+
+        # If local file is stale (> 10 mins without updates), verify if Supabase has newer activity
+        if seconds_ago > 600:
+            cloud_check = _fetch_supabase_logs_and_status(limit=limit, level=level, search=search)
+            if cloud_check.get("daemon", {}).get("is_running") or (cloud_check.get("daemon", {}).get("seconds_since_activity") or 9999) < seconds_ago:
+                return cloud_check
 
         # Read last 350KB chunk for rapid, low-memory response
         seek_bytes = min(stat.st_size, 350000)
@@ -1307,6 +1579,8 @@ def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optio
                 filtered = [e for e in filtered if e["level"] in ("ERROR", "CRITICAL", "WARNING", "WARN")]
             elif lvl_k in ("info",):
                 filtered = [e for e in filtered if e["level"] == "INFO"]
+            elif lvl_k in ("vip", "vip_sniper"):
+                filtered = [e for e in filtered if any(k in e["raw"].lower() for k in ("vip", "gbd-h2000", "gbd-300"))]
 
         if search:
             sq = search.lower().strip()
@@ -1315,7 +1589,8 @@ def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optio
                 if sq in e["message"].lower() or sq in e["logger"].lower() or sq in e["raw"].lower()
             ]
 
-        limit_val = max(10, min(limit or 250, 1000))
+        # Strictly show latest 100 logs by default
+        limit_val = max(10, min(limit or 100, 1000))
         logs_slice = filtered[-limit_val:]
 
         return {
@@ -1335,6 +1610,7 @@ def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optio
             },
             "logs": logs_slice,
             "recent_issues": recent_issues,
+            "vip": get_vip_logs_and_telemetry(),
         }
     except Exception as exc:
         logger.error("Error parsing logs: %s", exc)
@@ -1344,19 +1620,40 @@ def get_parsed_logs(limit: int = 250, level: Optional[str] = None, search: Optio
             "message": str(exc),
             "logs": [],
             "recent_issues": [],
+            "vip": get_vip_logs_and_telemetry(),
         }
 
 
 @app.get("/api/logs")
 async def api_get_logs(
-    limit: int = Query(250, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=1000),
     level: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
 ):
-    """Retrieve structured parsed logs, daemon health status, and caught issues."""
+    """Retrieve structured parsed logs (latest 100), daemon status, and VIP sniper telemetry."""
     data = get_parsed_logs(limit=limit, level=level, search=search)
     return JSONResponse(
         content=data,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+
+@app.get("/api/logs/vip")
+async def api_get_vip_logs():
+    """Retrieve dedicated real-time VIP steal checker telemetry for GBD-H2000 & GBD-300."""
+    vip_data = get_vip_logs_and_telemetry()
+    return JSONResponse(
+        content=vip_data,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+
+@app.post("/api/logs/vip/probe")
+async def api_probe_vip_now():
+    """Trigger an instantaneous on-demand probe of both Casio VIP watches and return live status."""
+    res = await probe_vip_watches_live()
+    return JSONResponse(
+        content=res,
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
 
@@ -1471,9 +1768,13 @@ async def catch_all(request: Request, full_path: str):
 
     # 7.8 Logs Sub-routes
     if "logs" in clean:
+        if "vip/probe" in clean:
+            return await api_probe_vip_now()
+        if "vip" in clean:
+            return await api_get_vip_logs()
         if method == "DELETE" or "clear" in clean:
             return await api_clear_logs()
-        limit = int(request.query_params.get("limit", 250))
+        limit = int(request.query_params.get("limit", 100))
         level = request.query_params.get("level")
         search = request.query_params.get("search")
         return await api_get_logs(limit=limit, level=level, search=search)
