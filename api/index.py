@@ -892,7 +892,15 @@ async def serve_collection_asset(filename: str):
     asset_dir = os.path.join(root_dir, "assets", "collection")
     filepath = os.path.join(asset_dir, clean_name)
     if os.path.exists(filepath):
-        media_type = "image/png" if clean_name.lower().endswith(".png") else "image/jpeg"
+        ext = os.path.splitext(clean_name)[1].lower()
+        content_types = {
+            ".webp": "image/webp",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".svg": "image/svg+xml",
+        }
+        media_type = content_types.get(ext, "image/jpeg")
         return FileResponse(filepath, media_type=media_type, headers={"Cache-Control": "public, max-age=86400"})
     raise HTTPException(status_code=404, detail="Asset not found")
 

@@ -181,10 +181,10 @@
     "colour": "Black / Gold",
     "material": "Resin",
     "description": "Casio MCW-200H-9AVDF analog chronograph with a black resin case and strap, gold dial and gold detailing, with chronograph sub-dials and date display.",
-    "primaryImage": "/assets/collection/casio-mcw-200h.jpg",
+    "primaryImage": "/assets/collection/casio-mcw-200h.png",
     "images": [
       {
-        "url": "/assets/collection/casio-mcw-200h.jpg",
+        "url": "/assets/collection/casio-mcw-200h.png",
         "type": "primary",
         "alt": "Casio MCW-200H-9AVDF Black and Gold Dial",
         "sortOrder": 0
@@ -261,10 +261,10 @@
     "colour": "Orange",
     "material": "Resin / Mineral Glass",
     "description": "G-Shock GBD-300 digital sports watch in bright orange, with orange resin case and strap and a dark digital display.",
-    "primaryImage": "/assets/collection/g-shock-gbd-300.jpg",
+    "primaryImage": "/assets/collection/g-shock-gbd-300-9.png",
     "images": [
       {
-        "url": "/assets/collection/g-shock-gbd-300.jpg",
+        "url": "/assets/collection/g-shock-gbd-300-9.png",
         "type": "primary",
         "alt": "G-Shock GBD-300 in vibrant Orange with dark digital display",
         "sortOrder": 0
@@ -446,10 +446,10 @@
     "colour": "White / Green",
     "material": "Mesh / Synthetic Suede",
     "description": "Puma R78 Res in a white and green colourway with a retro running-inspired silhouette and chunky athletic sole.",
-    "primaryImage": "https://images.puma.com/image/upload/f_auto,q_auto,b_rgb:fafafa,w_1050,h_1050/global/373117/02/sv01/fnd/IND/fmt/png/R78-Sneakers",
+    "primaryImage": "/assets/collection/puma-r78-strong-feather.png",
     "images": [
       {
-        "url": "https://images.puma.com/image/upload/f_auto,q_auto,b_rgb:fafafa,w_1050,h_1050/global/373117/02/sv01/fnd/IND/fmt/png/R78-Sneakers",
+        "url": "/assets/collection/puma-r78-strong-feather.png",
         "type": "primary",
         "alt": "Puma R78 Res White Green retro silhouette",
         "sortOrder": 0
@@ -482,10 +482,10 @@
     "colour": "White / Black",
     "material": "Suede / Leather",
     "description": "Puma Palermo in white with black suede detailing, using the classic low-profile terrace/football-inspired silhouette.",
-    "primaryImage": "https://images.puma.com/image/upload/f_auto,q_auto,b_rgb:fafafa,w_1050,h_1050/global/396463/01/sv01/fnd/IND/fmt/png/Palermo-Leather-Unisex-Sneakers",
+    "primaryImage": "/assets/collection/puma-palermo-leather.png",
     "images": [
       {
-        "url": "https://images.puma.com/image/upload/f_auto,q_auto,b_rgb:fafafa,w_1050,h_1050/global/396463/01/sv01/fnd/IND/fmt/png/Palermo-Leather-Unisex-Sneakers",
+        "url": "/assets/collection/puma-palermo-leather.png",
         "type": "primary",
         "alt": "Puma Palermo White Black Suede Terrace Silhouette",
         "sortOrder": 0
@@ -518,10 +518,10 @@
     "colour": "Beige / Cream / Light Grey / Peach-Orange",
     "material": "Suede / Nubuck / Chunky Midsole",
     "description": "Chunky Woodland casual sneaker with beige/cream upper, light grey detailing, peach/orange accents, chunky off-white midsole and dark outsole.",
-    "primaryImage": "/assets/collection/woodland-beige.jpg",
+    "primaryImage": "/assets/collection/woodland-beige.webp",
     "images": [
       {
-        "url": "/assets/collection/woodland-flame.jpg",
+        "url": "/assets/collection/woodland-flame.webp",
         "type": "primary",
         "alt": "Woodland Chunky Beige Sneaker with Peach Accents",
         "sortOrder": 0
@@ -554,10 +554,10 @@
     "colour": "Dark Olive / Black / Orange",
     "material": "Breathable Mesh / Rugged Rubber Outsole",
     "description": "Woodland Flame sports/outdoor shoe with dark olive and black upper, strong orange accents around the collar and upper, cushioned midsole and rugged outsole.",
-    "primaryImage": "/assets/collection/woodland-flame.jpg",
+    "primaryImage": "/assets/collection/woodland-flame.webp",
     "images": [
       {
-        "url": "/assets/collection/woodland-flame.jpg",
+        "url": "/assets/collection/woodland-flame.webp",
         "type": "primary",
         "alt": "Woodland Flame Sports Shoes ND213202861M Dark Olive Orange",
         "sortOrder": 0
