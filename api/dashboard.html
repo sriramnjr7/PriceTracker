@@ -1462,7 +1462,8 @@
       padding: var(--space-4);
     }
 
-    .modal-backdrop.is-open {
+    .modal-backdrop.is-open,
+    .modal-backdrop.is-active {
       display: flex;
     }
 
@@ -3301,6 +3302,414 @@
       margin: 0 6px;
       opacity: 0.5;
     }
+
+    /* ==========================================================================
+       MY COLLECTION // PERSONAL INVENTORY & ARCHIVE CSS
+       ========================================================================== */
+    .badge-collection {
+      background: rgba(0, 255, 163, 0.12);
+      color: var(--accent-primary);
+      border: 1px solid rgba(0, 255, 163, 0.25);
+    }
+
+    /* Paused Card Visual Distinction */
+    .product-card.is-paused {
+      opacity: 0.62;
+      border-color: rgba(255, 255, 255, 0.05);
+      background: rgba(13, 17, 26, 0.55);
+      transition: opacity var(--transition-fast), border-color var(--transition-fast);
+    }
+    .product-card.is-paused:hover {
+      opacity: 0.92;
+      border-color: var(--border-medium);
+    }
+    .status-badge-inline.is-paused {
+      color: var(--accent-amber);
+    }
+    .status-badge-inline.is-paused::before {
+      content: "";
+      width: 4.5px;
+      height: 4.5px;
+      border-radius: var(--radius-full);
+      background: var(--accent-amber);
+      box-shadow: 0 0 5px rgba(255, 184, 0, 0.4);
+    }
+
+    /* Collection Controls Bar */
+    .collection-controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .collection-search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 240px;
+      max-width: 420px;
+    }
+    .collection-search-wrap svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .collection-search-input {
+      width: 100%;
+      height: 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0 32px 0 32px;
+      font-size: 12px;
+      color: var(--text-primary);
+      transition: border-color var(--transition-fast);
+    }
+    .collection-search-input:focus {
+      border-color: var(--accent-primary);
+      outline: none;
+    }
+    .collection-category-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .collection-right-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .col-select-control {
+      height: 30px;
+      padding: 0 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      cursor: pointer;
+      outline: none;
+    }
+    .col-select-control:focus {
+      border-color: var(--border-focus);
+      color: var(--text-primary);
+    }
+
+    /* Collection Items Grid */
+    .collection-items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 16px;
+    }
+
+    /* Collection Item Card */
+    .collection-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      position: relative;
+      transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .collection-card:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+    .collection-card:focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: 2px;
+    }
+    .collection-card-img-wrap {
+      width: 100%;
+      height: 200px;
+      background: #04060A;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .collection-card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 12px;
+      transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .collection-card:hover .collection-card-img {
+      transform: scale(1.05);
+    }
+    .collection-card-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text-dim);
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+    .collection-card-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .collection-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .collection-brand {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+    .collection-card-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .collection-card-nickname {
+      font-size: 11.5px;
+      color: var(--accent-primary);
+      font-weight: 500;
+      margin-top: -3px;
+    }
+    .collection-card-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .collection-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: 4px;
+    }
+    .collection-status-pill {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      background: var(--accent-emerald-subtle);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(0, 255, 163, 0.25);
+    }
+    .collection-status-pill.is-archived {
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text-muted);
+      border-color: rgba(148, 163, 184, 0.2);
+    }
+    .collection-ref-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1px 5px;
+      border-radius: 3px;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Collection Detail Dialog */
+    .collection-detail-dialog {
+      max-width: 780px;
+    }
+    .collection-detail-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      margin-top: 12px;
+    }
+    @media (max-width: 768px) {
+      .collection-detail-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .collection-detail-media {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .collection-detail-img-large {
+      width: 100%;
+      height: 280px;
+      background: #04060A;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 14px;
+    }
+    .collection-detail-img-large img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .collection-gallery-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .collection-gallery-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: #04060A;
+      cursor: pointer;
+      object-fit: contain;
+      padding: 2px;
+      opacity: 0.7;
+      transition: opacity var(--transition-fast), border-color var(--transition-fast);
+    }
+    .collection-gallery-thumb.active, .collection-gallery-thumb:hover {
+      opacity: 1;
+      border-color: var(--accent-primary);
+    }
+    .collection-detail-info {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .detail-heading-brand {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-primary);
+      font-family: var(--font-mono);
+    }
+    .detail-heading-model {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.25;
+      margin: 2px 0 4px 0;
+    }
+    .detail-specs-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+    .detail-spec-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-spec-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .detail-spec-value {
+      font-size: 12px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .detail-desc-box {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border-left: 2px solid var(--accent-primary);
+    }
+    .detail-section-title {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .detail-tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .detail-tag-chip {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    /* Form Modal Grid & Additions */
+    .form-row-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 600px) {
+      .form-row-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .category-specific-box {
+      background: rgba(0, 255, 163, 0.03);
+      border: 1px dashed rgba(0, 255, 163, 0.2);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .form-image-preview-strip {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-image-preview-strip img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      background: #04060A;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+    }
   </style>
 </head>
 <body>
@@ -3395,6 +3804,18 @@
                   <span>Dashboard</span>
                 </div>
                 <span class="nav-item-badge" id="nav-count-badge">0</span>
+              </a>
+
+              <a class="nav-link-dashboard" id="nav-btn-collection" onclick="switchNavTab('collection')">
+                <div class="nav-link-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                  </svg>
+                  <span>My Collection</span>
+                </div>
+                <span class="nav-item-badge badge-collection" id="nav-collection-count-badge">17</span>
               </a>
 
               <a class="nav-link-dashboard" id="nav-btn-shoes" onclick="switchNavTab('shoes')">
@@ -3584,6 +4005,8 @@
                 <!-- Filter Pills -->
                 <div class="filter-bar" role="tablist">
                   <button class="filter-btn active" onclick="setFilter('all', this)">All (<span id="chip-count-all">0</span>)</button>
+                  <button class="filter-btn" onclick="setFilter('active', this)">Active (<span id="chip-count-active">0</span>)</button>
+                  <button class="filter-btn" onclick="setFilter('paused', this)">Paused (<span id="chip-count-paused">0</span>)</button>
                   <button class="filter-btn" onclick="setFilter('casio', this)">Casio Bhawar (<span id="chip-count-casio">0</span>)</button>
                   <button class="filter-btn" onclick="setFilter('flipkart', this)">Flipkart (<span id="chip-count-flipkart">0</span>)</button>
                   <button class="filter-btn" onclick="setFilter('amazon', this)">Amazon (<span id="chip-count-amazon">0</span>)</button>
@@ -3658,6 +4081,94 @@
 
             </div>
           </div> <!-- /#tab-content-dashboard -->
+
+          <!-- ========================================================================
+               TAB: MY COLLECTION // PERSONAL INVENTORY & ARCHIVE
+               ======================================================================== -->
+          <div id="tab-content-collection" class="workspace-tab-page" style="display: none;">
+            
+            <!-- Page Title Section with Action -->
+            <div class="page-title-section">
+              <div class="page-breadcrumb">PriceTracker / My Collection</div>
+              <div class="page-header-row">
+                <div>
+                  <h1 class="page-heading">MY COLLECTION</h1>
+                  <p class="page-subheading">A personal archive of the things I own.</p>
+                </div>
+                <div class="collection-header-actions">
+                  <button class="btn-ui btn-ui-primary" onclick="openCollectionFormModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>+ Add to Collection</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Calculated Collection Summary KPI Bar -->
+            <section class="cyber-stats-bar" aria-label="Collection Telemetry">
+              <div class="cyber-stat-col">
+                <div class="cyber-stat-num" id="col-stat-total">17</div>
+                <div class="cyber-stat-label">total items</div>
+              </div>
+              <div class="cyber-stat-col">
+                <div class="cyber-stat-num highlight-cyan" id="col-stat-watches">7</div>
+                <div class="cyber-stat-label">watches</div>
+              </div>
+              <div class="cyber-stat-col">
+                <div class="cyber-stat-num highlight-emerald" id="col-stat-shoes">10</div>
+                <div class="cyber-stat-label">shoes</div>
+              </div>
+              <div class="cyber-stat-col">
+                <div class="cyber-stat-num highlight-amber" id="col-stat-brands">10</div>
+                <div class="cyber-stat-label">brands</div>
+              </div>
+            </section>
+
+            <!-- Search, Category Filters, and Sort Controls -->
+            <div class="collection-controls-bar">
+              <div class="collection-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="collection-search-input" class="collection-search-input" placeholder="Search brand, model, nickname, colour, type..." oninput="onCollectionSearch(this.value)">
+                <button type="button" class="btn-clear-search" id="btn-clear-col-search" onclick="clearCollectionSearch()" style="display: none;">&times;</button>
+              </div>
+
+              <!-- Category Filter Pills -->
+              <div class="collection-category-pills" id="col-category-pills">
+                <button class="filter-btn active" data-category="all" onclick="setCollectionCategoryFilter('all', this)">All (<span id="col-pill-all">17</span>)</button>
+                <button class="filter-btn" data-category="Watches" onclick="setCollectionCategoryFilter('Watches', this)">Watches (<span id="col-pill-watches">7</span>)</button>
+                <button class="filter-btn" data-category="Shoes" onclick="setCollectionCategoryFilter('Shoes', this)">Shoes (<span id="col-pill-shoes">10</span>)</button>
+              </div>
+
+              <!-- Right Actions: Status & Sort -->
+              <div class="collection-right-controls">
+                <select id="col-status-filter" class="col-select-control" onchange="onCollectionStatusChange(this.value)" title="Filter by Ownership Status">
+                  <option value="all">Status: All</option>
+                  <option value="Owned" selected>Owned Only</option>
+                  <option value="Archived">Archived</option>
+                </select>
+
+                <select id="col-sort-select" class="col-select-control" onchange="onCollectionSortChange(this.value)" title="Sort Collection Items">
+                  <option value="default" selected>Sort: Curated</option>
+                  <option value="brand">Brand (A-Z)</option>
+                  <option value="model">Model Name</option>
+                  <option value="category">Category</option>
+                  <option value="recent">Recently Added</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Collection Cards Grid -->
+            <div class="collection-items-grid" id="collection-items-container">
+              <!-- Rendered via JS -->
+            </div>
+
+          </div> <!-- /#tab-content-collection -->
 
           <!-- ========================================================================
                TAB 2: RUNNING SHOES RADAR VIEW
@@ -4529,6 +5040,180 @@
               <span id="edit-target-submit-text">Update Target Floor</span>
               <svg id="edit-target-spinner" style="display:none;" class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
             </button>
+    <!-- ========================================================================
+         MODAL: COLLECTION ITEM DETAIL VIEW
+         ======================================================================== -->
+    <div class="modal-backdrop" id="collection-detail-modal" role="dialog" aria-modal="true" aria-labelledby="col-detail-title">
+      <div class="modal-dialog modal-dialog-wide collection-detail-dialog">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="platform-badge badge-collection" id="col-detail-category-badge">CATEGORY</span>
+            <span class="collection-status-pill" id="col-detail-status-badge">● Owned</span>
+          </div>
+          <button class="modal-close-btn" onclick="closeCollectionDetailModal()" aria-label="Close dialog">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="collection-detail-body" id="col-detail-body">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="modal-footer collection-detail-footer">
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-ui btn-ui-secondary btn-sm" id="btn-col-detail-archive" onclick="handleCurrentDetailArchive()">
+              <span>Archive</span>
+            </button>
+            <button type="button" class="btn-ui btn-ui-ghost btn-sm danger-btn" id="btn-col-detail-delete" onclick="handleCurrentDetailDelete()">
+              <span>Delete</span>
+            </button>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-ui btn-ui-secondary btn-sm" onclick="closeCollectionDetailModal()">Close</button>
+            <button type="button" class="btn-ui btn-ui-primary btn-sm" id="btn-col-detail-edit" onclick="handleCurrentDetailEdit()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              <span>Edit Item</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================
+         MODAL: ADD / EDIT COLLECTION ITEM
+         ======================================================================== -->
+    <div class="modal-backdrop" id="collection-form-modal" role="dialog" aria-modal="true" aria-labelledby="col-form-title">
+      <div class="modal-dialog modal-dialog-wide collection-form-dialog">
+        <div class="modal-header">
+          <h2 class="modal-title" id="col-form-title">Add to Collection</h2>
+          <button class="modal-close-btn" onclick="closeCollectionFormModal()" aria-label="Close dialog">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <p class="modal-subtitle">
+          Record physical items in your personal inventory. Dynamic fields adapt based on category.
+        </p>
+
+        <form id="collection-item-form" onsubmit="submitCollectionItemForm(event)">
+          <input type="hidden" id="col-form-item-id">
+
+          <!-- Core Attributes (Two Columns) -->
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label" for="col-form-category">Category *</label>
+              <select id="col-form-category" class="form-input" required onchange="onCollectionFormCategoryChange(this.value)">
+                <option value="Watches">Watches</option>
+                <option value="Shoes">Shoes</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Bags">Bags</option>
+                <option value="Clothes">Clothes</option>
+                <option value="Accessories">Accessories</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="col-form-brand">Brand *</label>
+              <input type="text" id="col-form-brand" class="form-input" placeholder="e.g. Casio, Titan, Nike, Puma..." required>
+            </div>
+          </div>
+
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label" for="col-form-model">Model Name *</label>
+              <input type="text" id="col-form-model" class="form-input" placeholder="e.g. Royale, Palermo, Flame Sports Shoes..." required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="col-form-reference">Reference / SKU Number</label>
+              <input type="text" id="col-form-reference" class="form-input" placeholder="e.g. AE-1200WHD-1AVDF (Leave blank if unknown)">
+            </div>
+          </div>
+
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label" for="col-form-nickname">Nickname</label>
+              <input type="text" id="col-form-nickname" class="form-input" placeholder="e.g. Casio Royale, Skeleton Automatic...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="col-form-status">Ownership Status *</label>
+              <select id="col-form-status" class="form-input" required>
+                <option value="Owned" selected>Owned</option>
+                <option value="Archived">Archived</option>
+                <option value="Sold">Sold</option>
+                <option value="Gifted">Gifted</option>
+                <option value="Returned">Returned</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label" for="col-form-colour">Colour / Colourway</label>
+              <input type="text" id="col-form-colour" class="form-input" placeholder="e.g. Silver / Black, Dark Olive / Orange...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="col-form-type">Type / Silhouette</label>
+              <input type="text" id="col-form-type" class="form-input" placeholder="e.g. Dress / Analog, Terrace / Retro...">
+            </div>
+          </div>
+
+          <!-- Dynamic Category Specific Section -->
+          <div id="col-form-category-specific" class="category-specific-box">
+            <!-- Watch or Shoe fields dynamically injected -->
+          </div>
+
+          <!-- Image & Description -->
+          <div class="form-group">
+            <label class="form-label" for="col-form-primary-image">Primary Image URL or Personal Photo</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="url" id="col-form-primary-image" class="form-input" placeholder="https://... or upload below" style="flex: 1;">
+              <label class="btn-ui btn-ui-secondary btn-sm" style="cursor: pointer; display: flex; align-items: center;" title="Upload personal photo from device">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                <span>Upload</span>
+                <input type="file" id="col-form-file-upload" accept="image/*" style="display:none;" onchange="handleFormImageUpload(this)">
+              </label>
+            </div>
+            <div id="col-form-image-preview" class="form-image-preview-strip" style="display:none;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="col-form-description">Description</label>
+            <textarea id="col-form-description" class="form-input" rows="2" placeholder="Brief visual overview or personal provenance..."></textarea>
+          </div>
+
+          <!-- Purchase Details (Collapsible / Compact) -->
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label" for="col-form-price">Purchase Price (₹)</label>
+              <input type="number" step="any" id="col-form-price" class="form-input" placeholder="Optional">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="col-form-purchased-from">Purchased From / Store</label>
+              <input type="text" id="col-form-purchased-from" class="form-input" placeholder="e.g. Casio India, Flipkart, Myntra, Boutique...">
+            </div>
+          </div>
+
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label" for="col-form-condition">Condition</label>
+              <input type="text" id="col-form-condition" class="form-input" placeholder="e.g. Brand New, Mint, Lightly Used...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="col-form-notes">Personal Notes</label>
+              <input type="text" id="col-form-notes" class="form-input" placeholder="Private ownership notes...">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-ui btn-ui-secondary" style="flex: 1; justify-content: center;" onclick="closeCollectionFormModal()">Cancel</button>
+            <button type="submit" class="btn-ui btn-ui-primary" style="flex: 1; justify-content: center;" id="btn-col-submit">
+              <span id="col-submit-btn-text">Save Item</span>
+            </button>
           </div>
         </form>
       </div>
@@ -4582,31 +5267,49 @@
       if (bd) bd.classList.toggle("is-active");
     }
 
-    // Tab Navigation: Dashboard vs Running Shoes Radar vs System Logs
+    // Tab Navigation: Dashboard vs My Collection vs Running Shoes Radar vs System Logs
     let currentActiveTab = "dashboard";
 
     function switchNavTab(tabName) {
       currentActiveTab = tabName;
       const tabDash = document.getElementById("tab-content-dashboard");
+      const tabCol = document.getElementById("tab-content-collection");
       const tabShoes = document.getElementById("tab-content-shoes");
       const tabLogs = document.getElementById("tab-content-logs");
       const btnDash = document.getElementById("nav-btn-dashboard");
+      const btnCol = document.getElementById("nav-btn-collection");
       const btnShoes = document.getElementById("nav-btn-shoes");
       const btnLogs = document.getElementById("nav-btn-logs");
 
       if (tabDash) tabDash.style.display = tabName === "dashboard" ? "block" : "none";
+      if (tabCol) tabCol.style.display = tabName === "collection" ? "block" : "none";
       if (tabShoes) tabShoes.style.display = tabName === "shoes" ? "block" : "none";
       if (tabLogs) tabLogs.style.display = tabName === "logs" ? "block" : "none";
 
       if (btnDash) btnDash.classList.toggle("active", tabName === "dashboard");
+      if (btnCol) btnCol.classList.toggle("active", tabName === "collection");
       if (btnShoes) btnShoes.classList.toggle("active", tabName === "shoes");
       if (btnLogs) btnLogs.classList.toggle("active", tabName === "logs");
 
-      if (tabName === "shoes") {
+      if (tabName === "collection") {
+        if (window.location.pathname !== "/my-collection" && window.location.pathname !== "/collection") {
+          try { window.history.pushState({ tab: "collection" }, "My Collection | PriceTracker", "/my-collection"); } catch (e) {}
+        }
+        fetchCollectionData();
+      } else if (tabName === "shoes") {
+        if (window.location.pathname !== "/running-shoes") {
+          try { window.history.pushState({ tab: "shoes" }, "Running Shoes Radar | PriceTracker", "/running-shoes"); } catch (e) {}
+        }
         fetchRunningShoesData();
       } else if (tabName === "logs") {
+        if (window.location.pathname !== "/logs") {
+          try { window.history.pushState({ tab: "logs" }, "System Logs | PriceTracker", "/logs"); } catch (e) {}
+        }
         fetchLogsData(false);
       } else {
+        if (window.location.pathname !== "/") {
+          try { window.history.pushState({ tab: "dashboard" }, "PriceTracker Dashboard", "/"); } catch (e) {}
+        }
         setFilter("all");
       }
 
@@ -4620,6 +5323,839 @@
     // Keep backwards-compatible alias
     function switchNavDashboard() {
       switchNavTab("dashboard");
+    }
+
+    // Handle browser back/forward buttons
+    window.addEventListener("popstate", (e) => {
+      const path = window.location.pathname.toLowerCase();
+      if (path.includes("collection")) {
+        switchNavTab("collection");
+      } else if (path.includes("shoes") || path.includes("radar")) {
+        switchNavTab("shoes");
+      } else if (path.includes("logs")) {
+        switchNavTab("logs");
+      } else {
+        switchNavTab("dashboard");
+      }
+    });
+
+    // ==========================================================================
+    // MY COLLECTION CONTROLLER (Personal Inventory & Ownership Archive)
+    // ==========================================================================
+    let collectionState = {
+      items: [],
+      filterCategory: "all",
+      filterStatus: "Owned",
+      searchQuery: "",
+      sortBy: "default",
+      selectedItem: null,
+      tempImageBase64: ""
+    };
+
+    async function fetchCollectionData(bypassCache = false) {
+      // 1. Fast local cache load for instant UI paint
+      if (!bypassCache && collectionState.items.length === 0) {
+        try {
+          const cached = localStorage.getItem("my_collection_cache");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.items && parsed.items.length > 0) {
+              collectionState.items = parsed.items;
+              updateCollectionKPIs(parsed.stats || calculateCollectionStats(parsed.items));
+              renderCollectionCards();
+            }
+          }
+        } catch (e) {
+          console.warn("Could not load collection cache:", e);
+        }
+      }
+
+      // 2. Fetch fresh data from API
+      try {
+        const cacheBuster = bypassCache ? `?_t=${Date.now()}` : "";
+        const res = await fetch(`/api/collection${cacheBuster}`, {
+          cache: "no-store",
+          headers: { "Pragma": "no-cache" }
+        });
+        if (!res.ok) throw new Error("Collection API returned status " + res.status);
+        const data = await res.json();
+        collectionState.items = data.items || [];
+
+        try {
+          localStorage.setItem("my_collection_cache", JSON.stringify(data));
+        } catch (e) {}
+
+        const stats = data.stats || calculateCollectionStats(collectionState.items);
+        updateCollectionKPIs(stats);
+        renderCollectionCards();
+
+        // Update sidebar badge
+        const colNavBadge = document.getElementById("nav-collection-count-badge");
+        if (colNavBadge) colNavBadge.textContent = collectionState.items.filter(i => i.status === "Owned").length;
+      } catch (err) {
+        console.error("Failed to fetch collection data:", err);
+      }
+    }
+
+    function calculateCollectionStats(items) {
+      const owned = items.filter(i => i.status === "Owned");
+      const watches = owned.filter(i => (i.category || "").toLowerCase() === "watches").length;
+      const shoes = owned.filter(i => (i.category || "").toLowerCase() === "shoes").length;
+      const brands = new Set(owned.map(i => (i.brand || "").trim().toLowerCase()).filter(Boolean)).size;
+      return {
+        total: owned.length,
+        categories: { watches, shoes },
+        total_brands: brands
+      };
+    }
+
+    function updateCollectionKPIs(stats) {
+      if (!stats) return;
+      const statTotal = document.getElementById("col-stat-total");
+      const statWatches = document.getElementById("col-stat-watches");
+      const statShoes = document.getElementById("col-stat-shoes");
+      const statBrands = document.getElementById("col-stat-brands");
+
+      if (statTotal) statTotal.textContent = stats.total || 0;
+      if (statWatches) statWatches.textContent = (stats.categories && stats.categories.watches) || 0;
+      if (statShoes) statShoes.textContent = (stats.categories && stats.categories.shoes) || 0;
+      if (statBrands) statBrands.textContent = stats.total_brands || 0;
+
+      // Update pill badge numbers
+      const ownedItems = collectionState.items.filter(i => i.status === "Owned");
+      const pillAll = document.getElementById("col-pill-all");
+      const pillWatches = document.getElementById("col-pill-watches");
+      const pillShoes = document.getElementById("col-pill-shoes");
+
+      if (pillAll) pillAll.textContent = ownedItems.length;
+      if (pillWatches) pillWatches.textContent = ownedItems.filter(i => (i.category || "").toLowerCase() === "watches").length;
+      if (pillShoes) pillShoes.textContent = ownedItems.filter(i => (i.category || "").toLowerCase() === "shoes").length;
+    }
+
+    function setCollectionCategoryFilter(category, btnEl) {
+      collectionState.filterCategory = category;
+      const pillsContainer = document.getElementById("col-category-pills");
+      if (pillsContainer) {
+        pillsContainer.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      }
+      if (btnEl) btnEl.classList.add("active");
+      renderCollectionCards();
+    }
+
+    function onCollectionStatusChange(val) {
+      collectionState.filterStatus = val;
+      renderCollectionCards();
+    }
+
+    function onCollectionSortChange(val) {
+      collectionState.sortBy = val;
+      renderCollectionCards();
+    }
+
+    let colSearchDebounce = null;
+    function onCollectionSearch(val) {
+      const clearBtn = document.getElementById("btn-clear-col-search");
+      if (clearBtn) clearBtn.style.display = val ? "block" : "none";
+      clearTimeout(colSearchDebounce);
+      colSearchDebounce = setTimeout(() => {
+        collectionState.searchQuery = (val || "").toLowerCase().trim();
+        renderCollectionCards();
+      }, 150);
+    }
+
+    function clearCollectionSearch() {
+      const input = document.getElementById("collection-search-input");
+      if (input) input.value = "";
+      const clearBtn = document.getElementById("btn-clear-col-search");
+      if (clearBtn) clearBtn.style.display = "none";
+      collectionState.searchQuery = "";
+      renderCollectionCards();
+    }
+
+    function getFilteredCollectionItems() {
+      let filtered = [...collectionState.items];
+
+      // 1. Filter by category
+      if (collectionState.filterCategory !== "all") {
+        const cat = collectionState.filterCategory.toLowerCase();
+        filtered = filtered.filter(item => (item.category || "").toLowerCase() === cat);
+      }
+
+      // 2. Filter by status
+      if (collectionState.filterStatus !== "all") {
+        filtered = filtered.filter(item => item.status === collectionState.filterStatus);
+      }
+
+      // 3. Filter by search query
+      const query = collectionState.searchQuery;
+      if (query) {
+        filtered = filtered.filter(item => {
+          const searchable = [
+            item.brand,
+            item.model,
+            item.reference_number,
+            item.nickname,
+            item.colour,
+            item.type,
+            item.description,
+            item.notes,
+            item.purchased_from,
+            ...Object.values(item.category_specific_specs || {})
+          ].filter(Boolean).join(" ").toLowerCase();
+          return searchable.includes(query);
+        });
+      }
+
+      // 4. Sort
+      if (collectionState.sortBy === "brand") {
+        filtered.sort((a, b) => (a.brand || "").localeCompare(b.brand || "") || (a.model || "").localeCompare(b.model || ""));
+      } else if (collectionState.sortBy === "model") {
+        filtered.sort((a, b) => (a.model || "").localeCompare(b.model || ""));
+      } else if (collectionState.sortBy === "category") {
+        filtered.sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.brand || "").localeCompare(b.brand || ""));
+      } else if (collectionState.sortBy === "recent") {
+        filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      }
+
+      return filtered;
+    }
+
+    function renderCollectionCards() {
+      const container = document.getElementById("collection-items-container");
+      if (!container) return;
+
+      const items = getFilteredCollectionItems();
+      if (!items || items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state-box" style="grid-column: 1 / -1; padding: 48px 24px; text-align: center;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom: 12px;">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <div class="empty-title">No items found in this view</div>
+            <div class="empty-desc">Try clearing filters or search, or click "+ Add to Collection" to add an item.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map(item => {
+        const cat = (item.category || "").toLowerCase();
+        const catBadgeClass = cat === "watches" ? "badge-watch" : cat === "shoes" ? "badge-shoe" : "badge-collection";
+        const catIcon = cat === "watches" 
+          ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"></circle><polyline points="12 9 12 12 13.5 13.5"></polyline><path d="M16.51 17.35l-.35 3.83a2 2 0 0 1-2 1.82H9.83a2 2 0 0 1-2-1.82l-.35-3.83m.01-10.7l.35-3.83A2 2 0 0 1 9.83 1h4.35a2 2 0 0 1 2 1.82l.35 3.83"></path></svg>`
+          : cat === "shoes"
+          ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v-2.38C4 11.5 5.5 9 8 9h8c2.5 0 4 2.5 4 4.62V16"></path><path d="M2 17h20v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2z"></path></svg>`
+          : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon></svg>`;
+
+        // Primary image or fallback
+        const primaryImg = item.primaryImage || ((item.images && item.images.length > 0) ? item.images[0].url : "");
+        const imageHtml = primaryImg 
+          ? `<img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(item.brand + ' ' + item.model)}" class="collection-card-img" loading="lazy" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+             <div class="collection-card-img-placeholder" style="display:none;">${catIcon}</div>`
+          : `<div class="collection-card-img-placeholder">${catIcon}</div>`;
+
+        // Specs badges
+        const specs = item.category_specific_specs || item.categorySpecificMetadata || {};
+        let specChips = [];
+        if (cat === "watches") {
+          if (specs.movement) specChips.push(specs.movement);
+          if (specs.case_diameter || specs.caseSize) specChips.push(specs.case_diameter || specs.caseSize);
+          if (specs.water_resistance || specs.waterResistance) specChips.push(specs.water_resistance || specs.waterResistance);
+        } else if (cat === "shoes") {
+          if (specs.shoe_size || specs.shoeSize || item.size) specChips.push(specs.shoe_size || specs.shoeSize || item.size);
+          if (item.type) specChips.push(item.type);
+          if (specs.upper_material || specs.upperMaterial) specChips.push(specs.upper_material || specs.upperMaterial);
+        } else {
+          if (item.type) specChips.push(item.type);
+        }
+
+        // Limit spec chips to 2 for crisp card presentation
+        const renderedSpecChips = specChips.slice(0, 2).map(s => `<span class="col-spec-chip" title="${escapeHtml(s)}">${escapeHtml(s)}</span>`).join("");
+
+        // Nickname pill
+        const nicknameHtml = item.nickname ? `<span class="col-nickname-tag" title="Nickname">&ldquo;${escapeHtml(item.nickname)}&rdquo;</span>` : "";
+
+        // Reference number badge (clean monospace, omit if absent)
+        const refNum = item.reference_number || item.reference;
+        const refHtml = refNum ? `<span class="col-ref-code" title="Reference / SKU">${escapeHtml(refNum)}</span>` : "";
+
+        // Status badge
+        const isOwned = item.status === "Owned";
+        const statusHtml = `<span class="collection-status-pill ${isOwned ? 'is-owned' : 'is-archived'}">${isOwned ? '● Owned' : '○ ' + escapeHtml(item.status)}</span>`;
+
+        return `
+          <article class="collection-card" onclick="openCollectionDetailModal('${item.id}')" tabindex="0" role="button" aria-label="${escapeHtml(item.brand)} ${escapeHtml(item.model)}">
+            <div class="collection-card-media">
+              ${imageHtml}
+              <div class="collection-card-badges-top">
+                <span class="platform-badge ${catBadgeClass}">${cat.toUpperCase()}</span>
+                ${statusHtml}
+              </div>
+            </div>
+            
+            <div class="collection-card-content">
+              <div class="col-brand-title-wrap">
+                <div class="col-card-brand">${escapeHtml(item.brand)}</div>
+                <div class="col-card-model">${escapeHtml(item.model)}</div>
+              </div>
+
+              ${nicknameHtml || refHtml ? `
+                <div class="col-card-meta-row">
+                  ${nicknameHtml}
+                  ${refHtml}
+                </div>
+              ` : ''}
+
+              ${renderedSpecChips ? `
+                <div class="col-card-specs-row">
+                  ${renderedSpecChips}
+                </div>
+              ` : ''}
+
+              <div class="col-card-footer">
+                <span class="col-footer-detail-link">View archive details &rarr;</span>
+                ${item.purchase_price ? `<span class="col-card-price">₹${Number(item.purchase_price).toLocaleString('en-IN')}</span>` : ''}
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    // Modal Details View
+    function openCollectionDetailModal(itemId) {
+      const item = collectionState.items.find(i => String(i.id) === String(itemId));
+      if (!item) return;
+
+      collectionState.selectedItem = item;
+      const modal = document.getElementById("collection-detail-modal");
+      if (!modal) return;
+
+      const catBadge = document.getElementById("col-detail-category-badge");
+      const statusBadge = document.getElementById("col-detail-status-badge");
+      const archiveBtn = document.getElementById("btn-col-detail-archive");
+
+      if (catBadge) {
+        catBadge.textContent = (item.category || "COLLECTION").toUpperCase();
+        catBadge.className = `platform-badge ${item.category === "Watches" ? "badge-watch" : item.category === "Shoes" ? "badge-shoe" : "badge-collection"}`;
+      }
+
+      if (statusBadge) {
+        const isOwned = item.status === "Owned";
+        statusBadge.textContent = isOwned ? "● Owned" : "○ " + item.status;
+        statusBadge.className = `collection-status-pill ${isOwned ? "is-owned" : "is-archived"}`;
+      }
+
+      if (archiveBtn) {
+        archiveBtn.innerHTML = item.status === "Archived" 
+          ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> <span>Restore to Owned</span>`
+          : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg> <span>Archive Item</span>`;
+      }
+
+      // Build Rich Detail Body
+      const body = document.getElementById("col-detail-body");
+      if (body) {
+        const cat = (item.category || "").toLowerCase();
+        const specs = item.category_specific_specs || item.categorySpecificMetadata || {};
+        const images = item.images || [];
+        const primaryImg = item.primaryImage || (images.length > 0 ? images[0].url : "");
+
+        // Specs List Filtered (omit empty fields)
+        let specRows = [];
+        if (item.brand) specRows.push({ label: "Brand", val: item.brand });
+        if (item.model) specRows.push({ label: "Model", val: item.model });
+        const refVal = item.reference_number || item.reference;
+        if (refVal) specRows.push({ label: "Reference / SKU", val: refVal, mono: true });
+        if (item.nickname) specRows.push({ label: "Nickname", val: `"${item.nickname}"` });
+        if (item.type) specRows.push({ label: "Type / Silhouette", val: item.type });
+        if (item.colour) specRows.push({ label: "Colourway", val: item.colour });
+
+        // Category-specific specs
+        if (cat === "watches") {
+          if (specs.movement) specRows.push({ label: "Movement", val: specs.movement });
+          const caseSz = specs.case_diameter || specs.caseSize;
+          if (caseSz) specRows.push({ label: "Case Diameter", val: caseSz });
+          const wr = specs.water_resistance || specs.waterResistance;
+          if (wr) specRows.push({ label: "Water Resistance", val: wr });
+          const strap = specs.strap_material || specs.strapType;
+          if (strap) specRows.push({ label: "Strap / Bracelet", val: strap });
+          const dial = specs.dial_colour || specs.dialColour;
+          if (dial) specRows.push({ label: "Dial Colour", val: dial });
+        } else if (cat === "shoes") {
+          const sz = specs.shoe_size || specs.shoeSize || item.size;
+          if (sz) specRows.push({ label: "Size", val: sz });
+          const upper = specs.upper_material || specs.upperMaterial;
+          if (upper) specRows.push({ label: "Upper Material", val: upper });
+          const sole = specs.sole_material || specs.soleOutsole;
+          if (sole) specRows.push({ label: "Sole / Outsole", val: sole });
+          const use = specs.intended_use || specs.intendedUse;
+          if (use) specRows.push({ label: "Intended Style", val: use });
+        } else {
+          for (const [k, v] of Object.entries(specs)) {
+            if (v) specRows.push({ label: k.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()), val: String(v) });
+          }
+        }
+
+        // Ownership & Purchase Details
+        let purchaseRows = [];
+        const pPrice = item.purchase_price || item.purchasePrice;
+        if (pPrice) purchaseRows.push({ label: "Purchase Price", val: `₹${Number(pPrice).toLocaleString('en-IN')}` });
+        const pFrom = item.purchased_from || item.purchasedFrom;
+        if (pFrom) purchaseRows.push({ label: "Purchased From", val: pFrom });
+        if (item.condition) purchaseRows.push({ label: "Condition", val: item.condition });
+        if (item.status) purchaseRows.push({ label: "Status", val: item.status });
+
+        body.innerHTML = `
+          <div class="col-detail-grid">
+            <!-- Left: Image Gallery & Photos -->
+            <div class="col-detail-media-pane">
+              <div class="col-detail-hero-wrap">
+                ${primaryImg 
+                  ? `<img id="col-detail-main-img" src="${escapeHtml(primaryImg)}" alt="${escapeHtml(item.brand + ' ' + item.model)}" class="col-detail-hero-img" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                     <div class="col-detail-hero-placeholder" style="display:none;">
+                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                         <polyline points="21 15 16 10 5 21"></polyline>
+                       </svg>
+                       <span>Image preview unavailable</span>
+                     </div>`
+                  : `<div class="col-detail-hero-placeholder">
+                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                         <polyline points="21 15 16 10 5 21"></polyline>
+                       </svg>
+                       <span>No catalog photo</span>
+                     </div>`
+                }
+              </div>
+
+              <!-- Thumbnails strip if multiple images -->
+              ${images.length > 1 ? `
+                <div class="col-detail-thumb-strip">
+                  ${images.map((img, idx) => `
+                    <div class="col-detail-thumb ${idx === 0 ? 'active' : ''}" onclick="switchDetailMainImage('${escapeHtml(img.url)}', this)">
+                      <img src="${escapeHtml(img.url)}" alt="Thumbnail ${idx + 1}" onerror="this.parentElement.style.display='none';">
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ''}
+
+              <!-- Provenance Photo Upload -->
+              <div class="col-detail-photo-upload-bar">
+                <label class="btn-ui btn-ui-ghost btn-sm" style="cursor: pointer; width: 100%; justify-content: center;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                  <span>Upload Personal Photo</span>
+                  <input type="file" accept="image/*" style="display:none;" onchange="handleDetailPhotoUpload(this, '${item.id}')">
+                </label>
+              </div>
+            </div>
+
+            <!-- Right: Details, Specs & Ownership Record -->
+            <div class="col-detail-info-pane">
+              <div class="col-detail-header-block">
+                <div class="col-detail-brand-eyebrow">${escapeHtml(item.brand)}</div>
+                <h2 class="col-detail-title">${escapeHtml(item.model)}</h2>
+                ${item.nickname ? `<div class="col-detail-nickname-line">&ldquo;${escapeHtml(item.nickname)}&rdquo;</div>` : ''}
+              </div>
+
+              ${item.description ? `
+                <div class="col-detail-desc-box">
+                  ${escapeHtml(item.description)}
+                </div>
+              ` : ''}
+
+              <!-- Key Technical Specs Grid -->
+              <div class="col-spec-section-title">SPECIFICATIONS</div>
+              <div class="col-detail-specs-table">
+                ${specRows.map(r => `
+                  <div class="col-detail-spec-row">
+                    <span class="col-spec-name">${escapeHtml(r.label)}</span>
+                    <span class="col-spec-val ${r.mono ? 'col-mono' : ''}">${escapeHtml(r.val)}</span>
+                  </div>
+                `).join("")}
+              </div>
+
+              <!-- Ownership & Provenance Grid -->
+              ${purchaseRows.length > 0 ? `
+                <div class="col-spec-section-title" style="margin-top: 18px;">PROVENANCE &amp; OWNERSHIP</div>
+                <div class="col-detail-specs-table">
+                  ${purchaseRows.map(r => `
+                    <div class="col-detail-spec-row">
+                      <span class="col-spec-name">${escapeHtml(r.label)}</span>
+                      <span class="col-spec-val">${escapeHtml(r.val)}</span>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ''}
+
+              ${item.notes ? `
+                <div class="col-detail-notes-box">
+                  <div class="col-notes-label">Personal Notes:</div>
+                  <div class="col-notes-text">${escapeHtml(item.notes)}</div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      modal.classList.add("is-open", "is-active");
+    }
+
+    function switchDetailMainImage(url, thumbEl) {
+      const mainImg = document.getElementById("col-detail-main-img");
+      if (mainImg) mainImg.src = url;
+      document.querySelectorAll(".col-detail-thumb").forEach(t => t.classList.remove("active"));
+      if (thumbEl) thumbEl.classList.add("active");
+    }
+
+    function closeCollectionDetailModal() {
+      const modal = document.getElementById("collection-detail-modal");
+      if (modal) modal.classList.remove("is-open", "is-active");
+    }
+
+    // Modal Add / Edit Form View
+    function openCollectionFormModal(itemId = null) {
+      const modal = document.getElementById("collection-form-modal");
+      if (!modal) return;
+
+      const titleEl = document.getElementById("col-form-title");
+      const submitTextEl = document.getElementById("col-submit-btn-text");
+      const form = document.getElementById("collection-item-form");
+      if (form) form.reset();
+      collectionState.tempImageBase64 = "";
+
+      const previewBox = document.getElementById("col-form-image-preview");
+      if (previewBox) {
+        previewBox.style.display = "none";
+        previewBox.innerHTML = "";
+      }
+
+      if (itemId) {
+        const item = collectionState.items.find(i => String(i.id) === String(itemId));
+        if (!item) return;
+
+        if (titleEl) titleEl.textContent = "Edit Collection Item";
+        if (submitTextEl) submitTextEl.textContent = "Save Changes";
+
+        document.getElementById("col-form-item-id").value = item.id;
+        document.getElementById("col-form-category").value = item.category || "Watches";
+        document.getElementById("col-form-brand").value = item.brand || "";
+        document.getElementById("col-form-model").value = item.model || "";
+        document.getElementById("col-form-reference").value = item.reference_number || "";
+        document.getElementById("col-form-nickname").value = item.nickname || "";
+        document.getElementById("col-form-status").value = item.status || "Owned";
+        document.getElementById("col-form-colour").value = item.colour || "";
+        document.getElementById("col-form-type").value = item.type || "";
+        document.getElementById("col-form-description").value = item.description || "";
+        document.getElementById("col-form-price").value = item.purchase_price || "";
+        document.getElementById("col-form-purchased-from").value = item.purchased_from || "";
+        document.getElementById("col-form-condition").value = item.condition || "";
+        document.getElementById("col-form-notes").value = item.notes || "";
+
+        const primaryUrl = (item.images && item.images.length > 0) ? item.images[0].url : "";
+        document.getElementById("col-form-primary-image").value = primaryUrl;
+
+        renderCategorySpecificFields(item.category || "Watches", item.category_specific_specs || {});
+      } else {
+        if (titleEl) titleEl.textContent = "Add to Collection";
+        if (submitTextEl) submitTextEl.textContent = "Add Item";
+        document.getElementById("col-form-item-id").value = "";
+        document.getElementById("col-form-category").value = "Watches";
+        document.getElementById("col-form-status").value = "Owned";
+        renderCategorySpecificFields("Watches", {});
+      }
+
+      modal.classList.add("is-open", "is-active");
+    }
+
+    function closeCollectionFormModal() {
+      const modal = document.getElementById("collection-form-modal");
+      if (modal) modal.classList.remove("is-open", "is-active");
+    }
+
+    function onCollectionFormCategoryChange(cat) {
+      renderCategorySpecificFields(cat, {});
+    }
+
+    function renderCategorySpecificFields(category, existingSpecs = {}) {
+      const box = document.getElementById("col-form-category-specific");
+      if (!box) return;
+
+      const cat = (category || "").toLowerCase();
+      if (cat === "watches") {
+        box.innerHTML = `
+          <div class="col-spec-box-title">Watch Specifications</div>
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label">Movement</label>
+              <input type="text" id="spec-watch-movement" class="form-input" placeholder="e.g. Quartz Digital, Automatic, Solar..." value="${escapeHtml(existingSpecs.movement || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Case Diameter</label>
+              <input type="text" id="spec-watch-case" class="form-input" placeholder="e.g. 42mm, 45mm..." value="${escapeHtml(existingSpecs.case_diameter || '')}">
+            </div>
+          </div>
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label">Water Resistance</label>
+              <input type="text" id="spec-watch-water" class="form-input" placeholder="e.g. 100m (10 Bar), 200m..." value="${escapeHtml(existingSpecs.water_resistance || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Strap / Bracelet</label>
+              <input type="text" id="spec-watch-strap" class="form-input" placeholder="e.g. Stainless Steel Bracelet, Resin Strap..." value="${escapeHtml(existingSpecs.strap_material || '')}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dial Colour</label>
+            <input type="text" id="spec-watch-dial" class="form-input" placeholder="e.g. Skeleton / Grey, Black, Silver..." value="${escapeHtml(existingSpecs.dial_colour || '')}">
+          </div>
+        `;
+      } else if (cat === "shoes") {
+        box.innerHTML = `
+          <div class="col-spec-box-title">Footwear Specifications</div>
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label">Size (UK / EU)</label>
+              <input type="text" id="spec-shoe-size" class="form-input" placeholder="e.g. UK 9 / EU 43" value="${escapeHtml(existingSpecs.shoe_size || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Upper Material</label>
+              <input type="text" id="spec-shoe-upper" class="form-input" placeholder="e.g. Suede & Leather, Mesh, Canvas..." value="${escapeHtml(existingSpecs.upper_material || '')}">
+            </div>
+          </div>
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label">Sole / Outsole</label>
+              <input type="text" id="spec-shoe-sole" class="form-input" placeholder="e.g. Gum Rubber, EVA, Lugged Rubber..." value="${escapeHtml(existingSpecs.sole_material || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Intended Style</label>
+              <input type="text" id="spec-shoe-style" class="form-input" placeholder="e.g. Terrace / Retro, Casual, Trail..." value="${escapeHtml(existingSpecs.intended_use || '')}">
+            </div>
+          </div>
+        `;
+      } else {
+        box.innerHTML = `
+          <div class="col-spec-box-title">${escapeHtml(category)} Details</div>
+          <div class="form-row-grid">
+            <div class="form-group">
+              <label class="form-label">Key Specification</label>
+              <input type="text" id="spec-generic-specs" class="form-input" placeholder="Key feature or spec..." value="${escapeHtml(existingSpecs.key_feature || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Material / Finish</label>
+              <input type="text" id="spec-generic-material" class="form-input" placeholder="Primary material..." value="${escapeHtml(existingSpecs.material || '')}">
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function handleFormImageUpload(input) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          collectionState.tempImageBase64 = e.target.result;
+          const urlInput = document.getElementById("col-form-primary-image");
+          if (urlInput) urlInput.value = e.target.result;
+
+          const previewBox = document.getElementById("col-form-image-preview");
+          if (previewBox) {
+            previewBox.style.display = "block";
+            previewBox.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${e.target.result}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-medium);">
+                <span style="font-size: 11px; color: var(--accent-emerald);">Photo loaded (${Math.round(file.size / 1024)} KB)</span>
+              </div>
+            `;
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function handleDetailPhotoUpload(input, itemId) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const base64Data = e.target.result;
+          const item = collectionState.items.find(i => String(i.id) === String(itemId));
+          if (!item) return;
+
+          const images = item.images || [];
+          images.unshift({
+            url: base64Data,
+            caption: "Personal photo",
+            is_primary: true
+          });
+
+          try {
+            showToast("Saving personal photo...");
+            const res = await fetch(`/api/collection/${itemId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ images })
+            });
+            if (!res.ok) throw new Error("Could not save photo");
+            showToast("Photo saved to item record! 📷");
+            await fetchCollectionData(true);
+            openCollectionDetailModal(itemId);
+          } catch (err) {
+            showToast("⚠️ " + err.message);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function submitCollectionItemForm(e) {
+      e.preventDefault();
+      const id = document.getElementById("col-form-item-id").value.trim();
+      const category = document.getElementById("col-form-category").value;
+      const brand = document.getElementById("col-form-brand").value.trim();
+      const model = document.getElementById("col-form-model").value.trim();
+      const reference_number = document.getElementById("col-form-reference").value.trim() || null;
+      const nickname = document.getElementById("col-form-nickname").value.trim() || null;
+      const status = document.getElementById("col-form-status").value;
+      const colour = document.getElementById("col-form-colour").value.trim() || null;
+      const type = document.getElementById("col-form-type").value.trim() || null;
+      const description = document.getElementById("col-form-description").value.trim() || null;
+      const purchasePriceVal = document.getElementById("col-form-price").value;
+      const purchase_price = purchasePriceVal ? parseFloat(purchasePriceVal) : null;
+      const purchased_from = document.getElementById("col-form-purchased-from").value.trim() || null;
+      const condition = document.getElementById("col-form-condition").value.trim() || null;
+      const notes = document.getElementById("col-form-notes").value.trim() || null;
+      const primaryImageUrl = document.getElementById("col-form-primary-image").value.trim();
+
+      // Assemble category specific specs
+      const category_specific_specs = {};
+      const catLower = category.toLowerCase();
+      if (catLower === "watches") {
+        const mov = document.getElementById("spec-watch-movement");
+        const cse = document.getElementById("spec-watch-case");
+        const wtr = document.getElementById("spec-watch-water");
+        const stp = document.getElementById("spec-watch-strap");
+        const dia = document.getElementById("spec-watch-dial");
+        if (mov && mov.value.trim()) category_specific_specs.movement = mov.value.trim();
+        if (cse && cse.value.trim()) category_specific_specs.case_diameter = cse.value.trim();
+        if (wtr && wtr.value.trim()) category_specific_specs.water_resistance = wtr.value.trim();
+        if (stp && stp.value.trim()) category_specific_specs.strap_material = stp.value.trim();
+        if (dia && dia.value.trim()) category_specific_specs.dial_colour = dia.value.trim();
+      } else if (catLower === "shoes") {
+        const sze = document.getElementById("spec-shoe-size");
+        const upp = document.getElementById("spec-shoe-upper");
+        const sle = document.getElementById("spec-shoe-sole");
+        const sty = document.getElementById("spec-shoe-style");
+        if (sze && sze.value.trim()) category_specific_specs.shoe_size = sze.value.trim();
+        if (upp && upp.value.trim()) category_specific_specs.upper_material = upp.value.trim();
+        if (sle && sle.value.trim()) category_specific_specs.sole_material = sle.value.trim();
+        if (sty && sty.value.trim()) category_specific_specs.intended_use = sty.value.trim();
+      } else {
+        const spc = document.getElementById("spec-generic-specs");
+        const mat = document.getElementById("spec-generic-material");
+        if (spc && spc.value.trim()) category_specific_specs.key_feature = spc.value.trim();
+        if (mat && mat.value.trim()) category_specific_specs.material = mat.value.trim();
+      }
+
+      // Assemble images array
+      let images = [];
+      if (primaryImageUrl) {
+        images.push({ url: primaryImageUrl, is_primary: true });
+      }
+
+      const payload = {
+        category,
+        brand,
+        model,
+        reference_number,
+        nickname,
+        status,
+        colour,
+        type,
+        category_specific_specs,
+        images,
+        purchase_price,
+        purchased_from,
+        condition,
+        notes,
+        description
+      };
+
+      try {
+        let res;
+        if (id) {
+          res = await fetch(`/api/collection/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          res = await fetch(`/api/collection`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || "Save failed");
+        }
+
+        closeCollectionFormModal();
+        showToast(id ? "Item updated successfully! ✨" : "New item added to collection! 📦");
+        await fetchCollectionData(true);
+        if (id) {
+          openCollectionDetailModal(id);
+        }
+      } catch (err) {
+        showToast("⚠️ Error: " + err.message);
+      }
+    }
+
+    async function handleCurrentDetailArchive() {
+      if (!collectionState.selectedItem) return;
+      const item = collectionState.selectedItem;
+      try {
+        const res = await fetch(`/api/collection/${item.id}/archive`, { method: "POST" });
+        if (!res.ok) throw new Error("Archive failed");
+        const updated = await res.json();
+        showToast(`Item ${updated.status === 'Archived' ? 'moved to archive' : 'restored to owned'}`);
+        closeCollectionDetailModal();
+        await fetchCollectionData(true);
+      } catch (err) {
+        showToast("⚠️ " + err.message);
+      }
+    }
+
+    async function handleCurrentDetailDelete() {
+      if (!collectionState.selectedItem) return;
+      const item = collectionState.selectedItem;
+      if (!confirm(`Are you sure you want to permanently delete "${item.brand} ${item.model}" from your collection?`)) return;
+
+      try {
+        const res = await fetch(`/api/collection/${item.id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Delete failed");
+        showToast("Item deleted from collection.");
+        closeCollectionDetailModal();
+        await fetchCollectionData(true);
+      } catch (err) {
+        showToast("⚠️ " + err.message);
+      }
+    }
+
+    function handleCurrentDetailEdit() {
+      if (!collectionState.selectedItem) return;
+      const id = collectionState.selectedItem.id;
+      closeCollectionDetailModal();
+      openCollectionFormModal(id);
     }
 
     // ==========================================================================
@@ -5152,6 +6688,17 @@
       showView("dashboard-view");
       fetchDashboardData();
       fetchRunningShoesData();
+      fetchCollectionData();
+
+      // Check current URL route
+      const path = window.location.pathname.toLowerCase();
+      if (path.includes("collection")) {
+        switchNavTab("collection");
+      } else if (path.includes("shoes") || path.includes("radar")) {
+        switchNavTab("shoes");
+      } else if (path.includes("logs")) {
+        switchNavTab("logs");
+      }
     }
 
     // Login Form Submit Handler (Server-Side Authenticated via /api/auth/login)
@@ -5211,14 +6758,18 @@
     }
 
     // Dashboard Data Fetcher
-    async function fetchDashboardData() {
+    async function fetchDashboardData(bypassCache = false) {
       const statusIndicator = document.getElementById("catalog-status-indicator");
       if (statusIndicator) {
         statusIndicator.innerHTML = '<span class="indicator-pulse"></span><span>Syncing telemetry...</span>';
       }
 
       try {
-        const res = await fetch("/api/dashboard/data");
+        const cacheBuster = bypassCache ? `?_t=${Date.now()}` : "";
+        const res = await fetch(`/api/dashboard/data${cacheBuster}`, {
+          cache: "no-store",
+          headers: { "Pragma": "no-cache" }
+        });
         if (!res.ok) throw new Error("API status " + res.status);
         const data = await res.json();
 
@@ -5228,7 +6779,8 @@
         const activeCountEl = document.getElementById("kpi-active-count");
         const navBadgeEl = document.getElementById("nav-count-badge");
         const sweepTimeEl = document.getElementById("kpi-last-sweep");
-        if (activeCountEl) activeCountEl.textContent = rawProductsList.length;
+        const activeOnly = rawProductsList.filter(p => p.is_active !== false).length;
+        if (activeCountEl) activeCountEl.textContent = `${activeOnly} / ${rawProductsList.length}`;
         if (navBadgeEl) navBadgeEl.textContent = rawProductsList.length;
         if (sweepTimeEl) {
           const dInfo = data.stats ? data.stats.daemon : null;
@@ -5280,7 +6832,7 @@
         }
 
         if (statusIndicator) {
-          statusIndicator.innerHTML = `<span class="indicator-pulse"></span><span>${rawProductsList.length} Monitors Live</span>`;
+          statusIndicator.innerHTML = `<span class="indicator-pulse"></span><span>${activeOnly} Active (${rawProductsList.length} Total)</span>`;
         }
       } catch (err) {
         console.error("Data error:", err);
@@ -5293,15 +6845,21 @@
 
     function updateCounts() {
       const countAll = rawProductsList.length;
+      const countActive = rawProductsList.filter(p => p.is_active !== false).length;
+      const countPaused = rawProductsList.filter(p => p.is_active === false).length;
       const countFlipkart = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("flipkart")).length;
       const countAmazon = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("amazon")).length;
       const countCasio = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("casio")).length;
 
       const cAll = document.getElementById("chip-count-all");
+      const cActive = document.getElementById("chip-count-active");
+      const cPaused = document.getElementById("chip-count-paused");
       const cFlip = document.getElementById("chip-count-flipkart");
       const cAmz = document.getElementById("chip-count-amazon");
       const cCas = document.getElementById("chip-count-casio");
       if (cAll) cAll.textContent = countAll;
+      if (cActive) cActive.textContent = countActive;
+      if (cPaused) cPaused.textContent = countPaused;
       if (cFlip) cFlip.textContent = countFlipkart;
       if (cAmz) cAmz.textContent = countAmazon;
       if (cCas) cCas.textContent = countCasio;
@@ -5329,6 +6887,8 @@
         if (!matchesQuery) return false;
 
         if (currentFilter === "all") return true;
+        if (currentFilter === "active") return p.is_active !== false;
+        if (currentFilter === "paused") return p.is_active === false;
         if (currentFilter === "deals") return p.current_price && p.target_price && p.current_price <= p.target_price;
         return (p.platform || "").toLowerCase().includes(currentFilter);
       });
@@ -5376,11 +6936,11 @@
         }
 
         return `
-          <div class="product-card" id="card-${p.id}">
+          <div class="product-card ${p.is_active ? '' : 'is-paused'}" id="card-${p.id}">
             <div class="card-main-content">
               <div class="product-meta-header">
                 <span class="platform-badge ${storeClass}">${platform}</span>
-                <span class="status-badge-inline ${p.is_active ? 'is-active' : ''}">
+                <span class="status-badge-inline ${p.is_active ? 'is-active' : 'is-paused'}">
                   ${p.is_active ? 'Tracking' : 'Paused'}
                 </span>
               </div>
@@ -5489,18 +7049,38 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Check failed");
         showToast(data.price ? `Price verified: ₹${Number(data.price).toLocaleString('en-IN')}` : "Price check completed.");
-        fetchDashboardData();
+        fetchDashboardData(true);
       } catch (err) {
         showToast("⚠️ " + err.message);
       }
     }
 
     async function toggleProduct(id) {
+      const prod = rawProductsList.find(p => p.id === id);
+      if (!prod) return;
+      const previousState = prod.is_active;
+
+      // Optimistic instant feedback
+      prod.is_active = !previousState;
+      updateCounts();
+      applyFilters();
+      const activeOnly = rawProductsList.filter(p => p.is_active !== false).length;
+      const activeCountEl = document.getElementById("kpi-active-count");
+      if (activeCountEl) activeCountEl.textContent = `${activeOnly} / ${rawProductsList.length}`;
+      showToast(prod.is_active 
+        ? `🟢 Tracking resumed for ${prod.title ? prod.title.slice(0, 28) + '...' : 'item'}` 
+        : `⏸️ Tracking paused for ${prod.title ? prod.title.slice(0, 28) + '...' : 'item'}`);
+
       try {
         const res = await fetch(`/api/products/${id}/toggle`, { method: "POST" });
-        if (!res.ok) throw new Error("Toggle failed");
-        fetchDashboardData();
+        if (!res.ok) throw new Error("Toggle request failed");
+        // Fresh re-fetch with cache-buster
+        fetchDashboardData(true);
       } catch (err) {
+        // Rollback on failure
+        prod.is_active = previousState;
+        updateCounts();
+        applyFilters();
         showToast("⚠️ " + err.message);
       }
     }

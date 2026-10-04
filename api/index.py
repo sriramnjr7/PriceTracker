@@ -26,7 +26,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 import httpx
 from pydantic import BaseModel
 
@@ -43,6 +43,7 @@ from scrapers import extract_fallback_title, get_scraper, normalize_product_url,
 from telegram_bot import TelegramAssistant
 from tracker import Tracker
 from running_shoes_radar import shoes_radar
+from collection_data import collection_mgr
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("vercel_api")
@@ -207,6 +208,31 @@ async def root(request: Request):
     elif re.search(r"products/(\d+)$", clean) and method == "DELETE":
         match = re.search(r"products/(\d+)$", clean)
         return await delete_single_product(int(match.group(1)))
+    elif "assets/collection" in clean or "collection/asset" in clean:
+        filename = clean.split("/")[-1]
+        return await serve_collection_asset(filename)
+    elif "collection" in clean:
+        if clean in ("my-collection", "collection", "my_collection") or is_browser_request(request):
+            return HTMLResponse(
+                content=get_dashboard_html(),
+                status_code=200,
+                headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
+            )
+        if "reset" in clean and method == "POST":
+            return await api_reset_collection()
+        archive_match = re.search(r"collection/([^/]+)/archive", clean)
+        if archive_match and method == "POST":
+            return await api_archive_collection_item(archive_match.group(1))
+        item_match = re.search(r"collection/([^/]+)$", clean)
+        if item_match:
+            item_id = item_match.group(1)
+            if method in ("PUT", "PATCH"):
+                return await api_update_collection_item(item_id, request)
+            elif method == "DELETE":
+                return await api_delete_collection_item(item_id)
+        if method == "POST":
+            return await api_add_collection_item(request)
+        return await api_get_collection()
     elif clean in ("api/products", "products"):
         if method == "POST":
             data = await request.json()
@@ -214,8 +240,8 @@ async def root(request: Request):
             return await api_add_product(payload)
         return await get_dashboard_data()
 
-    # If requested by a browser or accessing root/dashboard, return HTML with CDN caching
-    if is_browser_request(request) or not clean or clean in ("dashboard", "index", "index.py", "api", "api/index", "api/index.py"):
+    # If requested by a browser or accessing root/dashboard/my-collection, return HTML with CDN caching
+    if is_browser_request(request) or not clean or clean in ("dashboard", "index", "index.py", "api", "api/index", "api/index.py", "my-collection", "collection", "my_collection"):
         return HTMLResponse(
             content=get_dashboard_html(),
             status_code=200,
@@ -331,7 +357,7 @@ async def get_dashboard_data():
                 "products": prods_data,
                 "recent_deals": recent_deals,
             },
-            headers={"Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=60"},
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
         )
     finally:
         await db.close()
@@ -775,6 +801,101 @@ async def api_sweep_running_shoes():
     """Trigger an immediate live harvest sweep across Myntra, Flipkart, Tata CLiQ, and Ajio."""
     res = await shoes_radar.sweep()
     return JSONResponse(content=res)
+
+
+# ==========================================
+# MY COLLECTION // PERSONAL INVENTORY & ARCHIVE
+# ==========================================
+
+@app.get("/api/collection")
+@app.get("/api/index.py/api/collection")
+async def api_get_collection():
+    """Get all items in personal collection along with computed statistics."""
+    stats = collection_mgr.get_summary_stats()
+    items = collection_mgr.get_all_items()
+    return JSONResponse(
+        content={
+            "status": "success",
+            "stats": stats,
+            "items": items,
+        },
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+    )
+
+
+@app.post("/api/collection")
+@app.post("/api/index.py/api/collection")
+async def api_add_collection_item(request: Request):
+    """Add a new item to personal collection."""
+    try:
+        data = await request.json()
+        item = collection_mgr.add_item(data)
+        return JSONResponse(content={"status": "success", "item": item}, status_code=201)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.put("/api/collection/{item_id}")
+@app.patch("/api/collection/{item_id}")
+@app.put("/api/index.py/api/collection/{item_id}")
+@app.patch("/api/index.py/api/collection/{item_id}")
+async def api_update_collection_item(item_id: str, request: Request):
+    """Update an item in personal collection."""
+    try:
+        data = await request.json()
+        item = collection_mgr.update_item(item_id, data)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return JSONResponse(content={"status": "success", "item": item})
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/collection/{item_id}/archive")
+@app.post("/api/index.py/api/collection/{item_id}/archive")
+async def api_archive_collection_item(item_id: str):
+    """Toggle archive status for a collection item."""
+    item = collection_mgr.archive_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return JSONResponse(content={"status": "success", "item": item})
+
+
+@app.delete("/api/collection/{item_id}")
+@app.delete("/api/index.py/api/collection/{item_id}")
+async def api_delete_collection_item(item_id: str):
+    """Delete an item from personal collection."""
+    success = collection_mgr.delete_item(item_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return JSONResponse(content={"status": "success", "deleted": True, "id": item_id})
+
+
+@app.post("/api/collection/reset")
+@app.post("/api/index.py/api/collection/reset")
+async def api_reset_collection():
+    """Reset collection to verified initial 17 items."""
+    items = collection_mgr.reset_to_defaults()
+    stats = collection_mgr.get_summary_stats()
+    return JSONResponse(content={"status": "success", "stats": stats, "items": items})
+
+
+@app.get("/assets/collection/{filename}")
+@app.get("/api/collection/asset/{filename}")
+@app.get("/api/index.py/assets/collection/{filename}")
+@app.get("/api/index.py/api/collection/asset/{filename}")
+async def serve_collection_asset(filename: str):
+    """Serve local mockup assets for collection items."""
+    clean_name = os.path.basename(filename)
+    asset_dir = os.path.join(root_dir, "assets", "collection")
+    filepath = os.path.join(asset_dir, clean_name)
+    if os.path.exists(filepath):
+        media_type = "image/png" if clean_name.lower().endswith(".png") else "image/jpeg"
+        return FileResponse(filepath, media_type=media_type, headers={"Cache-Control": "public, max-age=86400"})
+    raise HTTPException(status_code=404, detail="Asset not found")
+
 
 
 # ==========================================
@@ -1885,8 +2006,32 @@ async def catch_all(request: Request, full_path: str):
         search = request.query_params.get("search")
         return await api_get_logs(limit=limit, level=level, search=search)
 
+    # 7.9 Collection Sub-routes
+    if "assets/collection" in clean or "collection/asset" in clean:
+        filename = clean.split("/")[-1]
+        return await serve_collection_asset(filename)
+
+    if "collection" in clean:
+        if clean in ("my-collection", "collection", "my_collection") or is_browser_request(request):
+            return HTMLResponse(content=get_dashboard_html(), status_code=200)
+        if "reset" in clean and method == "POST":
+            return await api_reset_collection()
+        archive_match = re.search(r"collection/([^/]+)/archive", clean)
+        if archive_match and method == "POST":
+            return await api_archive_collection_item(archive_match.group(1))
+        item_match = re.search(r"collection/([^/]+)$", clean)
+        if item_match:
+            item_id = item_match.group(1)
+            if method in ("PUT", "PATCH"):
+                return await api_update_collection_item(item_id, request)
+            elif method == "DELETE":
+                return await api_delete_collection_item(item_id)
+        if method == "POST":
+            return await api_add_collection_item(request)
+        return await api_get_collection()
+
     # 8. Root or Dashboard HTML fallback
-    if method == "GET" and (is_browser_request(request) or clean in ("", "dashboard", "index", "index.py", "api", "api/index", "api/index.py")):
+    if method == "GET" and (is_browser_request(request) or clean in ("", "dashboard", "index", "index.py", "api", "api/index", "api/index.py", "my-collection", "collection", "my_collection")):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)
 
     return JSONResponse(
