@@ -38,12 +38,15 @@ class FlipkartScraper(BaseScraper):
 
     price_selectors = (
         "div.Nx9bqj.CxhGGd",
+        "div.hl05eU div.Nx9bqj",
+        "div._25b18c div.Nx9bqj",
+        "div.x_yXvd div.Nx9bqj",
         "div.Nx9bqj",
         "div.CxhGGd",
-        "div.hl05eU div.Nx9bqj",
         "#price-buy-box ._30jeq3",
         "._30jeq3._1_WHN1",
         "._30jeq3",
+        "div.v1zwn20",
     )
 
     out_of_stock_keywords = (
@@ -52,6 +55,16 @@ class FlipkartScraper(BaseScraper):
         "sold out",
         "temporarily unavailable",
     )
+
+    def parse(self, html: str, url: str) -> ScrapeResult:
+        soup = BeautifulSoup(html, "html.parser")
+        return ScrapeResult(
+            title=self._extract_title(soup),
+            price=self._extract_price(soup, url=url),
+            in_stock=self._extract_stock(soup, url=url),
+            platform=self.platform,
+            url=url,
+        )
 
     def _extract_title(self, soup: BeautifulSoup) -> str:
         """Extract clean product title from Schema.org JSON-LD or primary heading."""
@@ -92,8 +105,8 @@ class FlipkartScraper(BaseScraper):
 
         return ""
 
-    def _extract_stock(self, soup: BeautifulSoup) -> bool:
-        """Precise availability check via Schema.org offers, INITIAL_STATE, and explicit buy-box indicators."""
+    def _extract_stock(self, soup: BeautifulSoup, url: str = "") -> bool:
+        """Precise availability check via Schema.org offers, INITIAL_STATE, explicit buy-box indicators, and variant consistency."""
         # 1. Authoritative Schema.org availability
         for script in soup.find_all("script"):
             stype = script.get("type", "")
@@ -113,8 +126,6 @@ class FlipkartScraper(BaseScraper):
                                 avail = str(offers["availability"]).lower()
                                 if "outofstock" in avail or "soldout" in avail or "discontinued" in avail:
                                     return False
-                                if "instock" in avail:
-                                    return True
                 except Exception:
                     pass
 
@@ -124,8 +135,6 @@ class FlipkartScraper(BaseScraper):
             if "__INITIAL_STATE__" in txt:
                 if '"isAvailable":false' in txt or '"productAvailability":"OUT_OF_STOCK"' in txt:
                     return False
-                if '"isAvailable":true' in txt or '"productAvailability":"IN_STOCK"' in txt:
-                    return True
 
         # 3. Explicit UI Out of Stock Badges & Banners (Do NOT scan full body to avoid customer review false positives)
         stock_badge = soup.select_one(".z3htrc, ._16FRp0, ._3xgQrA, div._1V3wBu")
@@ -134,17 +143,84 @@ class FlipkartScraper(BaseScraper):
             if any(bad in b_txt for bad in ("currently unavailable", "out of stock", "sold out", "temporarily unavailable")):
                 return False
 
-        # 4. Check for active Buy Now / Add to Cart action buttons
+        # 4. Variant Capacity / Storage Consistency Check:
+        # If the target URL specifies a capacity (e.g. 1-tb), but the page rendered an active different capacity (e.g. 250 GB)
+        if url:
+            url_lower = url.lower()
+            capacities = ("1 tb", "2 tb", "4 tb", "250 gb", "256 gb", "500 gb", "512 gb", "128 gb", "64 gb", "32 gb", "16 gb", "8 gb")
+            expected_cap = None
+            for cap in capacities:
+                if cap.replace(" ", "-") in url_lower or cap.replace(" ", "") in url_lower:
+                    expected_cap = cap
+                    break
+            if expected_cap:
+                for el in soup.find_all(string=re.compile(r"Capacity", re.I)):
+                    parent_txt = el.parent.parent.get_text(" ", strip=True).lower() if el.parent and el.parent.parent else ""
+                    m = re.search(r"(?:drive\s+)?capacity\s*:\s*([0-9]+\s*[tg]b)", parent_txt)
+                    if m:
+                        active_cap = m.group(1).strip()
+                        if active_cap != expected_cap:
+                            logger.info(
+                                "[flipkart] Target variant '%s' mismatch with active page variant '%s' for %s. Marking Out of Stock.",
+                                expected_cap, active_cap, url
+                            )
+                            return False
+
+        # 5. Check for active Buy Now / Add to Cart action buttons
         for btn in soup.find_all(["button", "a"]):
             b_txt = btn.get_text(" ", strip=True).lower()
             if any(k in b_txt for k in ("buy now", "add to cart")):
                 return True
 
+        # If Schema.org explicitly said InStock, trust it
+        for script in soup.find_all("script"):
+            txt = script.string or script.get_text() or ""
+            if "InStock" in txt and ("@type" in txt or "offers" in txt):
+                return True
+
         return True
 
-    def _extract_price(self, soup: BeautifulSoup) -> Optional[float]:
-        """Extract primary product price using Schema.org JSON-LD, __INITIAL_STATE__, standard selectors, and dynamic fallbacks."""
-        # 1. Authoritative: Schema.org Product JSON-LD (Search all scripts without strict type constraints)
+    def _extract_price(self, soup: BeautifulSoup, url: str = "") -> Optional[float]:
+        """Extract primary product price using Schema.org JSON-LD, scoped buybox selectors, and filtered fallbacks."""
+        curr_itm = ""
+        m_itm = re.search(r"/p/(itm[a-zA-Z0-9]+)", url)
+        if m_itm:
+            curr_itm = m_itm.group(1)
+        curr_pid = ""
+        m_pid = re.search(r"pid=([A-Z0-9]+)", url)
+        if m_pid:
+            curr_pid = m_pid.group(1)
+
+        def is_foreign_or_ad(el) -> bool:
+            # Check if el itself is an anchor, is wrapped in an anchor, or contains a foreign anchor
+            a_tag = el if el.name == "a" else el.find_parent("a")
+            if not a_tag:
+                a_tag = el.find("a")
+            if a_tag and a_tag.get("href"):
+                href = a_tag["href"]
+                if "/p/" in href:
+                    if curr_itm and curr_itm not in href:
+                        return True
+                    if curr_pid and curr_pid not in href:
+                        return True
+                if any(bad in href.lower() for bad in ("advertisement", "p2psimilar", "otracker=")):
+                    return True
+            # Check ancestor containers for ad / recommendation / carousel classes or data attributes
+            for p in el.parents:
+                if p.name in ("body", "html", "[document]"):
+                    break
+                p_classes = " ".join(p.get("class", [])) if isinstance(p.get("class"), list) else str(p.get("class", ""))
+                p_id = str(p.get("id", ""))
+                p_data = " ".join(str(v) for k, v in p.attrs.items() if k.startswith("data-"))
+                combined = f"{p_classes} {p_id} {p_data}".lower()
+                if any(bad in combined for bad in (
+                    "similar", "recommend", "advertisement", "sponsored", "carousel",
+                    "p2p", "frequently-bought", "cross-sell"
+                )):
+                    return True
+            return False
+
+        # 1. Authoritative: Schema.org Product JSON-LD (Search all scripts for Product type)
         for script in soup.find_all("script"):
             stype = script.get("type", "")
             sid = script.get("id", "")
@@ -157,7 +233,7 @@ class FlipkartScraper(BaseScraper):
                         data = json.loads(txt[start:end+1])
                         if isinstance(data, list) and data:
                             data = data[0]
-                        if isinstance(data, dict):
+                        if isinstance(data, dict) and (data.get("@type") == "Product" or "offers" in data):
                             offers = data.get("offers")
                             if isinstance(offers, dict) and "price" in offers:
                                 val = float(offers["price"])
@@ -172,32 +248,23 @@ class FlipkartScraper(BaseScraper):
                 except Exception:
                     continue
 
-        # 2. window.__INITIAL_STATE__ JSON extraction
-        for script in soup.find_all("script"):
-            txt = script.string or script.get_text() or ""
-            if "__INITIAL_STATE__" in txt:
-                m = re.search(r'"(?:finalPrice|specialPrice|price)":\s*(\d+)', txt)
-                if m:
-                    try:
-                        val = float(m.group(1))
-                        if val > 0:
-                            return val
-                    except ValueError:
-                        pass
-
-        # 3. Standard CSS Selectors
+        # 2. Scoped Standard CSS Selectors (ignoring ads, cross-sells, and external product cards)
         for sel in self.price_selectors:
             for node in soup.select(sel):
+                if is_foreign_or_ad(node):
+                    continue
                 val = self.clean_price(node.get_text(" ", strip=True))
                 if val is not None and val > 0:
                     return val
 
-        # 4. Universal fallback for dynamic hashed React/Next.js utility classes
+        # 3. Strictly Scoped Fallback: Scan text nodes NOT inside foreign product links or ad containers
         for el in soup.find_all(True):
-            if el.name in ("script", "style", "meta", "link", "noscript"):
+            if el.name in ("script", "style", "meta", "link", "noscript", "footer", "header", "nav", "aside"):
                 continue
             txt = el.get_text(" ", strip=True)
             if re.match(r"^₹\s*[0-9][0-9,]*(?:\.[0-9]+)?$", txt):
+                if is_foreign_or_ad(el):
+                    continue
                 val = self.clean_price(txt)
                 if val is not None and val > 0:
                     return val

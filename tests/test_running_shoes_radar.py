@@ -83,14 +83,23 @@ def test_whitelist_positive_matches():
 
 
 def test_whitelist_negative_exclusions():
-    # Casual/tennis shoes must be rejected
+    # Non-whitelisted cheap casual/tennis trap shoes must be rejected
     assert match_running_model("Nike Court Vision Low Casual Sneakers") is None
     assert match_running_model("Adidas Grand Court 2.0 Tennis Shoes") is None
-    assert match_running_model("Adidas Stan Smith Originals") is None
     assert match_running_model("Puma Smash v2 Leather Sneakers") is None
+    assert match_running_model("Adidas Advantage Base Court Shoes") is None
 
-    # Lifestyle remakes
-    assert match_running_model("Nike Zoom Vomero 5 Lifestyle Sneakers") is None
+
+def test_sneaker_whitelist_matching():
+    # Curated hype & retro lifestyle sneakers must be matched
+    assert match_running_model("ADIDAS ORIGINALS SL 72 RS Sneakers For Men (White, Grey, 6)") == ("Adidas", "SL 72")
+    assert match_running_model("Adidas Originals Samba OG Shoes For Men (White, Black)") == ("Adidas", "Samba")
+    assert match_running_model("PUMA Palermo Leather Low-top Sneakers For Men") == ("Puma", "Palermo")
+    assert match_running_model("Nike P-6000 Metallic Silver Shoes") == ("Nike", "P-6000")
+    assert match_running_model("ASICS Gel-1130 White Pure Silver Running Shoes") == ("Asics", "Gel-1130")
+    assert match_running_model("New Balance 550 White Green Basketball Sneakers") == ("New Balance", "New Balance 550")
+    assert match_running_model("Nike Zoom Vomero 5 Lifestyle Sneakers") == ("Nike", "Vomero 5")
+    assert match_running_model("Adidas Stan Smith Originals") == ("Adidas", "Stan Smith")
 
     # Trap Models: Reebok
     assert match_running_model("Reebok Energen Run Running Shoes") is None

@@ -2477,8 +2477,61 @@
       transition: background-color var(--transition-fast);
     }
 
-    .shoe-btn-buy:hover {
-      background: var(--accent-primary-hover);
+    .shoe-badge-sneaker {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.22), rgba(236, 72, 153, 0.22));
+      color: #f472b6;
+      border: 1px solid rgba(236, 72, 153, 0.4);
+      font-family: var(--font-mono);
+      letter-spacing: 0.03em;
+    }
+
+    .shoe-badge-runner {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      font-family: var(--font-mono);
+      letter-spacing: 0.03em;
+    }
+
+    .shoe-stacked-pill {
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.14), rgba(245, 158, 11, 0.14));
+      border: 1px solid rgba(236, 72, 153, 0.35);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      margin-bottom: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .shoe-stacked-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+
+    .shoe-stacked-effective {
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: #34d399;
+    }
+
+    .shoe-stacked-breakdown {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      line-height: 1.35;
     }
 
     .shoe-empty-state {
@@ -4319,7 +4372,7 @@
                   </svg>
                 </div>
                 <div class="metric-value highlight-emerald" id="kpi-shoes-deals-count">0</div>
-                <div class="metric-caption">94 Performance silhouettes monitored</div>
+                <div class="metric-caption">131 Footwear silhouettes monitored</div>
               </div>
             </section>
 
@@ -4370,13 +4423,14 @@
               </div>
             </div>
 
-            <!-- Whitelist Performance Models Reference Drawer -->
+            <!-- Whitelist Performance Models & Top Sneakers Reference Drawer -->
             <div class="whitelist-drawer">
               <div class="whitelist-header">
-                <span class="whitelist-title">Guarded Whitelist Models (Casual / Lifestyle Filter Gate)</span>
-                <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">94 Models</span>
+                <span class="whitelist-title">Guarded Whitelist Models (Performance Running &amp; Top Sneakers)</span>
+                <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">131 Models</span>
               </div>
               <div class="whitelist-cloud">
+                <span class="model-chip" style="background:rgba(236,72,153,0.12); border-color:rgba(236,72,153,0.3); color:#f472b6;"><strong>🔥 TOP SNEAKERS:</strong> Adidas SL 72, Samba, Gazelle, Spezial, Superstar • Puma Palermo • Nike P-6000, Vomero 5, Dunk Low, Killshot • Asics Gel-1130, GT-2160 • NB 550, 1906R</span>
                 <span class="model-chip"><strong>SAUCONY:</strong> Endorphin Elite/Pro/Speed, Triumph, Kinvara Pro, Tempus, Guide, Ride</span>
                 <span class="model-chip"><strong>REEBOK:</strong> Floatride Energy 3-6, X, Symmetros</span>
                 <span class="model-chip"><strong>HOKA:</strong> Cielo X1, Rocket X, Mach X, Mach, Rincon, Clifton, Bondi, Skyward X</span>
@@ -4548,15 +4602,22 @@
                   <span class="mode-count-tag" id="badge-mode-deals-count">0</span>
                 </button>
                 <button type="button" class="shoes-mode-btn" id="btn-mode-all" onclick="setShoeViewMode('all_tracked')">
-                  <span>👟 All Tracked Shoes (94 Silhouettes)</span>
-                  <span class="mode-count-tag" id="badge-mode-all-count">94</span>
+                  <span>👟 All Tracked Footwear (132 Silhouettes)</span>
+                  <span class="mode-count-tag" id="badge-mode-all-count">132</span>
                 </button>
               </div>
 
               <!-- Shoe Quick Search Box -->
               <div class="shoes-search-wrap">
-                <input type="text" id="shoes-search-input" class="form-input form-input-sm" placeholder="Search shoes (e.g. Pegasus, Novablast, SL2)..." oninput="onShoeSearchInput(this.value)">
+                <input type="text" id="shoes-search-input" class="form-input form-input-sm" placeholder="Search shoes & sneakers (e.g. SL 72, Palermo, Samba, P-6000, Vomero)..." oninput="onShoeSearchInput(this.value)">
               </div>
+            </div>
+
+            <!-- Footwear Category Filter Bar -->
+            <div class="shoe-category-bar" style="display: flex; gap: 8px; margin-bottom: var(--space-3); flex-wrap: wrap;">
+              <button class="filter-btn shoe-category-btn active" id="shoe-cat-all" onclick="setShoeCategoryFilter('all', this)">All Footwear</button>
+              <button class="filter-btn shoe-category-btn" id="shoe-cat-running" onclick="setShoeCategoryFilter('running', this)">👟 Performance Running</button>
+              <button class="filter-btn shoe-category-btn" id="shoe-cat-sneaker" onclick="setShoeCategoryFilter('sneaker', this)">🔥 Top Sneakers &amp; Retro</button>
             </div>
 
             <!-- Brand Filter Chips -->
@@ -6234,6 +6295,7 @@
       deals: [],
       tracked_shoes: [],
       viewMode: "deals", // "deals" | "all_tracked"
+      filterCategory: "all", // "all" | "running" | "sneaker"
       filterBrand: "all",
       searchQuery: "",
     };
@@ -6277,7 +6339,7 @@
       }
 
       const totalDeals = (data.deals || []).length;
-      const totalTracked = (data.tracked_shoes || []).length || 94;
+      const totalTracked = (data.tracked_shoes || []).length || 131;
       if (kpiCount) kpiCount.textContent = totalDeals;
       if (badgeDeals) badgeDeals.textContent = totalDeals;
       if (badgeAll) badgeAll.textContent = totalTracked;
@@ -6404,6 +6466,13 @@
       renderRunningShoeCards();
     }
 
+    function setShoeCategoryFilter(category, btnEl) {
+      runningShoesState.filterCategory = category;
+      document.querySelectorAll(".shoe-category-btn").forEach(b => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      renderRunningShoeCards();
+    }
+
     function setShoeBrandFilter(brand, btnEl) {
       runningShoesState.filterBrand = brand;
       document.querySelectorAll(".shoe-filter-btn").forEach(b => b.classList.remove("active"));
@@ -6417,6 +6486,11 @@
 
       const isAllTrackedMode = runningShoesState.viewMode === "all_tracked";
       let list = isAllTrackedMode ? (runningShoesState.tracked_shoes || []) : (runningShoesState.deals || []);
+
+      // Apply Category filter
+      if (runningShoesState.filterCategory && runningShoesState.filterCategory !== "all") {
+        list = list.filter(d => (d.category || "running") === runningShoesState.filterCategory);
+      }
 
       // Apply Brand filter
       if (runningShoesState.filterBrand && runningShoesState.filterBrand !== "all") {
@@ -6459,7 +6533,7 @@
                 Autonomous Radar Scanning for Steal Deals &amp; ATLs
               </h3>
               <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
-                The harvester automatically catches All-Time Lows (ATL) and genuine Steal Deals across performance running shoe models based on researched market thresholds.
+                The harvester automatically catches All-Time Lows (ATL) and genuine Steal Deals across performance running shoes and top sneakers based on researched market thresholds and stacked discounts.
               </p>
               <div style="display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
                 <button class="btn-ui btn-ui-primary" onclick="handleShoesSweepClick()">
@@ -6488,6 +6562,33 @@
         const mrpHtml = mrp && price && mrp > price ? `<span class="shoe-price-mrp">₹${Number(mrp).toLocaleString('en-IN')}</span>` : "";
         const discount = item.discount_percent || (mrp && price && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : null);
         const discountHtml = discount ? `<span class="shoe-price-discount">${discount}% OFF</span>` : "";
+
+        // Category Tag
+        const isSneaker = (item.category === "sneaker") || (item.model && ['SL 72', 'Samba', 'Palermo', 'P-6000', 'Gel-1130', '550', 'Superstar', 'Gazelle', 'Dunk Low', 'Vomero 5'].some(s => item.model.includes(s)));
+        const catBadgeHtml = isSneaker ? `<span class="shoe-badge-sneaker">🔥 SNEAKER</span>` : `<span class="shoe-badge-runner">👟 RUNNER</span>`;
+
+        // Stacked Deal Breakdown (Coupons & Bank Offers)
+        const effectivePrice = item.net_effective_price;
+        let stackedDealHtml = "";
+        if (effectivePrice && effectivePrice < price) {
+          const couponStr = item.coupon_discount ? `Coupon${item.coupon_code ? ' (' + escapeHtml(item.coupon_code) + ')' : ''}: -₹${Number(item.coupon_discount).toLocaleString('en-IN')}` : '';
+          const bankStr = item.bank_discount ? `Bank Offer${item.bank_name ? ' (' + escapeHtml(item.bank_name) + ')' : ''}: -₹${Number(item.bank_discount).toLocaleString('en-IN')}` : '';
+          const breakdownParts = [];
+          if (couponStr) breakdownParts.push(couponStr);
+          if (bankStr) breakdownParts.push(bankStr);
+
+          stackedDealHtml = `
+            <div class="shoe-stacked-pill">
+              <div class="shoe-stacked-head">
+                <span>✨ STACKED STEAL DEAL</span>
+                <strong class="shoe-stacked-effective">₹${Number(effectivePrice).toLocaleString('en-IN')}</strong>
+              </div>
+              <div class="shoe-stacked-breakdown">
+                Listing: ₹${Number(price).toLocaleString('en-IN')} ${breakdownParts.length ? '➔ ' + breakdownParts.join(' • ') : ''}
+              </div>
+            </div>
+          `;
+        }
 
         // Status badge
         const isShoeActive = item.is_active !== false && item.status !== "PAUSED";
@@ -6547,6 +6648,9 @@
           </div>
         ` : '';
 
+        const displayPrice = effectivePrice && effectivePrice < price ? effectivePrice : price;
+        const strikeListingPrice = effectivePrice && effectivePrice < price ? `<span class="shoe-price-mrp" title="Retail Listing Price">₹${Number(price).toLocaleString('en-IN')}</span>` : mrpHtml;
+
         return `
           <div class="shoe-card ${isShoeActive ? '' : 'is-disabled'}" style="${isShoeActive ? '' : 'opacity: 0.65; border-color: rgba(245,158,11,0.25);'}">
             <div class="shoe-card-media">
@@ -6555,7 +6659,10 @@
             </div>
             <div class="shoe-card-body">
               <div class="shoe-card-brand-row">
-                <span class="shoe-card-brand">${escapeHtml(item.brand || '')}</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="shoe-card-brand">${escapeHtml(item.brand || '')}</span>
+                  ${catBadgeHtml}
+                </div>
                 ${badgeHtml}
               </div>
               <h3 class="shoe-card-title" title="${escapeHtml(item.title || item.model)}">${escapeHtml(item.model || item.title)}</h3>
@@ -6564,11 +6671,13 @@
                 ${sizesHtml}
               </div>
 
+              ${stackedDealHtml}
+
               ${atlRow}
 
               <div class="shoe-card-price-row">
-                <span class="shoe-price-current">${price ? '₹' + Number(price).toLocaleString('en-IN') : '<span style="font-size:13px;color:var(--text-dim);">Checking...</span>'}</span>
-                ${mrpHtml}
+                <span class="shoe-price-current">${displayPrice ? '₹' + Number(displayPrice).toLocaleString('en-IN') : '<span style="font-size:13px;color:var(--text-dim);">Checking...</span>'}</span>
+                ${strikeListingPrice}
                 ${discountHtml}
               </div>
 

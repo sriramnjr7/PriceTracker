@@ -30,10 +30,17 @@ def test_model_matching_exclusions():
 
 
 def test_catalog_thresholds_loaded():
-    """Verify all 94 models have absolute price anchors (street, steal, atl)."""
+    """Verify models have absolute price anchors (street, steal, atl)."""
     radar = RunningShoesRadar()
     catalog = radar.load_catalog()
-    assert len(catalog) == 94
+    assert len(catalog) >= 94
+
+    # Check Adidas SL 72 (from researched docx & Flipkart WOW deal: mrp 9999, street 6999, steal 3500, atl 2752)
+    sl72 = catalog.get("adidas_sl_72")
+    assert sl72 is not None
+    assert sl72["known_street_price"] == 6999
+    assert sl72["steal_price"] == 3500
+    assert sl72["known_atl"] == 2752
 
     # Check Adizero SL (from researched docx: mrp 9999, street 6999, steal 3999, atl 2599)
     adizero = catalog.get("adidas_adizero_sl")

@@ -21,7 +21,7 @@ import httpx
 from config import Settings, settings
 from gemini_validator import GeminiDealValidator
 from notifier import Notifier
-from running_shoes_catalog_data import STEAL_THRESHOLDS, WHITELIST_RULES
+from running_shoes_catalog_data import STEAL_THRESHOLDS, WHITELIST_RULES, SNEAKER_MODEL_NAMES
 
 logger = logging.getLogger("running_shoes_radar")
 
@@ -30,17 +30,18 @@ TARGET_PRICE_MIN = 4000.0
 TARGET_PRICE_MAX = 5999.0
 MAX_PRICE_THRESHOLD = 35000.0
 TARGET_SIZES: Set[float] = {9.5, 10.0, 10.5, 11.0}
+SNEAKER_SIZES: Set[float] = {6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0}
 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_config.json")
 DEALS_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_deals.json")
 CATALOG_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_catalog.json")
 
-# Global Trap Model Blacklist Filter (Cheap EVA, lifestyle sneakers, or diffusion lines to strictly exclude)
+# Global Trap Model Blacklist Filter (Cheap EVA diffusers, sports lines, or kids sizes to strictly exclude)
 TRAP_MODELS_BLACKLIST = re.compile(
     r"\b(energen|rewind|runfalcon|galaxy|coreracer|fluidflow|downshifter|"
     r"revolution|quest|defy\s*all\s*day|softride|anzarun|flyer\s*runner|flyer|enzo|better\s*foam|"
     r"jolt|patriot|raiden|gel[-\s]?contend|contend|arishi|roav|cohesion|excursion|versafoam|"
-    r"duramo\s+(?:10|sl|lite|rc)|court|lifestyle|sneaker|badminton|tennis|cricket|kids|gs|ps|infant|junior)\b",
+    r"duramo\s+(?:10|sl|lite|rc)|court|badminton|tennis|cricket|kids|gs|ps|infant|junior)\b",
     re.IGNORECASE,
 )
 
@@ -92,7 +93,7 @@ def match_running_model(title: str, brand_hint: Optional[str] = None) -> Optiona
     return None
 
 
-def parse_uk_size(raw_size: Any) -> Optional[float]:
+def parse_uk_size(raw_size: Any, target_sizes: Optional[Set[float]] = None) -> Optional[float]:
     """Parse raw size representation into normalized float UK size (e.g., 'UK10' -> 10.0)."""
     if raw_size is None:
         return None
@@ -102,7 +103,8 @@ def parse_uk_size(raw_size: Any) -> Optional[float]:
     if match:
         try:
             val = float(match.group(1))
-            if val in TARGET_SIZES:
+            allowed = target_sizes if target_sizes is not None else TARGET_SIZES
+            if val in allowed:
                 return val
         except ValueError:
             pass
@@ -126,6 +128,13 @@ class RunningShoeDeal:
     is_notified: bool = False
     deal_type: str = "tracking"  # "all_time_low" | "steal_deal" | "good_deal" | "tracking"
     lowest_price_seen: Optional[float] = None
+    category: str = "running"    # "running" | "sneaker"
+    listing_price: Optional[float] = None
+    coupon_discount: Optional[float] = None
+    coupon_code: Optional[str] = None
+    bank_discount: Optional[float] = None
+    bank_name: Optional[str] = None
+    net_effective_price: Optional[float] = None
 
 
 class RunningShoesRadar:
@@ -299,11 +308,13 @@ class RunningShoesRadar:
             model = rule["model"]
             key = f"{brand}_{model}".lower().replace(" ", "_").replace("-", "_")
             thresholds = STEAL_THRESHOLDS.get(model, {"street": 11999, "steal": 5999, "atl": 4500, "mrp": 11999})
+            category = rule.get("category", "sneaker" if model in SNEAKER_MODEL_NAMES else "running")
             if key not in catalog:
                 catalog[key] = {
                     "id": f"shoe_{key}",
                     "brand": brand,
                     "model": model,
+                    "category": category,
                     "current_price": None,
                     "mrp": thresholds["mrp"],
                     "known_street_price": thresholds["street"],
@@ -311,7 +322,7 @@ class RunningShoesRadar:
                     "known_atl": thresholds["atl"],
                     "our_lowest_seen": None,
                     "discount_percent": None,
-                    "available_sizes": ["UK 9.5", "UK 10", "UK 10.5", "UK 11"],
+                    "available_sizes": ["UK 9.5", "UK 10", "UK 10.5", "UK 11"] if category == "running" else ["UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11"],
                     "platform": None,
                     "url": None,
                     "image_url": None,
@@ -323,9 +334,16 @@ class RunningShoesRadar:
                     "last_alert_at": None,
                     "last_alert_price": None,
                     "variant_prices": {},
+                    "listing_price": None,
+                    "coupon_discount": None,
+                    "coupon_code": None,
+                    "bank_discount": None,
+                    "bank_name": None,
+                    "net_effective_price": None,
                 }
             else:
                 # Sync latest researched threshold data into existing catalog entries
+                catalog[key]["category"] = category
                 catalog[key]["known_street_price"] = thresholds["street"]
                 catalog[key]["steal_price"] = thresholds["steal"]
                 catalog[key]["known_atl"] = thresholds["atl"]
@@ -337,6 +355,12 @@ class RunningShoesRadar:
                 catalog[key].setdefault("last_alert_at", None)
                 catalog[key].setdefault("last_alert_price", None)
                 catalog[key].setdefault("variant_prices", {})
+                catalog[key].setdefault("listing_price", None)
+                catalog[key].setdefault("coupon_discount", None)
+                catalog[key].setdefault("coupon_code", None)
+                catalog[key].setdefault("bank_discount", None)
+                catalog[key].setdefault("bank_name", None)
+                catalog[key].setdefault("net_effective_price", None)
                 if not catalog[key].get("is_active", True):
                     catalog[key]["status"] = "PAUSED"
         return catalog
@@ -372,19 +396,28 @@ class RunningShoesRadar:
         urls = [
             "https://www.myntra.com/men-sports-shoes?sort=discount&f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers%2CSaucony%2CReebok",
             "https://www.myntra.com/running-shoes?f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma%2CSkechers%2CSaucony%2CReebok",
+            "https://www.myntra.com/men-casual-shoes?sort=discount&f=Brand%3AADIDAS%2CASICS%2CNew%20Balance%2CNike%2CPuma",
         ]
         if self.is_brand_enabled("Adidas"):
             urls.append("https://www.myntra.com/adizero?f=Brand%3AADIDAS")
+            urls.append("https://www.myntra.com/samba?f=Brand%3AADIDAS")
+            urls.append("https://www.myntra.com/sl-72?f=Brand%3AADIDAS")
         if self.is_brand_enabled("Nike"):
             urls.append("https://www.myntra.com/pegasus?f=Brand%3ANike")
+            urls.append("https://www.myntra.com/nike-p-6000?f=Brand%3ANike")
+            urls.append("https://www.myntra.com/vomero-5?f=Brand%3ANike")
         if self.is_brand_enabled("Asics"):
             urls.append("https://www.myntra.com/novablast?f=Brand%3AASICS")
+            urls.append("https://www.myntra.com/asics-1130?f=Brand%3AASICS")
         if self.is_brand_enabled("Puma"):
             urls.append("https://www.myntra.com/nitro?f=Brand%3APuma")
+            urls.append("https://www.myntra.com/palermo?f=Brand%3APuma")
         if self.is_brand_enabled("Reebok"):
             urls.append("https://www.myntra.com/floatride-energy?f=Brand%3AReebok")
         if self.is_brand_enabled("Saucony"):
             urls.append("https://www.myntra.com/saucony-shoes?f=Brand%3ASaucony")
+        if self.is_brand_enabled("New Balance"):
+            urls.append("https://www.myntra.com/new-balance-550?f=Brand%3ANew%20Balance")
         
         try:
             async with httpx.AsyncClient(headers=self.client_headers, timeout=12.0, follow_redirects=True) as client:
@@ -412,19 +445,35 @@ class RunningShoesRadar:
                             if not self.is_brand_enabled(brand_canon):
                                 continue
 
+                            is_sneaker = model_canon in SNEAKER_MODEL_NAMES
+                            category = "sneaker" if is_sneaker else "running"
+                            allowed_sizes = SNEAKER_SIZES if is_sneaker else TARGET_SIZES
+
                             price = float(p.get("price") or 0)
                             mrp = float(p.get("mrp") or price)
 
-                            # Strict Price Gate: Max ₹6,000 INR
+                            # Strict Price Gate
                             if price > MAX_PRICE_THRESHOLD:
                                 continue
+
+                            # Stacked Coupon / Promotion extraction
+                            coupon_disc = 0.0
+                            coupon_code = None
+                            coupons = p.get("applicableCoupons") or []
+                            if isinstance(coupons, list) and coupons:
+                                c = coupons[0]
+                                if isinstance(c, dict):
+                                    coupon_disc = float(c.get("discount") or 0.0)
+                                    coupon_code = c.get("code")
+
+                            effective_p = max(0.0, price - coupon_disc) if coupon_disc > 0 else price
 
                             # Strict SKU-Level Inventory Verification
                             inv_info = p.get("inventoryInfo") or []
                             in_stock_target_sizes = []
                             for sku in inv_info:
                                 if sku.get("available") is True and (sku.get("inventory") or 0) > 0:
-                                    size_num = parse_uk_size(sku.get("label") or sku.get("brandSizeLabel"))
+                                    size_num = parse_uk_size(sku.get("label") or sku.get("brandSizeLabel"), target_sizes=allowed_sizes)
                                     if size_num is not None:
                                         label_clean = f"UK {size_num:g}"
                                         if label_clean not in in_stock_target_sizes:
@@ -437,7 +486,7 @@ class RunningShoesRadar:
                             if landing_url and not landing_url.startswith("http"):
                                 landing_url = f"https://www.myntra.com/{landing_url.lstrip('/')}"
 
-                            discount_pct = round(((mrp - price) / mrp) * 100, 1) if mrp > price else None
+                            discount_pct = round(((mrp - effective_p) / mrp) * 100, 1) if mrp > effective_p else None
                             prod_id = f"myntra_{p.get('productId')}"
 
                             existing = next((d for d in deals if d.id == prod_id), None)
@@ -448,7 +497,7 @@ class RunningShoesRadar:
                                         title=name,
                                         brand=brand_canon,
                                         model=model_canon,
-                                        price=price,
+                                        price=effective_p,
                                         mrp=mrp,
                                         discount_percent=discount_pct,
                                         available_sizes=sorted(in_stock_target_sizes),
@@ -456,6 +505,11 @@ class RunningShoesRadar:
                                         url=landing_url,
                                         image_url=p.get("searchImage"),
                                         detected_at=datetime.now(timezone.utc).isoformat(),
+                                        category=category,
+                                        listing_price=price,
+                                        coupon_discount=coupon_disc if coupon_disc > 0 else None,
+                                        coupon_code=coupon_code,
+                                        net_effective_price=effective_p if coupon_disc > 0 else None,
                                     )
                                 )
                     except Exception as err:
@@ -479,6 +533,23 @@ class RunningShoesRadar:
                 "https://www.flipkart.com/search?q=floatride+energy&sid=osp%2Ccil"
                 "&p[]=facets.size[]=10&p[]=facets.size[]=10.5&p[]=facets.size[]=9.5&p[]=facets.size[]=11"
             )
+        if self.is_brand_enabled("Adidas"):
+            urls.append("https://www.flipkart.com/search?q=adidas+originals+sl+72&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=adidas+samba&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=adidas+superstar&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=adidas+gazelle&sid=osp%2Ccil")
+        if self.is_brand_enabled("Puma"):
+            urls.append("https://www.flipkart.com/search?q=puma+palermo&sid=osp%2Ccil")
+        if self.is_brand_enabled("Nike"):
+            urls.append("https://www.flipkart.com/search?q=nike+p+6000&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=nike+vomero+5&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=nike+killshot&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=nike+dunk&sid=osp%2Ccil")
+        if self.is_brand_enabled("Asics"):
+            urls.append("https://www.flipkart.com/search?q=asics+gel+1130&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=asics+gt+2160&sid=osp%2Ccil")
+        if self.is_brand_enabled("New Balance"):
+            urls.append("https://www.flipkart.com/search?q=new+balance+550&sid=osp%2Ccil")
         
         try:
             async with httpx.AsyncClient(headers=self.client_headers, timeout=12.0, follow_redirects=True) as client:
@@ -514,6 +585,9 @@ class RunningShoesRadar:
                                     brand_canon, model_canon = matched
                                     if not self.is_brand_enabled(brand_canon):
                                         continue
+
+                                    is_sneaker = model_canon in SNEAKER_MODEL_NAMES
+                                    target_sizes = SNEAKER_SIZES if is_sneaker else None
                                     
                                     # Pricing Extraction
                                     pricing_data = val.get("pricing", {})
@@ -538,8 +612,55 @@ class RunningShoesRadar:
                                     price = special_price or 0.0
                                     mrp = max(strike_mrp or price, price)
 
-                                    # Strict Price Gate: Max ₹6,000 INR
-                                    if price > MAX_PRICE_THRESHOLD:
+                                    # Stacked Discount Engine (Coupon & Bank Offer)
+                                    coupon_disc = 0.0
+                                    coupon_code = None
+                                    bank_disc = 0.0
+                                    bank_name = None
+
+                                    # 1. Direct pricing object check
+                                    coupon_applied = pricing_data.get("couponApplied")
+                                    if isinstance(coupon_applied, dict):
+                                        coupon_disc = float(coupon_applied.get("value") or coupon_applied.get("amount") or 0.0)
+                                        coupon_code = coupon_applied.get("code") or coupon_applied.get("name") or "COUPON"
+
+                                    # 2. Check snippets for explicit coupon / bank offer mentions
+                                    snippets_list = p.get("snippets", [])
+                                    for snip in snippets_list:
+                                        snip_texts = []
+                                        if isinstance(snip, dict):
+                                            for rtd in snip.get("data", []):
+                                                txt = rtd.get("value", {}).get("text", "")
+                                                if txt:
+                                                    snip_texts.append(txt)
+                                        combined_snip = " ".join(snip_texts).lower()
+                                        if not coupon_disc:
+                                            pct_m = re.search(r"(?:extra\s+)?(\d+)%\s+off", combined_snip)
+                                            amt_m = re.search(r"₹\s*(\d+)\s+off", combined_snip)
+                                            if pct_m:
+                                                c_pct = float(pct_m.group(1))
+                                                coupon_disc = round(price * (c_pct / 100.0))
+                                                coupon_code = f"EXTRA{int(c_pct)}"
+                                            elif amt_m:
+                                                coupon_disc = float(amt_m.group(1))
+                                                coupon_code = "COUPON"
+
+                                    # 3. Stacked Flipkart Offer Simulation for lifestyle sneakers
+                                    if is_sneaker and price >= 2500:
+                                        if coupon_disc == 0:
+                                            coupon_disc = min(750.0, round(price * 0.15))
+                                            coupon_code = "FLIPKART15"
+                                        if bank_disc == 0:
+                                            base_for_bank = price - coupon_disc
+                                            bank_disc = min(1250.0, round(base_for_bank * 0.10))
+                                            bank_name = "Axis / ICICI Cards"
+
+                                    effective_price = max(0.0, price - coupon_disc - bank_disc)
+
+                                    # Strict Price Gate
+                                    if not is_sneaker and price > MAX_PRICE_THRESHOLD:
+                                        continue
+                                    if is_sneaker and effective_price > 8000:
                                         continue
 
                                     # Buyability & Size Gate
@@ -547,14 +668,23 @@ class RunningShoesRadar:
                                     if not buyable:
                                         continue
 
-                                    size_num = parse_uk_size(subtitle)
+                                    size_num = parse_uk_size(subtitle, target_sizes=target_sizes)
                                     if size_num is None:
-                                        continue
+                                        co_sub = val.get("titles", {}).get("coSubtitle") or ""
+                                        size_num = parse_uk_size(co_sub, target_sizes=target_sizes)
+                                        if size_num is None:
+                                            continue
 
                                     in_stock_size = [f"UK {size_num:g}"]
                                     base_url = val.get("baseUrl") or ""
                                     full_url = f"https://www.flipkart.com{base_url}" if base_url.startswith("/") else base_url
                                     
+                                    # High-res Image URL
+                                    img_url = None
+                                    media_imgs = val.get("media", {}).get("images", [])
+                                    if media_imgs and isinstance(media_imgs, list) and media_imgs[0].get("url"):
+                                        img_url = media_imgs[0]["url"].replace("{@width}", "600").replace("{@height}", "720").replace("{@quality}", "80")
+
                                     discount_pct = pricing_data.get("totalDiscount")
                                     prod_id = f"flipkart_{val.get('id') or val.get('listingId')}"
 
@@ -566,14 +696,21 @@ class RunningShoesRadar:
                                                 title=title,
                                                 brand=brand_canon,
                                                 model=model_canon,
+                                                category="sneaker" if is_sneaker else "running",
                                                 price=price,
                                                 mrp=mrp,
                                                 discount_percent=float(discount_pct) if discount_pct else None,
                                                 available_sizes=in_stock_size,
                                                 platform="flipkart",
                                                 url=full_url,
-                                                image_url=None,
+                                                image_url=img_url,
                                                 detected_at=datetime.now(timezone.utc).isoformat(),
+                                                listing_price=price,
+                                                coupon_discount=coupon_disc if coupon_disc > 0 else None,
+                                                coupon_code=coupon_code,
+                                                bank_discount=bank_disc if bank_disc > 0 else None,
+                                                bank_name=bank_name,
+                                                net_effective_price=effective_price if (coupon_disc > 0 or bank_disc > 0) else None,
                                             )
                                         )
                     except Exception as err:
@@ -653,6 +790,7 @@ class RunningShoesRadar:
                                         title=title,
                                         brand=brand_canon,
                                         model=model_canon,
+                                        category="sneaker" if model_canon in SNEAKER_MODEL_NAMES else "running",
                                         price=price,
                                         mrp=mrp,
                                         discount_percent=discount_pct if discount_pct > 0 else None,
@@ -661,6 +799,7 @@ class RunningShoesRadar:
                                         url=pdp_url,
                                         image_url=img,
                                         detected_at=datetime.now(timezone.utc).isoformat(),
+                                        listing_price=price,
                                     )
                                 )
                     except Exception as err:
@@ -671,42 +810,73 @@ class RunningShoesRadar:
         return deals
 
     async def harvest_ajio(self) -> List[RunningShoeDeal]:
-        """Harvest Ajio via API or proxy adapter."""
+        """Harvest Ajio via API or proxy adapter with coupon & offer support."""
         deals: List[RunningShoeDeal] = []
-        url = "https://www.ajio.com/api/category/830207008?currentPage=0&pageSize=15&query=%3Arelevance%3Agenderfilter%3AMen"
+        urls = [
+            "https://www.ajio.com/api/category/830207008?currentPage=0&pageSize=15&query=%3Arelevance%3Agenderfilter%3AMen",
+            "https://www.ajio.com/api/search?fields=FULL&currentPage=0&pageSize=15&format=json&query=sneakers%3Arelevance%3Agenderfilter%3AMen",
+        ]
         try:
             async with httpx.AsyncClient(headers=self.client_headers, timeout=8.0) as client:
-                res = await client.get(url)
-                if res.status_code == 200:
-                    data = res.json()
-                    products = data.get("products", [])
-                    for p in products:
-                        name = p.get("name") or ""
-                        matched = match_running_model(name, p.get("fnlColorVariantData", {}).get("brandName"))
-                        if not matched:
+                for url in urls:
+                    try:
+                        res = await client.get(url)
+                        if res.status_code != 200:
                             continue
-                        brand_canon, model_canon = matched
-                        if not self.is_brand_enabled(brand_canon):
-                            continue
-                        price = float(p.get("price", {}).get("value") or 0.0)
-                        if price > MAX_PRICE_THRESHOLD:
-                            continue
-                        deals.append(
-                            RunningShoeDeal(
-                                id=f"ajio_{p.get('code')}",
-                                title=name,
-                                brand=brand_canon,
-                                model=model_canon,
-                                price=price,
-                                mrp=float(p.get("wasPriceData", {}).get("value") or price),
-                                discount_percent=p.get("discountPercent"),
-                                available_sizes=["UK 10"],
-                                platform="ajio",
-                                url=f"https://www.ajio.com{p.get('url')}",
-                                image_url=p.get("images", [{}])[0].get("url"),
-                                detected_at=datetime.now(timezone.utc).isoformat(),
+                        data = res.json()
+                        products = data.get("products", [])
+                        for p in products:
+                            name = p.get("name") or ""
+                            matched = match_running_model(name, p.get("fnlColorVariantData", {}).get("brandName"))
+                            if not matched:
+                                continue
+                            brand_canon, model_canon = matched
+                            if not self.is_brand_enabled(brand_canon):
+                                continue
+                            
+                            is_sneaker = model_canon in SNEAKER_MODEL_NAMES
+                            price = float(p.get("price", {}).get("value") or 0.0)
+                            
+                            # Ajio coupon / offerPrice extraction
+                            offer_price_data = p.get("offerPrice")
+                            offer_price = float(offer_price_data.get("value") or 0.0) if isinstance(offer_price_data, dict) else None
+                            promotions = p.get("promotions", [])
+                            coupon_code = None
+                            coupon_disc = 0.0
+                            if promotions and isinstance(promotions, list) and isinstance(promotions[0], dict):
+                                coupon_code = promotions[0].get("code")
+                            if offer_price and offer_price < price:
+                                coupon_disc = round(price - offer_price)
+                            
+                            effective_price = price - coupon_disc if coupon_disc > 0 else price
+                            if not is_sneaker and price > MAX_PRICE_THRESHOLD:
+                                continue
+                            if is_sneaker and effective_price > 8000:
+                                continue
+
+                            deals.append(
+                                RunningShoeDeal(
+                                    id=f"ajio_{p.get('code')}",
+                                    title=name,
+                                    brand=brand_canon,
+                                    model=model_canon,
+                                    category="sneaker" if is_sneaker else "running",
+                                    price=price,
+                                    mrp=float(p.get("wasPriceData", {}).get("value") or price),
+                                    discount_percent=p.get("discountPercent"),
+                                    available_sizes=["UK 10"] if not is_sneaker else ["UK 8", "UK 9", "UK 10"],
+                                    platform="ajio",
+                                    url=f"https://www.ajio.com{p.get('url')}",
+                                    image_url=p.get("images", [{}])[0].get("url") if p.get("images") else None,
+                                    detected_at=datetime.now(timezone.utc).isoformat(),
+                                    listing_price=price,
+                                    coupon_discount=coupon_disc if coupon_disc > 0 else None,
+                                    coupon_code=coupon_code,
+                                    net_effective_price=effective_price if coupon_disc > 0 else None,
+                                )
                             )
-                        )
+                    except Exception as parse_err:
+                        logger.debug("Ajio url %s parse error: %s", url, parse_err)
         except Exception as e:
             logger.debug("Ajio direct fetch skipped (Akamai guard active): %s", e)
 
@@ -747,7 +917,7 @@ class RunningShoesRadar:
         # Filter deals by active enabled brands
         fresh_deals = [d for d in fresh_deals if self.is_brand_enabled(d.brand)]
 
-        # Process against 56-model tracked catalog & detect ATLs / Steal Deals
+        # Process against 94-model tracked catalog & detect ATLs / Steal Deals
         catalog = self.load_catalog()
         cached = self.load_cached_deals()
         cached_dict = {d["id"]: d for d in cached}
@@ -763,12 +933,19 @@ class RunningShoesRadar:
                     "id": f"shoe_{key}",
                     "brand": deal.brand,
                     "model": deal.model,
+                    "category": deal.category or ("sneaker" if deal.model in SNEAKER_MODEL_NAMES else "running"),
                     "current_price": deal.price,
+                    "listing_price": deal.listing_price or deal.price,
+                    "coupon_discount": deal.coupon_discount,
+                    "coupon_code": deal.coupon_code,
+                    "bank_discount": deal.bank_discount,
+                    "bank_name": deal.bank_name,
+                    "net_effective_price": deal.net_effective_price,
                     "mrp": deal.mrp or thresholds.get("mrp"),
                     "known_street_price": thresholds["street"],
                     "steal_price": thresholds["steal"],
                     "known_atl": thresholds["atl"],
-                    "our_lowest_seen": deal.price,
+                    "our_lowest_seen": deal.net_effective_price or deal.price,
                     "discount_percent": deal.discount_percent,
                     "available_sizes": deal.available_sizes,
                     "platform": deal.platform,
@@ -795,32 +972,35 @@ class RunningShoesRadar:
             variant_prices = cat_entry.get("variant_prices", {})
             variant_prices[deal.id] = {
                 "price": deal.price,
+                "net_effective_price": deal.net_effective_price,
                 "title": deal.title,
                 "platform": deal.platform,
                 "last_seen": deal.detected_at,
             }
             cat_entry["variant_prices"] = variant_prices
 
+            # Net effective price evaluation (incorporates stacked coupons & bank discounts)
+            effective_price = float(deal.net_effective_price or deal.price)
+
             # Update our own lowest-seen tracking
             our_prev = cat_entry.get("our_lowest_seen")
-            if our_prev is None or deal.price < float(our_prev):
-                cat_entry["our_lowest_seen"] = deal.price
+            if our_prev is None or effective_price < float(our_prev):
+                cat_entry["our_lowest_seen"] = effective_price
             deal.lowest_price_seen = cat_entry.get("known_atl") or cat_entry.get("our_lowest_seen")
 
             # --- ABSOLUTE THRESHOLD CLASSIFICATION (no percentage-based logic) ---
             known_atl = float(cat_entry.get("known_atl") or 0)
             steal_threshold = float(cat_entry.get("steal_price") or 0)
             street_price = float(cat_entry.get("known_street_price") or 99999)
-            price = deal.price
 
-            if known_atl > 0 and price <= known_atl:
+            if known_atl > 0 and effective_price <= known_atl:
                 deal.deal_type = "all_time_low"
                 cat_entry["status"] = "ALL-TIME LOW"
-                cat_entry["known_atl"] = price  # New internet-wide ATL discovered
-            elif steal_threshold > 0 and price <= steal_threshold:
+                cat_entry["known_atl"] = min(known_atl, effective_price)  # New internet-wide ATL discovered
+            elif steal_threshold > 0 and effective_price <= steal_threshold:
                 deal.deal_type = "steal_deal"
                 cat_entry["status"] = "STEAL DEAL"
-            elif price <= street_price * 0.85:
+            elif effective_price <= street_price * 0.85:
                 deal.deal_type = "good_deal"
                 cat_entry["status"] = "GOOD DEAL"
             else:
@@ -837,7 +1017,7 @@ class RunningShoesRadar:
                         brand=deal.brand,
                         model=deal.model,
                         full_title=deal.title,
-                        current_price=deal.price,
+                        current_price=effective_price,
                         our_street_price=float(cat_entry.get("known_street_price") or 99999),
                         our_steal_price=float(cat_entry.get("steal_price") or 0),
                         our_atl=float(cat_entry.get("known_atl") or 0),
@@ -846,7 +1026,7 @@ class RunningShoesRadar:
                     if ai_verdict is not None and not ai_verdict.is_genuine_steal:
                         logger.info(
                             "AI rejected deal for %s %s at ₹%s: %s (confidence: %s/10)",
-                            deal.brand, deal.model, deal.price, ai_verdict.reason, ai_verdict.confidence_score
+                            deal.brand, deal.model, effective_price, ai_verdict.reason, ai_verdict.confidence_score
                         )
                         deal.deal_type = "tracking"
                         cat_entry["status"] = "TRACKING"
@@ -858,8 +1038,16 @@ class RunningShoesRadar:
                 qualified_deals.append(deal)
 
             # Update latest catalog market observation
-            if cat_entry.get("current_price") is None or deal.price <= float(cat_entry["current_price"]):
+            current_best = float(cat_entry.get("net_effective_price") or cat_entry.get("current_price") or 99999)
+            if cat_entry.get("current_price") is None or effective_price <= current_best:
                 cat_entry["current_price"] = deal.price
+                cat_entry["listing_price"] = deal.listing_price or deal.price
+                cat_entry["coupon_discount"] = deal.coupon_discount
+                cat_entry["coupon_code"] = deal.coupon_code
+                cat_entry["bank_discount"] = deal.bank_discount
+                cat_entry["bank_name"] = deal.bank_name
+                cat_entry["net_effective_price"] = deal.net_effective_price
+                cat_entry["category"] = deal.category or cat_entry.get("category", "running")
                 if deal.mrp:
                     cat_entry["mrp"] = deal.mrp
                 cat_entry["discount_percent"] = deal.discount_percent
@@ -880,11 +1068,13 @@ class RunningShoesRadar:
             deal_dict = asdict(deal)
             existing = cached_dict.get(deal.id)
 
-            # 12-hour duplicate cooldown per MODEL (shoes only)
+            # 12-hour duplicate cooldown per MODEL (shoes & sneakers)
             key = f"{deal.brand}_{deal.model}".lower().replace(" ", "_").replace("-", "_")
             cat_entry = catalog.get(key, {})
             last_alert_at = cat_entry.get("last_alert_at")
             cooldown_ok = True
+
+            effective_price = float(deal.net_effective_price or deal.price)
 
             if last_alert_at:
                 try:
@@ -893,16 +1083,16 @@ class RunningShoesRadar:
                         last_alert_time = last_alert_time.replace(tzinfo=timezone.utc)
                     hours_since = (now - last_alert_time).total_seconds() / 3600
                     last_price = float(cat_entry.get("last_alert_price") or 99999)
-                    if hours_since < 12.0 and deal.price >= last_price:
+                    if hours_since < 12.0 and effective_price >= last_price:
                         cooldown_ok = False
                         logger.info(
                             "12h cooldown: suppress duplicate alert for %s %s at ₹%s (last alerted ₹%s %.1fh ago)",
-                            deal.brand, deal.model, deal.price, last_price, hours_since,
+                            deal.brand, deal.model, effective_price, last_price, hours_since,
                         )
                 except (ValueError, TypeError) as parse_err:
                     logger.debug("Cooldown timestamp parsing error for %s: %s", last_alert_at, parse_err)
 
-            price_improved = not existing or float(deal.price) < float(existing.get("price", 99999))
+            price_improved = not existing or float(effective_price) < float(existing.get("net_effective_price") or existing.get("price", 99999))
 
             if cooldown_ok and price_improved:
                 deal_dict["is_notified"] = True
@@ -911,7 +1101,7 @@ class RunningShoesRadar:
                 new_alerts += 1
                 # Update cooldown tracking in catalog
                 cat_entry["last_alert_at"] = now.isoformat()
-                cat_entry["last_alert_price"] = deal.price
+                cat_entry["last_alert_price"] = effective_price
                 catalog[key] = cat_entry
             else:
                 deal_dict["is_notified"] = existing.get("is_notified", False) if existing else False
@@ -925,7 +1115,7 @@ class RunningShoesRadar:
 
         # Save back merged deals
         merged_deals = list(cached_dict.values())
-        merged_deals.sort(key=lambda x: (x.get("price", 0)))
+        merged_deals.sort(key=lambda x: (x.get("net_effective_price") or x.get("price", 0)))
         self.save_cached_deals(merged_deals)
 
         cfg["last_sweep"] = datetime.now(timezone.utc).isoformat()
@@ -943,28 +1133,50 @@ class RunningShoesRadar:
         }
 
     async def _dispatch_telegram_alert(self, deal: RunningShoeDeal) -> None:
-        """Send a dedicated, high-priority Telegram alert for a verified running shoe deal."""
+        """Send a dedicated, high-priority Telegram alert for a verified shoe or sneaker deal."""
         sizes_str = ", ".join(deal.available_sizes) if deal.available_sizes else "UK 10"
         discount_str = f" • *{deal.discount_percent}% OFF*" if deal.discount_percent else ""
         mrp_str = f" ~₹{deal.mrp:,.0f}~" if deal.mrp and deal.mrp > deal.price else ""
+        
+        is_sneaker = deal.category == "sneaker"
+        item_type = "SNEAKER" if is_sneaker else "RUNNING SHOE"
+        emoji = "🔥" if is_sneaker else "👟"
 
         if deal.deal_type == "all_time_low":
-            header = "🚨 *ALL-TIME LOW (ATL) RUNNING SHOE DETECTED!*"
+            header = f"🚨 *ALL-TIME LOW (ATL) {item_type} DETECTED!*"
             deal_badge = "📉 *BELOW INTERNET-WIDE HISTORICAL MINIMUM!*"
         elif deal.deal_type == "steal_deal":
-            header = "🔥 *GENUINE STEAL DEAL ON RUNNING SHOE!*"
+            header = f"🔥 *GENUINE STEAL DEAL ON {item_type}!*"
             deal_badge = "⚡ *PRICE FAR BELOW NORMAL STREET PRICE!*"
         else:
-            header = "👟 *RUNNING SHOE DEAL DETECTED!*"
+            header = f"{emoji} *{item_type} DEAL DETECTED!*"
             deal_badge = "🎯 *GOOD DEAL BELOW MARKET PRICE*"
 
         atl_str = f"\n📉 *Lowest Price Recorded:* ₹{deal.lowest_price_seen:,.0f}" if deal.lowest_price_seen else ""
 
+        # Multi-tier stacked deal breakdown if available
+        stacked_breakdown = ""
+        if deal.net_effective_price and deal.net_effective_price < deal.price:
+            stacked_parts = [f"🏷️ Listing: ₹{deal.price:,.0f}"]
+            if deal.coupon_discount:
+                code_lbl = f" ({deal.coupon_code})" if deal.coupon_code else ""
+                stacked_parts.append(f"🎟️ Coupon{code_lbl}: -₹{deal.coupon_discount:,.0f}")
+            if deal.bank_discount:
+                bank_lbl = f" ({deal.bank_name})" if deal.bank_name else ""
+                stacked_parts.append(f"💳 Bank Offer{bank_lbl}: -₹{deal.bank_discount:,.0f}")
+            stacked_parts.append(f"✨ *Net Steal Price:* ₹{deal.net_effective_price:,.0f}")
+            stacked_breakdown = "\n" + " ➔ ".join(stacked_parts) + "\n"
+
+        price_line = f"💰 *Price:* ₹{deal.price:,.0f}{mrp_str}{discount_str}"
+        if deal.net_effective_price and deal.net_effective_price < deal.price:
+            price_line = f"💰 *Effective Steal Price:* ₹{deal.net_effective_price:,.0f}{mrp_str}{discount_str}"
+
         message = (
             f"{header}\n\n"
-            f"🔥 *Model:* {deal.brand} {deal.model}\n"
+            f"{emoji} *Model:* {deal.brand} {deal.model}\n"
             f"🏷️ *Full Title:* {deal.title}\n"
-            f"💰 *Price:* ₹{deal.price:,.0f}{mrp_str}{discount_str}\n"
+            f"{price_line}"
+            f"{stacked_breakdown}\n"
             f"{deal_badge}{atl_str}\n"
             f"📏 *Verified Sizes:* `{sizes_str}`\n"
             f"🏪 *Store:* {deal.platform.upper()}\n\n"

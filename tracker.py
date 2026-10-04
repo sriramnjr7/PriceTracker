@@ -110,6 +110,48 @@ class Tracker:
             await self.db.update_price(product.id, None, title=title_to_set)
             return False
 
+        # 1. Variant specification consistency guard (e.g. 1 TB SSD vs 250 GB pill)
+        if not self._is_variant_consistent(product.title or "", product.url or "", result.title or ""):
+            logger.warning(
+                "Variant specification mismatch for product %s ('%s' vs extracted '%s'). Setting out of stock.",
+                product.id, product.title, result.title
+            )
+            await self.db.update_price(product.id, None, title=product.title)
+            return False
+
+        # 2. Single-Tick Anomaly Confirmation Guard:
+        # Detect sudden plunges (>= 50% drop from current price or >= 55% drop from initial price on restock)
+        is_extreme_drop = False
+        if product.current_price and product.current_price > 0:
+            tick_drop = (product.current_price - result.price) / product.current_price * 100.0
+            if tick_drop >= 50.0:
+                is_extreme_drop = True
+        elif product.initial_price and product.initial_price > 0:
+            restock_drop = (product.initial_price - result.price) / product.initial_price * 100.0
+            if restock_drop >= 55.0:
+                is_extreme_drop = True
+
+        if is_extreme_drop:
+            logger.warning(
+                "Suspected extreme single-tick drop for '%s' (Price: INR %s vs Current: %s, Initial: %s). Running confirmation probe...",
+                product.title, result.price, product.current_price, product.initial_price
+            )
+            try:
+                recheck_scraper = get_scraper(product.platform, self.config)
+                recheck = await recheck_scraper.scrape(product.url)
+                if not recheck.in_stock or recheck.price is None or abs(recheck.price - result.price) > 5.0:
+                    logger.warning(
+                        "Re-probe failed to confirm drop for '%s' (probe 1: %s, probe 2: %s, in_stock: %s). Suppressing false alert.",
+                        product.title, result.price, getattr(recheck, "price", None), getattr(recheck, "in_stock", None)
+                    )
+                    if recheck.in_stock and recheck.price:
+                        result = recheck
+                    else:
+                        await self.db.update_price(product.id, None, title=result.title or None)
+                        return False
+            except Exception as recheck_exc:
+                logger.warning("Re-probe exception for %s: %s", product.id, recheck_exc)
+
         should_notify, drop_percent = self._should_notify(
             product, product.current_price, result.price
         )
@@ -406,6 +448,38 @@ class Tracker:
             await self.db.set_last_notified(product.id, lowest_price)
 
         return notified_any
+
+    @staticmethod
+    def _is_variant_consistent(target_title: str, target_url: str, scraped_title: str) -> bool:
+        """Check if target capacity/size specification matches scraped title."""
+        import re
+        target_combined = f"{target_title} {target_url}".lower()
+        scraped_lower = (scraped_title or "").lower()
+
+        capacities = ("1 tb", "2 tb", "4 tb", "250 gb", "256 gb", "500 gb", "512 gb", "128 gb", "64 gb", "32 gb", "16 gb", "8 gb")
+        expected_cap = None
+        for cap in capacities:
+            cap_clean = cap.replace(" ", "")
+            cap_dash = cap.replace(" ", "-")
+            if re.search(r"\b" + re.escape(cap) + r"\b", target_combined) or \
+               re.search(r"\b" + re.escape(cap_clean) + r"\b", target_combined) or \
+               re.search(r"\b" + re.escape(cap_dash) + r"\b", target_combined):
+                expected_cap = cap
+                break
+
+        if expected_cap and scraped_lower:
+            for other_cap in capacities:
+                if other_cap == expected_cap:
+                    continue
+                other_clean = other_cap.replace(" ", "")
+                other_dash = other_cap.replace(" ", "-")
+                if re.search(r"\b" + re.escape(other_cap) + r"\b", scraped_lower) or \
+                   re.search(r"\b" + re.escape(other_clean) + r"\b", scraped_lower) or \
+                   re.search(r"\b" + re.escape(other_dash) + r"\b", scraped_lower):
+                    if not (re.search(r"\b" + re.escape(expected_cap) + r"\b", scraped_lower) or \
+                            re.search(r"\b" + re.escape(expected_cap.replace(" ", "")) + r"\b", scraped_lower)):
+                        return False
+        return True
 
     @staticmethod
     def _target_text(product) -> str:

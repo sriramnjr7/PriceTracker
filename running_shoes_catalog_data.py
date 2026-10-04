@@ -558,14 +558,298 @@ WHITELIST_RULES = [
         "model": "Floatride Energy Symmetros",
         "pattern": re.compile(r"\bfloatride\s+energy\s+symmetros(?:\s+[23])?\b", re.IGNORECASE),
         "exclusions": None,
+        "category": "running",
     },
     {
         "brand": "Reebok",
         "model": "Floatride Energy",
         "pattern": re.compile(r"\bfloatride\s+energy(?:\s+(?:3|4|5|6))?\b", re.IGNORECASE),
         "exclusions": re.compile(r"\b(?:energen|x|symmetros|daily)\b", re.IGNORECASE),
+        "category": "running",
     },
 ]
+
+# Curated Top Sneaker, Retro Runner & Heritage Lifestyle Icons
+SNEAKER_RULES = [
+    # --- Adidas Originals ---
+    {
+        "brand": "Adidas",
+        "model": "SL 72",
+        "pattern": re.compile(r"\b(?:adidas\s+originals\s+)?sl\s*72(?:\s*(?:rs|og))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Adidas",
+        "model": "Samba",
+        "pattern": re.compile(r"\bsamba(?:\s*(?:og|classic|deco|decon|vegan))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:samba\s*golf|first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Adidas",
+        "model": "Gazelle",
+        "pattern": re.compile(r"\bgazelle(?:\s*(?:indoor|bold|og|85))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Adidas",
+        "model": "Handball Spezial",
+        "pattern": re.compile(r"\b(?:handball\s+)?spezial\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Adidas",
+        "model": "Stan Smith",
+        "pattern": re.compile(r"\bstan\s+smith\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Adidas",
+        "model": "Superstar",
+        "pattern": re.compile(r"\bsuperstar(?:\s*(?:82|adv|xlg))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Adidas",
+        "model": "Campus 00s",
+        "pattern": re.compile(r"\bcampus(?:\s*(?:00s|80s))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Adidas",
+        "model": "Forum Low",
+        "pattern": re.compile(r"\bforum(?:\s*(?:low|84|mid|mod))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+
+    # --- Nike Sportswear & Heritage ---
+    {
+        "brand": "Nike",
+        "model": "P-6000",
+        "pattern": re.compile(r"\bp[-\s]?6000\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Dunk Low",
+        "pattern": re.compile(r"\bdunk(?:\s*(?:low|high|retro|se))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:slam\s*dunk|first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Air Force 1 '07",
+        "pattern": re.compile(r"\b(?:air\s*force\s*1|af1)(?:\s*(?:'07|07|low|shadow|lv8))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Cortez",
+        "pattern": re.compile(r"\bcortez\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Killshot 2",
+        "pattern": re.compile(r"\bkillshot(?:\s*2)?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Vomero 5",
+        "pattern": re.compile(r"\bvomero\s*5\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Air Max 1",
+        "pattern": re.compile(r"\bair\s*max\s*1(?:\s*(?:'86|86|sc|se))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Air Max 90",
+        "pattern": re.compile(r"\bair\s*max\s*90(?:\s*(?:futura|gtx|se|ltr))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "V2K Run",
+        "pattern": re.compile(r"\bv2k\s*run\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Nike",
+        "model": "Initiator",
+        "pattern": re.compile(r"\binitiator\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+
+    # --- Asics Sportstyle ---
+    {
+        "brand": "Asics",
+        "model": "Gel-1130",
+        "pattern": re.compile(r"\bgel[-\s]?1130\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Asics",
+        "model": "Gel-Kayano 14",
+        "pattern": re.compile(r"\bgel[-\s]?kayano\s*14\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Asics",
+        "model": "Gel-NYC",
+        "pattern": re.compile(r"\bgel[-\s]?nyc\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Asics",
+        "model": "GT-2160",
+        "pattern": re.compile(r"\bgt[-\s]?2160\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Asics",
+        "model": "Japan S",
+        "pattern": re.compile(r"\bjapan\s*s\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Asics",
+        "model": "EX89",
+        "pattern": re.compile(r"\bex89\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+
+    # --- Puma Sportstyle ---
+    {
+        "brand": "Puma",
+        "model": "Palermo",
+        "pattern": re.compile(r"\bpalermo(?:\s*(?:leather|special|og|modena))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Puma",
+        "model": "Suede Classic",
+        "pattern": re.compile(r"\bsuede\s*(?:classic|xl|vtg|crepe)?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Puma",
+        "model": "Clyde",
+        "pattern": re.compile(r"\bclyde(?:\s*(?:og|all-pro|core))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Puma",
+        "model": "Army Trainer",
+        "pattern": re.compile(r"\barmy\s*trainer\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "Puma",
+        "model": "Easy Rider",
+        "pattern": re.compile(r"\beasy\s*rider\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+
+    # --- New Balance Heritage ---
+    {
+        "brand": "New Balance",
+        "model": "New Balance 550",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?550\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "New Balance",
+        "model": "New Balance 574",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?574(?:\s*(?:core|legacy|rugged))?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "New Balance",
+        "model": "New Balance 1906R",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?1906[rdu]?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "New Balance",
+        "model": "New Balance 2002R",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?2002[rd]?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "New Balance",
+        "model": "New Balance 530",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?530\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "New Balance",
+        "model": "New Balance 327",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?327\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "New Balance",
+        "model": "New Balance 9060",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?9060\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+    {
+        "brand": "New Balance",
+        "model": "New Balance 990",
+        "pattern": re.compile(r"\b(?:new\s*balance\s*)?990(?:\s*v[3456])?\b", re.IGNORECASE),
+        "exclusions": re.compile(r"\b(?:first\s*copy|fake|rep)\b", re.IGNORECASE),
+        "category": "sneaker",
+    },
+]
+
+# Ensure category="running" default on existing performance running rules
+for _rule in WHITELIST_RULES:
+    _rule.setdefault("category", "running")
+
+# Append sneaker rules to the combined whitelist
+WHITELIST_RULES.extend(SNEAKER_RULES)
+
+# Set of canonical sneaker models for fast category lookup
+SNEAKER_MODEL_NAMES = {r["model"] for r in SNEAKER_RULES}
 
 STEAL_THRESHOLDS = {
     "Alphafly": {'mrp': 22795, 'street': 20495, 'steal': 13499, 'atl': 9995},
@@ -663,3 +947,55 @@ STEAL_THRESHOLDS = {
     "Floatride Energy Symmetros": {'mrp': 10999, 'street': 7500, 'steal': 4500, 'atl': 3500},
     "Floatride Energy": {'mrp': 8999, 'street': 7000, 'steal': 4500, 'atl': 3500},
 }
+
+SNEAKER_STEAL_THRESHOLDS = {
+    # Adidas Originals
+    "SL 72": {"mrp": 9999, "street": 6999, "steal": 3500, "atl": 2752},
+    "Samba": {"mrp": 10999, "street": 8999, "steal": 4500, "atl": 3799},
+    "Gazelle": {"mrp": 9999, "street": 7999, "steal": 3999, "atl": 3299},
+    "Handball Spezial": {"mrp": 10999, "street": 8499, "steal": 4499, "atl": 3599},
+    "Stan Smith": {"mrp": 8999, "street": 5999, "steal": 3200, "atl": 2499},
+    "Superstar": {"mrp": 8999, "street": 5999, "steal": 3200, "atl": 2499},
+    "Campus 00s": {"mrp": 9999, "street": 6999, "steal": 3600, "atl": 2899},
+    "Forum Low": {"mrp": 9999, "street": 6499, "steal": 3400, "atl": 2699},
+
+    # Nike Sportswear & Heritage
+    "P-6000": {"mrp": 8995, "street": 6495, "steal": 3500, "atl": 2895},
+    "Dunk Low": {"mrp": 8695, "street": 7495, "steal": 4500, "atl": 3699},
+    "Air Force 1 '07": {"mrp": 9695, "street": 7995, "steal": 4400, "atl": 3495},
+    "Cortez": {"mrp": 7495, "street": 5495, "steal": 2999, "atl": 2495},
+    "Killshot 2": {"mrp": 7995, "street": 5995, "steal": 3400, "atl": 2795},
+    "Vomero 5": {"mrp": 14995, "street": 11495, "steal": 6499, "atl": 4995},
+    "Air Max 1": {"mrp": 12795, "street": 9495, "steal": 5200, "atl": 3995},
+    "Air Max 90": {"mrp": 11895, "street": 8995, "steal": 4999, "atl": 3795},
+    "V2K Run": {"mrp": 10795, "street": 8495, "steal": 4800, "atl": 3695},
+    "Initiator": {"mrp": 5495, "street": 3995, "steal": 2499, "atl": 1995},
+
+    # Asics Sportstyle
+    "Gel-1130": {"mrp": 8999, "street": 6999, "steal": 3800, "atl": 3199},
+    "Gel-Kayano 14": {"mrp": 13999, "street": 10999, "steal": 6500, "atl": 4999},
+    "Gel-NYC": {"mrp": 12999, "street": 9999, "steal": 5900, "atl": 4499},
+    "GT-2160": {"mrp": 10999, "street": 8499, "steal": 4800, "atl": 3699},
+    "Japan S": {"mrp": 6999, "street": 4999, "steal": 2800, "atl": 2199},
+    "EX89": {"mrp": 8999, "street": 6499, "steal": 3500, "atl": 2699},
+
+    # Puma Sportstyle
+    "Palermo": {"mrp": 6999, "street": 4999, "steal": 2800, "atl": 2299},
+    "Suede Classic": {"mrp": 6999, "street": 4499, "steal": 2600, "atl": 1999},
+    "Clyde": {"mrp": 7999, "street": 5499, "steal": 3000, "atl": 2399},
+    "Army Trainer": {"mrp": 7499, "street": 5199, "steal": 2900, "atl": 2299},
+    "Easy Rider": {"mrp": 6999, "street": 4799, "steal": 2700, "atl": 2199},
+
+    # New Balance Heritage
+    "New Balance 550": {"mrp": 10999, "street": 7999, "steal": 4200, "atl": 3499},
+    "New Balance 574": {"mrp": 8999, "street": 5999, "steal": 3200, "atl": 2499},
+    "New Balance 1906R": {"mrp": 14999, "street": 11999, "steal": 6800, "atl": 5299},
+    "New Balance 2002R": {"mrp": 13999, "street": 10999, "steal": 6200, "atl": 4799},
+    "New Balance 530": {"mrp": 9999, "street": 7499, "steal": 3999, "atl": 3199},
+    "New Balance 327": {"mrp": 9999, "street": 6999, "steal": 3600, "atl": 2799},
+    "New Balance 9060": {"mrp": 15999, "street": 12999, "steal": 7500, "atl": 5999},
+    "New Balance 990": {"mrp": 23999, "street": 19999, "steal": 11999, "atl": 8999},
+}
+
+STEAL_THRESHOLDS.update(SNEAKER_STEAL_THRESHOLDS)
+
