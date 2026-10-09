@@ -71,26 +71,39 @@ class Tracker:
         if product.platform == "casio" and "/collections/" in product.url and "/products/" not in product.url:
             return await self._check_casio_collection(product)
 
-        # 2. Specialized handling for Flipkart Multi-Variant products (e.g. Crocs LiteRide 360 or all-colors/all-sizes tracking)
+        # 2. Specialized handling for Amazon Multi-Variant products (e.g. 8Bitdo joysticks, twister, or all-colors tracking)
+        if product.platform == "amazon" and (
+            "(all colors" in (product.title or "").lower()
+            or "twister" in product.url.lower()
+            or "variants" in (product.title or "").lower()
+            or "joystick" in (product.title or "").lower()
+            or "8bitdo" in (product.title or "").lower()
+        ):
+            return await self._check_amazon_variants(product)
+
+        # 3. Specialized handling for Flipkart Multi-Variant products (e.g. Crocs LiteRide 360, Skechers size-filtered, or all-colors/all-sizes tracking)
         if product.platform == "flipkart" and (
             "(all colors" in (product.title or "").lower()
             or "literide" in product.url.lower()
             or "variants" in (product.title or "").lower()
+            or "size " in (product.title or "").lower()
+            or "size 8" in (product.title or "").lower()
+            or "skechers" in (product.title or "").lower()
         ):
             return await self._check_flipkart_variants(product)
 
-        # 3. Specialized handling for Casio Myntra Catalog sweeps
+        # 4. Specialized handling for Casio Myntra Catalog sweeps
         if product.platform == "myntra" and ("/watches" in product.url or "category: casio" in (product.title or "").lower()):
             return await self._check_myntra_casio(product)
 
-        # 4. Specialized handling for Casio Flipkart Catalog sweeps
+        # 5. Specialized handling for Casio Flipkart Catalog sweeps
         if product.platform == "flipkart" and (
             "category: casio" in (product.title or "").lower()
             or ("casio" in product.url.lower() and "/watches" in product.url)
         ):
             return await self._check_flipkart_casio(product)
 
-        # 5. Standard single product check
+        # 6. Standard single product check
         try:
             scraper = get_scraper(product.platform, self.config)
             result = await scraper.scrape(product.url)
@@ -373,26 +386,26 @@ class Tracker:
             await self.db.set_last_notified(product.id, deals[0]["price"])
         return notified_any
 
-    async def _check_flipkart_variants(self, product) -> bool:
-        """Inspect all colorways and sizes for a Flipkart multi-variant product."""
-        from scrapers.flipkart import FlipkartScraper
+    async def _check_amazon_variants(self, product) -> bool:
+        """Inspect all colorways and styles for an Amazon multi-variant (Twister) product."""
+        from scrapers.amazon import AmazonScraper
 
-        scraper = FlipkartScraper(self.config)
+        scraper = AmazonScraper(self.config)
         report = await scraper.check_product_variants(product.url)
 
-        model_title = report.get("model_title") or product.title or "CROCS LiteRide 360 Clog"
+        model_title = report.get("model_title") or product.title or "8Bitdo Controller"
         clean_model = model_title.split("(")[0].strip() if "(" in model_title else model_title
 
         in_stock_variants = report.get("in_stock_variants", [])
         lowest_price = report.get("lowest_price")
 
         if not in_stock_variants:
-            updated_title = f"{clean_model} (All Colors & Sizes - Out of Stock)"
+            updated_title = f"{clean_model} (All Colors - Out of Stock)"
             await self.db.update_price(product.id, None, title=updated_title)
             logger.info(
-                "[flipkart] Multi-variant product %s: all %s colorways & sizes currently out of stock.",
+                "[amazon] Multi-variant product %s: all %s colorways currently out of stock.",
                 product.id,
-                report.get("total_colors_checked", 0),
+                report.get("total_variants_checked", 0),
             )
             return False
 
@@ -400,17 +413,16 @@ class Tracker:
         await self.db.update_price(product.id, lowest_price, title=updated_title)
 
         notified_any = False
-        target_price = product.target_price or 2500.0
+        target_price = product.target_price or 2600.0
 
         for variant in in_stock_variants:
             v_price = variant["price"]
             v_color = variant["color"]
-            v_sizes = ", ".join(variant["sizes"]) if variant["sizes"] else "Standard"
             v_url = variant["url"]
             v_mrp = variant.get("mrp") or v_price
 
-            if v_price > target_price:
-                logger.info("[flipkart] Variant %s (%s) price INR %s exceeds target INR %s", v_color, v_sizes, v_price, target_price)
+            if target_price is not None and v_price > target_price:
+                logger.info("[amazon] Variant %s price INR %s exceeds target INR %s", v_color, v_price, target_price)
                 continue
 
             # 60-minute alert de-duplication
@@ -422,13 +434,130 @@ class Tracker:
             mrp_display = f"₹{v_mrp:,.0f}" if v_mrp.is_integer() else f"₹{v_mrp:,.2f}"
             target_display = f"₹{target_price:,.0f}" if target_price.is_integer() else f"₹{target_price:,.2f}"
 
+            alert_header = f"{clean_model.upper()} IN-STOCK DEAL!"
+            if "8bitdo" in clean_model.lower():
+                alert_header = "8BITDO JOYSTICK IN-STOCK DEAL!"
+
             alert_msg = (
-                f"🚨 *CROCS LITERIDE 360 IN-STOCK DEAL!* 🚨\n"
+                f"🚨 *{alert_header}* 🚨\n"
+                f"📦 *Model:* {clean_model}\n"
+                f"🎨 *Color:* {v_color}\n"
+                f"📉 *Deal Price:* {price_display}" + (f" (MRP: {mrp_display} | {discount_pct:.1f}% OFF)" if discount_pct > 0 else "") + "\n"
+                f"🎯 *Target Price:* Below {target_display}\n"
+                f"🛒 *Buy Now:* {v_url}"
+            )
+
+            logger.info("[amazon] IN-STOCK VARIANT TRIGGERED: %s at INR %s", v_color, v_price)
+            if await self.notifier.send_message(alert_msg):
+                notified_any = True
+                await self.db.log_deal_alert(
+                    product_url=v_url,
+                    title=f"{clean_model} - {v_color}",
+                    price=v_price,
+                    effective_price=v_price,
+                    discount_percent=discount_pct,
+                    platform="amazon",
+                )
+
+        if notified_any and lowest_price is not None:
+            await self.db.set_last_notified(product.id, lowest_price)
+
+        return notified_any
+
+    async def _check_flipkart_variants(self, product) -> bool:
+        """Inspect all colorways and sizes for a Flipkart multi-variant product."""
+        import re
+        from scrapers.flipkart import FlipkartScraper
+
+        scraper = FlipkartScraper(self.config)
+        report = await scraper.check_product_variants(product.url)
+
+        model_title = report.get("model_title") or product.title or "CROCS LiteRide 360 Clog"
+        clean_model = model_title.split("(")[0].strip() if "(" in model_title else model_title
+
+        # Check if a specific target size is specified in product.title (e.g. Size 8)
+        target_size = None
+        m_size = re.search(r"\bsize\s*[:\s-]?\s*([0-9]+(?:\.[0-9]+)?)\b", (product.title or ""), re.IGNORECASE)
+        if m_size:
+            target_size = m_size.group(1).strip()
+
+        in_stock_variants = report.get("in_stock_variants", [])
+
+        # Filter by target size if specified
+        if target_size:
+            def has_target_size(v):
+                return any(
+                    s.strip() == target_size
+                    or s.strip().lower() == f"uk{target_size}".lower()
+                    or s.strip().lower() == f"us{target_size}".lower()
+                    for s in v.get("sizes", [])
+                )
+            in_stock_variants = [v for v in in_stock_variants if has_target_size(v)]
+
+        lowest_price = min((v["price"] for v in in_stock_variants), default=None)
+
+        if not in_stock_variants:
+            if target_size:
+                updated_title = f"{clean_model} (Size {target_size} - All Colors Out of Stock)"
+            else:
+                updated_title = f"{clean_model} (All Colors & Sizes - Out of Stock)"
+            await self.db.update_price(product.id, None, title=updated_title)
+            logger.info(
+                "[flipkart] Multi-variant product %s: all %s colorways currently out of stock (target size: %s).",
+                product.id,
+                report.get("total_colors_checked", 0),
+                target_size or "any",
+            )
+            return False
+
+        if target_size:
+            updated_title = f"{clean_model} (Size {target_size} - {len(in_stock_variants)} color{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
+        else:
+            updated_title = f"{clean_model} ({len(in_stock_variants)} variant{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
+        await self.db.update_price(product.id, lowest_price, title=updated_title)
+
+        notified_any = False
+        target_price = product.target_price
+
+        for variant in in_stock_variants:
+            v_price = variant["price"]
+            v_color = variant["color"]
+            v_sizes = ", ".join(variant["sizes"]) if variant["sizes"] else "Standard"
+            v_url = variant["url"]
+            v_mrp = variant.get("mrp") or v_price
+
+            if target_price is not None and v_price > target_price:
+                logger.info("[flipkart] Variant %s (%s) price INR %s exceeds target INR %s", v_color, v_sizes, v_price, target_price)
+                continue
+
+            # 60-minute alert de-duplication
+            if await self.db.is_deal_recently_notified(v_url, minutes=60, current_price=v_price):
+                continue
+
+            discount_pct = round(((v_mrp - v_price) / v_mrp) * 100.0, 1) if v_mrp > v_price else 0.0
+            price_display = f"₹{v_price:,.0f}" if v_price.is_integer() else f"₹{v_price:,.2f}"
+            mrp_display = f"₹{v_mrp:,.0f}" if v_mrp.is_integer() else f"₹{v_mrp:,.2f}"
+
+            if "crocs" in clean_model.lower() and "literide" in clean_model.lower():
+                alert_header = "CROCS LITERIDE 360 IN-STOCK DEAL!"
+            else:
+                alert_header = f"{clean_model.upper()} IN-STOCK DEAL!"
+
+            if target_price is not None:
+                target_display = f"₹{target_price:,.0f}" if target_price.is_integer() else f"₹{target_price:,.2f}"
+                target_line = f"🎯 *Target Price:* Below {target_display}\n"
+            elif target_size:
+                target_line = f"🎯 *Target:* In-Stock Alert (Size {target_size})\n"
+            else:
+                target_line = f"🎯 *Target:* In-Stock Alert\n"
+
+            alert_msg = (
+                f"🚨 *{alert_header}* 🚨\n"
                 f"📦 *Model:* {clean_model}\n"
                 f"🎨 *Color:* {v_color}\n"
                 f"📏 *Available Sizes:* {v_sizes}\n"
                 f"📉 *Deal Price:* {price_display}" + (f" (MRP: {mrp_display} | {discount_pct:.1f}% OFF)" if discount_pct > 0 else "") + "\n"
-                f"🎯 *Target Price:* Below {target_display}\n"
+                + target_line +
                 f"🛒 *Buy Now:* {v_url}"
             )
 

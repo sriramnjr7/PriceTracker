@@ -615,12 +615,16 @@ class FlipkartScraper(BaseScraper):
         curr_pid_match = re.search(r"pid=([A-Z0-9]+)", current_url)
         curr_pid = curr_pid_match.group(1) if curr_pid_match else ""
 
-        # Identify model keyword from current URL (e.g. 'literide-360' or 'literide')
+        # Identify model keyword from current URL (e.g. 'literide-360' or 'skechers')
         model_kw = ""
-        if "literide-360" in current_url.lower():
+        if "literide" in current_url.lower():
             model_kw = "literide"
-        elif "literide" in current_url.lower():
-            model_kw = "literide"
+        else:
+            m_slug = re.search(r"/([a-zA-Z0-9_-]+)/p/", current_url)
+            if m_slug:
+                slug_parts = [p for p in m_slug.group(1).split("-") if len(p) > 2 and p.lower() not in ("unisex", "clog", "clogs", "men", "women", "sneakers", "shoes", "sandals")]
+                if slug_parts:
+                    model_kw = slug_parts[0].lower()
 
         for node in soup.find_all(string=lambda t: t and "Selected Color" in t):
             p = node.parent

@@ -203,3 +203,82 @@ async def test_tracker_flipkart_variants_triggers_alert():
         assert "8, 9" in sent_msg
         assert "₹2,299" in sent_msg
         mock_db.log_deal_alert.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_tracker_flipkart_variants_size_filtering():
+    mock_db = AsyncMock(spec=Database)
+    mock_db.update_price = AsyncMock()
+    mock_db.set_last_notified = AsyncMock()
+    mock_db.log_deal_alert = AsyncMock()
+    mock_db.is_deal_recently_notified = AsyncMock(return_value=False)
+
+    mock_notifier = AsyncMock(spec=Notifier)
+    mock_notifier.send_message = AsyncMock(return_value=True)
+
+    tracker = Tracker(mock_db, mock_notifier)
+
+    product = Product(
+        id=21,
+        url="https://www.flipkart.com/skechers-max-cushioning-endeavour-sneakers-men/p/itm393e143486240?pid=SHOHCYD6Z7HURGWB",
+        platform="flipkart",
+        title="Skechers MAX CUSHIONING ENDEAVOUR Sneakers (Size 8 - All Colors)",
+        initial_price=3102.0,
+        current_price=None,
+        target_price=None,  # Price doesn't matter for shoe exchange!
+        percentage_drop_target=None,
+        last_checked="2026-09-10T12:00:00",
+        is_active=True,
+        last_notified_price=None,
+    )
+
+    # 1. In-stock variant exists, BUT only sizes 9 and 10 are in stock (no size 8) -> No notification!
+    with patch("scrapers.flipkart.FlipkartScraper.check_product_variants", new_callable=AsyncMock) as mock_variants:
+        mock_variants.return_value = {
+            "model_title": "Skechers MAX CUSHIONING ENDEAVOUR Sneakers",
+            "in_stock": True,
+            "lowest_price": 3102.0,
+            "in_stock_variants": [
+                {
+                    "color": "Dark Navy",
+                    "sizes": ["9", "10"],
+                    "price": 3102.0,
+                    "mrp": 7999.0,
+                    "url": "https://www.flipkart.com/skechers-max-cushioning-endeavour-sneakers-men/p/itm1?pid=SH1",
+                }
+            ],
+            "total_colors_checked": 7,
+        }
+        alerted = await tracker.check_product(product)
+        assert alerted is False
+        assert mock_notifier.send_message.call_count == 0
+        mock_db.update_price.assert_called_with(21, None, title="Skechers MAX CUSHIONING ENDEAVOUR Sneakers (Size 8 - All Colors Out of Stock)")
+
+    # 2. When an in-stock variant has Size 8 -> TRIGGERS NOTIFICATION regardless of price!
+    with patch("scrapers.flipkart.FlipkartScraper.check_product_variants", new_callable=AsyncMock) as mock_variants:
+        mock_variants.return_value = {
+            "model_title": "Skechers MAX CUSHIONING ENDEAVOUR Sneakers",
+            "in_stock": True,
+            "lowest_price": 3102.0,
+            "in_stock_variants": [
+                {
+                    "color": "Black / White",
+                    "sizes": ["8", "9"],
+                    "price": 3102.0,
+                    "mrp": 7999.0,
+                    "url": "https://www.flipkart.com/skechers-max-cushioning-endeavour-sneakers-men/p/itm2?pid=SH2",
+                }
+            ],
+            "total_colors_checked": 7,
+        }
+        alerted = await tracker.check_product(product)
+        assert alerted is True
+        assert mock_notifier.send_message.call_count == 1
+        sent_msg = mock_notifier.send_message.call_args[0][0]
+        assert "SKECHERS MAX CUSHIONING ENDEAVOUR SNEAKERS IN-STOCK DEAL" in sent_msg
+        assert "Black / White" in sent_msg
+        assert "8, 9" in sent_msg
+        assert "₹3,102" in sent_msg
+        assert "Size 8" in sent_msg
+        mock_db.log_deal_alert.assert_called_once()
+
