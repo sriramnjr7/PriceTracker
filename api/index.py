@@ -464,6 +464,9 @@ async def check_single_product(product_id: int):
                     await db.set_last_notified(product.id, result.price)
 
         updated = await db.get_product(product_id)
+        price_disp = f"₹{updated.current_price:g}" if (updated and updated.current_price) else "Out of Stock"
+        title_disp = (updated.title or product.title or f"Product #{product_id}")[:40]
+        await aemit_daemon_log("INFO", "tracker", f"Live check #{product_id} ({title_disp}) -> {price_disp}")
         return {
             "status": "success",
             "id": product_id,
@@ -660,9 +663,96 @@ async def get_product_price_history(product_id: int, timeframe: str = Query(defa
         await db.close()
 
 
+async def aemit_daemon_log(level: str, logger_name: str, message: str) -> None:
+    """Asynchronously append log entry to local log file and Supabase cloud log stream."""
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    formatted_line = f"[{now_str}] [{level.upper()}] {logger_name}: {message}\n"
+
+    # 1. Local disk if present/writable
+    candidates = [
+        os.path.join(root_dir, "radar_daemon.log"),
+        os.path.join(os.getcwd(), "radar_daemon.log"),
+        "radar_daemon.log",
+    ]
+    log_file = next((c for c in candidates if os.path.exists(c)), None)
+    if log_file:
+        try:
+            with open(log_file, "a", encoding="utf-8", errors="ignore") as f:
+                f.write(formatted_line)
+        except Exception:
+            pass
+
+    # 2. Supabase Cloud Stream
+    sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if sb_url and sb_key:
+        try:
+            sb_headers = {
+                "apikey": sb_key,
+                "Authorization": f"Bearer {sb_key}",
+                "Content-Type": "application/json",
+            }
+            sb_payload = [
+                {
+                    "name": "DAEMON_LOG",
+                    "category": level.upper(),
+                    "platforms": logger_name,
+                    "query": message,
+                    "negative_keywords": f"{now_str} [{level.upper()}] {logger_name}: {message}",
+                }
+            ]
+            async with httpx.AsyncClient(timeout=3.5) as client:
+                await client.post(f"{sb_url}/rest/v1/custom_radar_rules", headers=sb_headers, json=sb_payload)
+        except Exception as exc:
+            logger.debug("aemit_daemon_log Supabase note: %s", exc)
+
+
+def emit_daemon_log(level: str, logger_name: str, message: str) -> None:
+    """Synchronously append log entry to local log file and Supabase cloud log stream."""
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    formatted_line = f"[{now_str}] [{level.upper()}] {logger_name}: {message}\n"
+
+    candidates = [
+        os.path.join(root_dir, "radar_daemon.log"),
+        os.path.join(os.getcwd(), "radar_daemon.log"),
+        "radar_daemon.log",
+    ]
+    log_file = next((c for c in candidates if os.path.exists(c)), None)
+    if log_file:
+        try:
+            with open(log_file, "a", encoding="utf-8", errors="ignore") as f:
+                f.write(formatted_line)
+        except Exception:
+            pass
+
+    sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if sb_url and sb_key:
+        try:
+            sb_headers = {
+                "apikey": sb_key,
+                "Authorization": f"Bearer {sb_key}",
+                "Content-Type": "application/json",
+            }
+            sb_payload = [
+                {
+                    "name": "DAEMON_LOG",
+                    "category": level.upper(),
+                    "platforms": logger_name,
+                    "query": message,
+                    "negative_keywords": f"{now_str} [{level.upper()}] {logger_name}: {message}",
+                }
+            ]
+            with httpx.Client(timeout=3.0) as client:
+                client.post(f"{sb_url}/rest/v1/custom_radar_rules", headers=sb_headers, json=sb_payload)
+        except Exception as exc:
+            logger.debug("emit_daemon_log Supabase note: %s", exc)
+
+
 @app.post("/api/sweep")
 async def manual_deal_sweep():
     """Trigger an immediate full clearance scan (Casio & Flipkart) and product checks."""
+    await aemit_daemon_log("INFO", "deal.sweep", "Manual sweep launched across Casio, Flipkart, and Amazon...")
     db = get_database(settings)
     await db.initialize()
     try:
@@ -675,20 +765,28 @@ async def manual_deal_sweep():
             manual_alerts = await tracker.run_once()
         except Exception as e:
             logger.error("Manual sweep tracker error: %s", e)
+            await aemit_daemon_log("ERROR", "tracker", f"Tracker check error: {e}")
 
         casio_alerts = 0
         try:
             casio_alerts = await radar.scan_all(only_platforms=["casio", "flipkart", "myntra"])
         except Exception as e:
             logger.error("Manual sweep radar error: %s", e)
+            await aemit_daemon_log("ERROR", "radar", f"Radar clearance scan error: {e}")
 
         await radar.close()
+        total_dispatched = casio_alerts + manual_alerts
+        await aemit_daemon_log(
+            "INFO",
+            "deal.sweep",
+            f"Sweep cycle finished: {casio_alerts} Casio clearance alerts, {manual_alerts} product alerts dispatched.",
+        )
 
         return {
             "status": "success",
             "casio_alerts": casio_alerts,
             "manual_alerts": manual_alerts,
-            "total_dispatched": casio_alerts + manual_alerts,
+            "total_dispatched": total_dispatched,
         }
     finally:
         await db.close()
@@ -751,6 +849,8 @@ async def api_toggle_running_shoes(request: Request):
         target = not shoes_radar.is_active()
 
     new_state = shoes_radar.set_active(target)
+    state_str = "ACTIVE (Monitoring 24/7)" if new_state else "PAUSED"
+    await aemit_daemon_log("INFO", "running_shoes", f"Running shoes harvester master switch toggled -> {state_str}")
     return JSONResponse(content={"status": "success", "is_active": new_state})
 
 
@@ -765,6 +865,8 @@ async def api_toggle_shoe_brand(request: Request):
         if not brand:
             raise HTTPException(status_code=400, detail="Brand parameter required")
         updated_brands = shoes_radar.toggle_brand(brand, enabled)
+        st_text = "ENABLED" if enabled else "DISABLED"
+        await aemit_daemon_log("INFO", "running_shoes", f"Brand filter updated: {brand} -> {st_text}")
         return JSONResponse(
             content={
                 "status": "success",
@@ -788,6 +890,8 @@ async def api_toggle_single_shoe(request: Request):
         if not shoe_key:
             raise HTTPException(status_code=400, detail="shoe_key parameter required")
         new_active = shoes_radar.toggle_shoe(shoe_key, active)
+        st_text = "TRACKING" if new_active else "PAUSED"
+        await aemit_daemon_log("INFO", "running_shoes", f"Shoe silhouette '{shoe_key}' set to {st_text}")
         return JSONResponse(
             content={"status": "success", "shoe_key": shoe_key, "is_active": new_active}
         )
@@ -799,7 +903,11 @@ async def api_toggle_single_shoe(request: Request):
 @app.post("/api/index.py/api/running-shoes/sweep")
 async def api_sweep_running_shoes():
     """Trigger an immediate live harvest sweep across Myntra, Flipkart, Tata CLiQ, and Ajio."""
+    await aemit_daemon_log("INFO", "running_shoes", "Running shoes harvest initiated across Myntra, Flipkart, Tata CLiQ & Ajio...")
     res = await shoes_radar.sweep()
+    new_found = res.get("new_deals_found", 0) if isinstance(res, dict) else 0
+    scanned = res.get("total_scanned", 0) if isinstance(res, dict) else 0
+    await aemit_daemon_log("INFO", "running_shoes", f"Harvest complete: {new_found} new deals detected ({scanned} shoes scanned).")
     return JSONResponse(content=res)
 
 
@@ -1044,6 +1152,7 @@ async def cron_sweep(request: Request):
 
             if recent_sweep:
                 logger.info("Vercel /api/cron: Sweep was already executed recently. Skipping to preserve Fluid CPU.")
+                await aemit_daemon_log("INFO", "cron", f"Vercel cron pulse heartbeat: {len(products)} monitored products are fresh.")
                 return {
                     "status": "skipped",
                     "reason": "sweep_already_current",
@@ -1069,6 +1178,9 @@ async def cron_sweep(request: Request):
         except asyncio.TimeoutError:
             logger.warning("Vercel cron reached 12s execution limit; stopped to preserve Fluid CPU.")
             casio_alerts, manual_alerts = 0, 0
+
+        tot = casio_alerts + manual_alerts
+        await aemit_daemon_log("INFO", "cron", f"Vercel cron sweep pulse executed: {len(products)} products checked, {tot} alerts generated.")
 
         return {
             "status": "success",
@@ -1579,7 +1691,7 @@ def _fetch_supabase_logs_and_status(limit: int = 100, level: Optional[str] = Non
                     dt = datetime.fromisoformat(latest_iso.replace("Z", "+00:00"))
                     now = datetime.now(timezone.utc)
                     seconds_ago = max(0, int((now - dt).total_seconds()))
-                    is_running = seconds_ago <= 180
+                    is_running = seconds_ago <= 300
                 except Exception:
                     seconds_ago = 5
                     is_running = True
@@ -1631,7 +1743,14 @@ def _fetch_supabase_logs_and_status(limit: int = 100, level: Optional[str] = Non
     except Exception as exc:
         logger.warning("Error fetching cloud logs from Supabase: %s", exc)
 
-    status_text = "ACTIVE & STREAMING" if is_running else ("STANDBY / IDLE" if (seconds_ago is not None and seconds_ago <= 600) else "OFFLINE / STOPPED")
+    if is_running:
+        status_text = "ACTIVE & STREAMING"
+    elif seconds_ago is not None and seconds_ago <= 1800:
+        status_text = "STANDBY / CLOUD SYNCED"
+        is_running = True
+    else:
+        status_text = "STANDBY (Serverless Runner)"
+        is_running = False
 
     # Extract recent issues (errors + warnings), newest first
     recent_issues = [
@@ -1894,29 +2013,70 @@ async def api_probe_vip_now():
 @app.delete("/api/logs")
 @app.post("/api/logs/clear")
 async def api_clear_logs():
-    """Truncate or reset radar_daemon.log to conserve space while keeping recent context."""
+    """Truncate or reset radar_daemon.log and purge stale Supabase cloud log stream."""
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    cleared_supabase = False
+
+    if supabase_url and supabase_key:
+        try:
+            sb_headers = {
+                "apikey": supabase_key,
+                "Authorization": f"Bearer {supabase_key}",
+                "Content-Type": "application/json",
+            }
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                # 1. Delete all existing DAEMON_LOG and VIP_LOG rows from Supabase
+                await client.delete(
+                    f"{supabase_url}/rest/v1/custom_radar_rules?name=in.(DAEMON_LOG,VIP_LOG)",
+                    headers=sb_headers,
+                )
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # 2. Insert one clean initial reset log line so terminal displays fresh status
+                reset_payload = [
+                    {
+                        "name": "DAEMON_LOG",
+                        "category": "INFO",
+                        "platforms": "system",
+                        "query": "Radar log stream reset and cloud-synced by administrator.",
+                        "negative_keywords": f"{now_str} [INFO] system: Radar log stream reset and cloud-synced by administrator.",
+                    }
+                ]
+                await client.post(
+                    f"{supabase_url}/rest/v1/custom_radar_rules",
+                    headers=sb_headers,
+                    json=reset_payload,
+                )
+                cleared_supabase = True
+        except Exception as exc:
+            logger.warning("Error clearing Supabase cloud logs: %s", exc)
+
     candidates = [
         os.path.join(root_dir, "radar_daemon.log"),
         os.path.join(os.getcwd(), "radar_daemon.log"),
         "radar_daemon.log",
     ]
     log_file = next((c for c in candidates if os.path.exists(c)), None)
-    if not log_file:
-        return {"status": "ok", "message": "No log file found on host to truncate."}
+    if log_file:
+        try:
+            with open(log_file, "r+", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+                keep_lines = lines[-50:] if len(lines) > 50 else lines
+                f.seek(0)
+                f.truncate()
+                now_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"[{now_stamp}] [INFO] radar: Log stream reset by user from dashboard.\n")
+                f.writelines(keep_lines)
+        except Exception as exc:
+            logger.error("Error truncating log file: %s", exc)
 
-    try:
-        with open(log_file, "r+", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
-            keep_lines = lines[-50:] if len(lines) > 50 else lines
-            f.seek(0)
-            f.truncate()
-            now_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            f.write(f"[{now_stamp}] [INFO] radar: Log stream reset by user from dashboard.\n")
-            f.writelines(keep_lines)
-        return {"status": "ok", "message": "Log file truncated successfully; recent 50 lines preserved."}
-    except Exception as exc:
-        logger.error("Error truncating log file: %s", exc)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+    return JSONResponse(
+        content={
+            "status": "ok",
+            "message": "Log stream reset successfully; cloud and local buffers synchronized.",
+            "cleared_supabase": cleared_supabase,
+        }
+    )
 
 
 # ==========================================

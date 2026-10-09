@@ -330,7 +330,7 @@ class SupabaseDatabase:
         return 1
 
     async def get_custom_rules(self, active_only: bool = True) -> list[dict[str, Any]]:
-        url = "/custom_radar_rules?select=*&name=not.in.(DAEMON_LOG,VIP_LOG)&order=id.asc"
+        url = "/custom_radar_rules?select=*&name=not.in.(DAEMON_LOG,VIP_LOG,RUNNING_SHOES_CONFIG,RUNNING_SHOES_OVERRIDES)&order=id.asc"
         if active_only:
             url += "&is_active=eq.true"
         resp = await self._request("GET", url)

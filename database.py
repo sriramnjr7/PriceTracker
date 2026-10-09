@@ -386,7 +386,7 @@ class Database:
         return cursor.lastrowid
 
     async def get_custom_rules(self, active_only: bool = True) -> list[dict[str, Any]]:
-        query = "SELECT * FROM custom_radar_rules WHERE name NOT IN ('DAEMON_LOG', 'VIP_LOG')"
+        query = "SELECT * FROM custom_radar_rules WHERE name NOT IN ('DAEMON_LOG', 'VIP_LOG', 'RUNNING_SHOES_CONFIG', 'RUNNING_SHOES_OVERRIDES')"
         if active_only:
             query += " AND is_active = 1"
         query += " ORDER BY id"

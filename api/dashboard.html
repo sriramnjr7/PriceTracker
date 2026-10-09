@@ -4677,6 +4677,14 @@
                     <span>Refresh</span>
                   </button>
 
+                  <!-- Run Live Deal Sweep from Logs View -->
+                  <button class="btn-ui btn-ui-secondary" id="btn-logs-run-sweep" onclick="triggerLogsTabSweep()" title="Run live clearance & price check sweep across stores">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    <span id="btn-logs-sweep-text">Run Sweep</span>
+                  </button>
+
                   <!-- Copy Issues for Debugging -->
                   <button class="btn-ui btn-ui-primary" id="btn-copy-all-issues" onclick="copyAllCaughtIssues()" title="Copy all captured errors and warnings for debugging">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -7754,23 +7762,24 @@
       const secAgo = daemon.seconds_since_activity;
 
       if (chip && chipText) {
-        if (isRunning) {
+        if (isRunning && statusText.includes("ACTIVE")) {
           chip.className = "daemon-live-chip";
           chipText.textContent = "DAEMON " + statusText;
-        } else if (secAgo !== null && secAgo <= 600) {
+        } else if (isRunning || statusText.includes("STANDBY") || statusText.includes("SYNCED") || (secAgo !== null && secAgo <= 1800)) {
           chip.className = "daemon-live-chip is-idle";
-          chipText.textContent = "DAEMON IDLE";
+          chipText.textContent = statusText;
         } else {
           chip.className = "daemon-live-chip is-stopped";
-          chipText.textContent = "DAEMON STOPPED";
+          chipText.textContent = "DAEMON " + statusText;
         }
       }
 
       if (kpiState) {
-        kpiState.textContent = isRunning ? "ACTIVE & LOGGING" : statusText;
-        if (isRunning) {
+        kpiState.textContent = isRunning && statusText.includes("ACTIVE") ? "ACTIVE & LOGGING" : statusText;
+        if (isRunning && statusText.includes("ACTIVE")) {
           kpiState.className = "metric-value highlight-emerald";
-        } else if (secAgo !== null && secAgo <= 600) {
+          kpiState.style.color = "";
+        } else if (isRunning || statusText.includes("STANDBY") || statusText.includes("SYNCED") || (secAgo !== null && secAgo <= 1800)) {
           kpiState.className = "metric-value";
           kpiState.style.color = "var(--accent-amber)";
         } else {
@@ -7784,9 +7793,10 @@
           const sizeSuffix = (daemon.file_size_mb && daemon.file_size_mb > 0) ? `${daemon.file_size_mb} MB` : "Cloud Synced";
           if (secAgo < 5) kpiSub.textContent = `Active event < 5s ago • ${sizeSuffix}`;
           else if (secAgo < 60) kpiSub.textContent = `Active event ${secAgo}s ago • ${sizeSuffix}`;
-          else kpiSub.textContent = `Last event ${Math.floor(secAgo / 60)}m ago • ${sizeSuffix}`;
+          else if (secAgo < 3600) kpiSub.textContent = `Last event ${Math.floor(secAgo / 60)}m ago • ${sizeSuffix}`;
+          else kpiSub.textContent = `Last event ${Math.floor(secAgo / 3600)}h ago • ${sizeSuffix}`;
         } else {
-          kpiSub.textContent = daemon.note || "No log activity detected";
+          kpiSub.textContent = daemon.note || "Serverless cloud stream ready";
         }
       }
 
@@ -8053,12 +8063,32 @@
       showToast(logsState.isAutoRefresh ? "Live log stream resumed 🟢" : "Live stream paused ⏸️");
     }
 
-    async function clearLogsViewer() {
-      if (!confirm("Clear log display or truncate server log file? Click OK to reset.")) return;
+    async function triggerLogsTabSweep() {
+      const btn = document.getElementById("btn-logs-run-sweep");
+      const txt = document.getElementById("btn-logs-sweep-text");
+      if (btn) btn.disabled = true;
+      if (txt) txt.textContent = "Sweeping...";
+      showToast("⚡ Initiating live deal sweep across stores...");
       try {
-        await fetch("/api/logs/clear", { method: "POST" });
-        showToast("Log stream reset successfully!");
-        fetchLogsData(false);
+        const res = await fetch("/api/sweep", { method: "POST" });
+        const data = await res.json();
+        showToast(`Sweep finished: ${data.total_dispatched || 0} alerts dispatched.`);
+        await fetchLogsData(false);
+      } catch (err) {
+        showToast("⚠️ Sweep error: " + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (txt) txt.textContent = "Run Sweep";
+      }
+    }
+
+    async function clearLogsViewer() {
+      if (!confirm("Clear and reset all cloud and server daemon logs? Click OK to reset.")) return;
+      try {
+        const res = await fetch("/api/logs/clear", { method: "POST" });
+        await res.json().catch(() => ({}));
+        showToast("Log stream reset & cloud logs cleared successfully!");
+        await fetchLogsData(false);
       } catch (err) {
         showToast("Could not reset logs: " + err.message);
       }

@@ -225,18 +225,45 @@ class RunningShoesRadar:
 
 
     def load_config(self) -> dict[str, Any]:
-        """Load harvester settings from JSON file with resilient tempfile fallback."""
+        """Load harvester settings from Supabase cloud database with resilient local/tempfile fallback."""
+        sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if sb_url and sb_key:
+            try:
+                headers = {"apikey": sb_key, "Authorization": f"Bearer {sb_key}"}
+                with httpx.Client(timeout=3.0) as client:
+                    resp = client.get(
+                        f"{sb_url}/rest/v1/custom_radar_rules?name=eq.RUNNING_SHOES_CONFIG&order=id.desc&limit=1",
+                        headers=headers,
+                    )
+                    if resp.status_code == 200:
+                        rows = resp.json()
+                        if rows and rows[0].get("query"):
+                            data = json.loads(rows[0]["query"])
+                            if isinstance(data, dict):
+                                return data
+            except Exception as e:
+                logger.debug("Failed to load running shoes config from Supabase: %s", e)
+
         import tempfile
         tmp_path = os.path.join(tempfile.gettempdir(), "running_shoes_config.json")
-        for path in (CONFIG_FILE_PATH, tmp_path):
-            if os.path.exists(path):
+        candidates = []
+        if os.path.exists(tmp_path):
+            candidates.append((os.path.getmtime(tmp_path), tmp_path))
+        if os.path.exists(CONFIG_FILE_PATH):
+            candidates.append((os.path.getmtime(CONFIG_FILE_PATH), CONFIG_FILE_PATH))
+
+        if candidates:
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            for _, path in candidates:
                 try:
                     with open(path, "r", encoding="utf-8") as f:
                         return json.load(f)
                 except Exception as e:
                     logger.debug("Failed to read running shoes config from %s: %s", path, e)
+
         return {
-            "is_active": False,
+            "is_active": True,
             "min_price": TARGET_PRICE_MIN,
             "max_price": TARGET_PRICE_MAX,
             "target_sizes": ["UK 9.5", "UK 10", "UK 10.5", "UK 11"],
@@ -258,49 +285,108 @@ class RunningShoesRadar:
         }
 
     def save_config(self, cfg: dict[str, Any]) -> None:
-        """Save harvester settings to JSON file with read-only serverless fallback."""
+        """Save harvester settings to local file, tempfile, and Supabase cloud."""
         try:
             with open(CONFIG_FILE_PATH, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, indent=2)
-                return
         except OSError:
+            pass
+        except Exception as e:
+            logger.debug("Note saving running shoes config locally: %s", e)
+
+        try:
             import tempfile
             tmp_path = os.path.join(tempfile.gettempdir(), "running_shoes_config.json")
-            try:
-                with open(tmp_path, "w", encoding="utf-8") as f:
-                    json.dump(cfg, f, indent=2)
-            except Exception as e:
-                logger.error("Failed to save running shoes config to %s: %s", tmp_path, e)
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2)
         except Exception as e:
-            logger.error("Failed to save running shoes config: %s", e)
+            logger.debug("Note saving running shoes config to temp: %s", e)
+
+        sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if sb_url and sb_key:
+            try:
+                headers = {
+                    "apikey": sb_key,
+                    "Authorization": f"Bearer {sb_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=representation",
+                }
+                body = {
+                    "category": "CONFIG",
+                    "query": json.dumps(cfg),
+                    "is_active": bool(cfg.get("is_active", True)),
+                }
+                with httpx.Client(timeout=3.0) as client:
+                    patch_resp = client.patch(
+                        f"{sb_url}/rest/v1/custom_radar_rules?name=eq.RUNNING_SHOES_CONFIG",
+                        headers=headers,
+                        json=body,
+                    )
+                    if patch_resp.status_code != 200 or not patch_resp.json():
+                        post_body = {
+                            "name": "RUNNING_SHOES_CONFIG",
+                            "category": "CONFIG",
+                            "query": json.dumps(cfg),
+                            "is_active": bool(cfg.get("is_active", True)),
+                        }
+                        client.post(f"{sb_url}/rest/v1/custom_radar_rules", headers=headers, json=post_body)
+            except Exception as e:
+                logger.debug("Failed to sync running shoes config to Supabase: %s", e)
 
     def load_cached_deals(self) -> List[dict[str, Any]]:
-        """Load previously harvested running shoe deals."""
-        if os.path.exists(DEALS_CACHE_PATH):
-            try:
-                with open(DEALS_CACHE_PATH, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.error("Failed to read running shoes deals cache: %s", e)
+        """Load previously harvested running shoe deals with tempfile fallback."""
+        import tempfile
+        tmp_path = os.path.join(tempfile.gettempdir(), "running_shoes_deals.json")
+        for path in (DEALS_CACHE_PATH, tmp_path):
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception as e:
+                    logger.debug("Failed to read running shoes deals cache from %s: %s", path, e)
         return []
 
     def save_cached_deals(self, deals: List[dict[str, Any]]) -> None:
-        """Save harvested running shoe deals."""
+        """Save harvested running shoe deals with read-only serverless fallback."""
         try:
             with open(DEALS_CACHE_PATH, "w", encoding="utf-8") as f:
                 json.dump(deals, f, indent=2)
+                return
+        except OSError:
+            pass
         except Exception as e:
-            logger.error("Failed to save running shoes deals cache: %s", e)
+            logger.debug("Note saving running shoes deals cache locally: %s", e)
+
+        try:
+            import tempfile
+            tmp_path = os.path.join(tempfile.gettempdir(), "running_shoes_deals.json")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(deals, f, indent=2)
+        except Exception as e:
+            logger.debug("Failed to save running shoes deals cache to temp: %s", e)
 
     def load_catalog(self) -> dict[str, dict[str, Any]]:
         """Load 94 tracked shoe models and their current price / historical ATL status."""
         catalog: dict[str, dict[str, Any]] = {}
+        import tempfile
+        tmp_path = os.path.join(tempfile.gettempdir(), "running_shoes_catalog.json")
+        candidates = []
+        if os.path.exists(tmp_path):
+            candidates.append((os.path.getmtime(tmp_path), tmp_path))
         if os.path.exists(CATALOG_CACHE_PATH):
-            try:
-                with open(CATALOG_CACHE_PATH, "r", encoding="utf-8") as f:
-                    catalog = json.load(f)
-            except Exception as e:
-                logger.error("Failed to read running shoes catalog cache: %s", e)
+            candidates.append((os.path.getmtime(CATALOG_CACHE_PATH), CATALOG_CACHE_PATH))
+
+        if candidates:
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            for _, path in candidates:
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        catalog = json.load(f)
+                        if catalog:
+                            break
+                except Exception as e:
+                    logger.debug("Failed to read running shoes catalog cache from %s: %s", path, e)
 
         # Ensure all 94 canonical models from WHITELIST_RULES are represented with researched thresholds
         for rule in WHITELIST_RULES:
@@ -363,15 +449,86 @@ class RunningShoesRadar:
                 catalog[key].setdefault("net_effective_price", None)
                 if not catalog[key].get("is_active", True):
                     catalog[key]["status"] = "PAUSED"
+
+        # Apply cloud overrides if present
+        sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if sb_url and sb_key:
+            try:
+                headers = {"apikey": sb_key, "Authorization": f"Bearer {sb_key}"}
+                with httpx.Client(timeout=3.0) as client:
+                    resp = client.get(
+                        f"{sb_url}/rest/v1/custom_radar_rules?name=eq.RUNNING_SHOES_OVERRIDES&order=id.desc&limit=1",
+                        headers=headers,
+                    )
+                    if resp.status_code == 200:
+                        rows = resp.json()
+                        if rows and rows[0].get("query"):
+                            overrides = json.loads(rows[0]["query"])
+                            if isinstance(overrides, dict):
+                                for k, ov in overrides.items():
+                                    if k in catalog and isinstance(ov, dict):
+                                        catalog[k]["is_active"] = bool(ov.get("is_active", True))
+                                        catalog[k]["status"] = ov.get("status", "TRACKING" if catalog[k]["is_active"] else "PAUSED")
+            except Exception as e:
+                logger.debug("Failed to apply cloud shoe overrides: %s", e)
+
         return catalog
 
     def save_catalog(self, catalog: dict[str, dict[str, Any]]) -> None:
-        """Save tracked shoe catalog cache to JSON file."""
+        """Save tracked shoe catalog cache to JSON file and sync overrides to Supabase."""
         try:
             with open(CATALOG_CACHE_PATH, "w", encoding="utf-8") as f:
                 json.dump(catalog, f, indent=2)
+        except OSError:
+            pass
         except Exception as e:
-            logger.error("Failed to save running shoes catalog cache: %s", e)
+            logger.debug("Note saving running shoes catalog cache locally: %s", e)
+
+        try:
+            import tempfile
+            tmp_path = os.path.join(tempfile.gettempdir(), "running_shoes_catalog.json")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(catalog, f, indent=2)
+        except Exception as e:
+            logger.debug("Note saving running shoes catalog cache to temp: %s", e)
+
+        sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if sb_url and sb_key:
+            try:
+                overrides = {
+                    k: {"is_active": v.get("is_active", True), "status": v.get("status", "TRACKING")}
+                    for k, v in catalog.items()
+                    if not v.get("is_active", True)
+                }
+                headers = {
+                    "apikey": sb_key,
+                    "Authorization": f"Bearer {sb_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=representation",
+                }
+                body = {
+                    "category": "OVERRIDES",
+                    "query": json.dumps(overrides),
+                    "is_active": True,
+                }
+                with httpx.Client(timeout=3.0) as client:
+                    patch_resp = client.patch(
+                        f"{sb_url}/rest/v1/custom_radar_rules?name=eq.RUNNING_SHOES_OVERRIDES",
+                        headers=headers,
+                        json=body,
+                    )
+                    if patch_resp.status_code != 200 or not patch_resp.json():
+                        post_body = {
+                            "name": "RUNNING_SHOES_OVERRIDES",
+                            "category": "OVERRIDES",
+                            "query": json.dumps(overrides),
+                            "is_active": True,
+                        }
+                        client.post(f"{sb_url}/rest/v1/custom_radar_rules", headers=headers, json=post_body)
+            except Exception as e:
+                logger.debug("Failed to sync shoe overrides to Supabase: %s", e)
 
     def get_tracked_catalog(self) -> List[dict[str, Any]]:
         """Return full list of 94 monitored shoe silhouettes with real-time status."""
