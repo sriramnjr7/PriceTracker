@@ -29,8 +29,8 @@ logger = logging.getLogger("running_shoes_radar")
 TARGET_PRICE_MIN = 4000.0
 TARGET_PRICE_MAX = 5999.0
 MAX_PRICE_THRESHOLD = 35000.0
-TARGET_SIZES: Set[float] = {9.5, 10.0, 10.5, 11.0}
-SNEAKER_SIZES: Set[float] = {6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0}
+TARGET_SIZES: Set[float] = {8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0}
+SNEAKER_SIZES: Set[float] = {8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0}
 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_config.json")
 DEALS_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "running_shoes_deals.json")
@@ -45,6 +45,27 @@ TRAP_MODELS_BLACKLIST = re.compile(
     re.IGNORECASE,
 )
 
+# Domestic Indian budget brands to strictly reject (avoids Campus, Sparx, Asian, Red Tape, etc. matching)
+CHEAP_DOMESTIC_BRANDS_BLACKLIST = re.compile(
+    r"\b(campus|asian|sparx|red\s*tape|abros|bata|action|columbus|lancer|goldstar|bacca\s*bucci|kraasa|aadi|bersache|layasa|paragon)\b",
+    re.IGNORECASE,
+)
+
+BRAND_ALIASES: dict[str, list[str]] = {
+    "Nike": [r"\bnike\b"],
+    "Adidas": [r"\badidas\b", r"\badidas\s*originals\b"],
+    "Asics": [r"\basics\b", r"\bonitsuka(?:\s*tiger)?\b"],
+    "Puma": [r"\bpuma\b"],
+    "Saucony": [r"\bsaucony\b"],
+    "Hoka": [r"\bhoka(?:\s*one\s*one)?\b"],
+    "Brooks": [r"\bbrooks\b"],
+    "New Balance": [r"\bnew\s*balance\b", r"\bnb\b"],
+    "Reebok": [r"\breebok\b"],
+    "Skechers": [r"\bskechers\b"],
+    "On Running": [r"\bon\s*running\b", r"\bcloud\b", r"\bon\s+clouds?\b"],
+    "Salomon": [r"\bsalomon\b"],
+}
+
 # 94 Guarded Performance Running Silhouettes are imported from running_shoes_catalog_data
 # WHITELIST_RULES & STEAL_THRESHOLDS define canonical regexes, exclusions, and price anchors.
 
@@ -52,8 +73,9 @@ TRAP_MODELS_BLACKLIST = re.compile(
 def match_running_model(title: str, brand_hint: Optional[str] = None) -> Optional[Tuple[str, str]]:
     """Match a product title against the performance running model whitelist.
     
-    Rejects 100% of trap models via TRAP_MODELS_BLACKLIST, then matches
-    against the 56 guarded performance silhouettes.
+    Rejects 100% of trap models via TRAP_MODELS_BLACKLIST.
+    Rejects domestic budget brands via CHEAP_DOMESTIC_BRANDS_BLACKLIST (unless legitimate Adidas Campus).
+    Enforces brand verification: effective_brand or title must match the rule's brand.
     Returns (brand, canonical_model_name) if matched, else None.
     """
     if not title:
@@ -65,30 +87,42 @@ def match_running_model(title: str, brand_hint: Optional[str] = None) -> Optiona
     if TRAP_MODELS_BLACKLIST.search(clean_title):
         return None
 
+    # Step 1b: Cheap domestic Indian footwear brands blacklist
+    # Exception: "Adidas Campus" is legitimate; non-Adidas "Campus" (like Campus Hurricane, Campus Crysta) is domestic
+    has_domestic = bool(CHEAP_DOMESTIC_BRANDS_BLACKLIST.search(clean_title))
+    has_adidas_in_title = bool(re.search(r"\badidas\b", clean_title, re.IGNORECASE))
+    if has_domestic and not has_adidas_in_title:
+        return None
+
     # Step 2: Auto-detect brand from title if not explicitly provided
-    if not brand_hint:
-        title_lower = clean_title.lower()
-        for b in ("saucony", "reebok", "hoka", "brooks", "puma", "nike", "adidas", "asics", "new balance", "skechers", "on running", "on"):
-            if re.search(r"\b" + re.escape(b) + r"\b", title_lower):
-                brand_hint = b
-                break
+    detected_brand = None
+    title_lower = clean_title.lower()
+    for b in ("saucony", "reebok", "hoka", "brooks", "puma", "nike", "adidas", "asics", "new balance", "skechers", "on running", "salomon"):
+        if re.search(r"\b" + re.escape(b) + r"\b", title_lower):
+            detected_brand = b
+            break
+
+    effective_brand = brand_hint.lower() if brand_hint else (detected_brand if detected_brand else None)
 
     for rule in WHITELIST_RULES:
-        if brand_hint and brand_hint.lower() not in rule["brand"].lower() and rule["brand"].lower() not in brand_hint.lower():
-            continue
+        rule_brand = rule["brand"].lower()
+
+        # Strict brand verification:
+        if effective_brand:
+            aliases = BRAND_ALIASES.get(rule["brand"], [r"\b" + re.escape(rule_brand) + r"\b"])
+            matches_brand = (effective_brand in rule_brand or rule_brand in effective_brand) or any(re.search(a, effective_brand) for a in aliases)
+            if not matches_brand:
+                continue
+        else:
+            # If no brand was detected and no brand hint provided, title MUST explicitly contain the brand or alias
+            aliases = BRAND_ALIASES.get(rule["brand"], [r"\b" + re.escape(rule_brand) + r"\b"])
+            if not any(re.search(a, title_lower) for a in aliases):
+                continue
 
         if rule["pattern"].search(clean_title):
             if rule["exclusions"] and rule["exclusions"].search(clean_title):
                 continue
             return rule["brand"], rule["model"]
-
-    # Brand hint fallback
-    if brand_hint:
-        for rule in WHITELIST_RULES:
-            if rule["pattern"].search(clean_title):
-                if rule["exclusions"] and rule["exclusions"].search(clean_title):
-                    continue
-                return rule["brand"], rule["model"]
 
     return None
 
@@ -178,6 +212,24 @@ class RunningShoesRadar:
             if b_name.lower() in brand.lower() or brand.lower() in b_name.lower():
                 return bool(is_en)
         return True
+
+    def get_active_target_sizes(self) -> Set[float]:
+        """Return configured target sizes from running_shoes_config.json or defaults."""
+        cfg = self.load_config()
+        raw_list = cfg.get("target_sizes")
+        if raw_list and isinstance(raw_list, list):
+            parsed: Set[float] = set()
+            for item in raw_list:
+                s = str(item).upper().replace("UK", "").replace("IND", "").replace("-", "").strip()
+                m = re.search(r"(\d+(?:\.\d+)?)", s)
+                if m:
+                    try:
+                        parsed.add(float(m.group(1)))
+                    except ValueError:
+                        pass
+            if parsed:
+                return parsed
+        return TARGET_SIZES
 
     def toggle_brand(self, brand: str, enabled: bool) -> dict[str, bool]:
         """Toggle tracking searches for a specific brand."""
@@ -604,7 +656,7 @@ class RunningShoesRadar:
 
                             is_sneaker = model_canon in SNEAKER_MODEL_NAMES
                             category = "sneaker" if is_sneaker else "running"
-                            allowed_sizes = SNEAKER_SIZES if is_sneaker else TARGET_SIZES
+                            allowed_sizes = self.get_active_target_sizes()
 
                             price = float(p.get("price") or 0)
                             mrp = float(p.get("mrp") or price)
@@ -698,13 +750,19 @@ class RunningShoesRadar:
         if self.is_brand_enabled("Puma"):
             urls.append("https://www.flipkart.com/search?q=puma+palermo&sid=osp%2Ccil")
         if self.is_brand_enabled("Nike"):
+            urls.append("https://www.flipkart.com/search?q=nike+pegasus&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=nike+vomero&sid=osp%2Ccil")
+            urls.append("https://www.flipkart.com/search?q=nike+invincible&sid=osp%2Ccil")
             urls.append("https://www.flipkart.com/search?q=nike+p+6000&sid=osp%2Ccil")
             urls.append("https://www.flipkart.com/search?q=nike+vomero+5&sid=osp%2Ccil")
             urls.append("https://www.flipkart.com/search?q=nike+killshot&sid=osp%2Ccil")
             urls.append("https://www.flipkart.com/search?q=nike+dunk&sid=osp%2Ccil")
         if self.is_brand_enabled("Asics"):
+            urls.append("https://www.flipkart.com/search?q=asics+novablast&sid=osp%2Ccil")
             urls.append("https://www.flipkart.com/search?q=asics+gel+1130&sid=osp%2Ccil")
             urls.append("https://www.flipkart.com/search?q=asics+gt+2160&sid=osp%2Ccil")
+        if self.is_brand_enabled("Saucony"):
+            urls.append("https://www.flipkart.com/search?q=saucony+running+shoes&sid=osp%2Ccil")
         if self.is_brand_enabled("New Balance"):
             urls.append("https://www.flipkart.com/search?q=new+balance+550&sid=osp%2Ccil")
         
@@ -744,7 +802,7 @@ class RunningShoesRadar:
                                         continue
 
                                     is_sneaker = model_canon in SNEAKER_MODEL_NAMES
-                                    target_sizes = SNEAKER_SIZES if is_sneaker else None
+                                    target_sizes = self.get_active_target_sizes()
                                     
                                     # Pricing Extraction
                                     pricing_data = val.get("pricing", {})
@@ -769,7 +827,7 @@ class RunningShoesRadar:
                                     price = special_price or 0.0
                                     mrp = max(strike_mrp or price, price)
 
-                                    # Stacked Discount Engine (Coupon & Bank Offer)
+                                    # Stacked Discount Engine (Coupon, Multi-Buy & Bank Offer)
                                     coupon_disc = 0.0
                                     coupon_code = None
                                     bank_disc = 0.0
@@ -791,6 +849,17 @@ class RunningShoesRadar:
                                                 if txt:
                                                     snip_texts.append(txt)
                                         combined_snip = " ".join(snip_texts).lower()
+                                        
+                                        # Check for Multi-Buy Combo Discounts: "Buy 2 get 15% off", "Buy 3 get 20% off"
+                                        combo_m = re.search(r"buy\s*(\d+)(?:\s*or\s*more)?\s*get\s*(\d+)%\s*off", combined_snip)
+                                        if combo_m:
+                                            qty_needed = combo_m.group(1)
+                                            combo_pct = float(combo_m.group(2))
+                                            combo_disc = round(price * (combo_pct / 100.0))
+                                            if combo_disc > coupon_disc:
+                                                coupon_disc = combo_disc
+                                                coupon_code = f"BUY {qty_needed} GET {int(combo_pct)}% OFF"
+
                                         if not coupon_disc:
                                             pct_m = re.search(r"(?:extra\s+)?(\d+)%\s+off", combined_snip)
                                             amt_m = re.search(r"₹\s*(\d+)\s+off", combined_snip)
@@ -802,20 +871,20 @@ class RunningShoesRadar:
                                                 coupon_disc = float(amt_m.group(1))
                                                 coupon_code = "COUPON"
 
-                                    # 3. Stacked Flipkart Offer Simulation for lifestyle sneakers
-                                    if is_sneaker and price >= 2500:
+                                    # 3. Stacked Flipkart Offer Simulation for footwear (both sneakers and performance running shoes)
+                                    if price >= 2500:
                                         if coupon_disc == 0:
-                                            coupon_disc = min(750.0, round(price * 0.15))
+                                            coupon_disc = min(1000.0, round(price * 0.15))
                                             coupon_code = "FLIPKART15"
                                         if bank_disc == 0:
                                             base_for_bank = price - coupon_disc
-                                            bank_disc = min(1250.0, round(base_for_bank * 0.10))
+                                            bank_disc = min(1500.0, round(base_for_bank * 0.10))
                                             bank_name = "Axis / ICICI Cards"
 
                                     effective_price = max(0.0, price - coupon_disc - bank_disc)
 
                                     # Strict Price Gate
-                                    if not is_sneaker and price > MAX_PRICE_THRESHOLD:
+                                    if not is_sneaker and effective_price > MAX_PRICE_THRESHOLD:
                                         continue
                                     if is_sneaker and effective_price > 8000:
                                         continue

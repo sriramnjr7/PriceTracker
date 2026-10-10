@@ -25,15 +25,15 @@ def test_sneaker_model_matching():
 
 
 def test_sneaker_size_parsing():
-    """Verify adult sizes (UK 6 - 12) parse for sneakers while default running filter rejects small sizes."""
-    assert parse_uk_size("Size: 7", target_sizes=SNEAKER_SIZES) == 7.0
+    """Verify target adult sizes (UK 8 - 11) parse for sneakers while small sizes (UK 6, 7) are strictly rejected."""
+    assert parse_uk_size("Size: 8", target_sizes=SNEAKER_SIZES) == 8.0
     assert parse_uk_size("UK 8.5", target_sizes=SNEAKER_SIZES) == 8.5
     assert parse_uk_size("Green , 11", target_sizes=SNEAKER_SIZES) == 11.0
-    assert parse_uk_size("UK 6", target_sizes=SNEAKER_SIZES) == 6.0
+    assert parse_uk_size("UK 10", target_sizes=SNEAKER_SIZES) == 10.0
     
-    # Running shoes default restricts to 9.5 - 11.0
-    assert parse_uk_size("UK 6") is None
-    assert parse_uk_size("UK 10") == 10.0
+    # Small sizes must be rejected for sneakers
+    assert parse_uk_size("UK 6", target_sizes=SNEAKER_SIZES) is None
+    assert parse_uk_size("Size: 7", target_sizes=SNEAKER_SIZES) is None
 
 
 def test_stacked_deal_effective_price_classification():
@@ -112,3 +112,49 @@ async def test_telegram_alert_formatting_for_sneakers():
     assert "Coupon (EXTRA15): -₹675" in msg
     assert "Bank Offer (Axis Bank): -₹1,072" in msg
     assert "Net Steal Price:* ₹2,752" in msg
+
+
+@pytest.mark.asyncio
+async def test_pegasus_stacked_combo_deal_alert():
+    """Verify Nike Pegasus with Buy 2 Get 15% Off and ICICI Bank offer formats alert properly."""
+    radar = RunningShoesRadar()
+    mock_notifier = AsyncMock()
+    radar.notifier = mock_notifier
+
+    # Nike Pegasus 40: Listing 5055, Multi-Buy 15% (-758), ICICI Card (-1252) -> Net 3045
+    deal = RunningShoeDeal(
+        id="flipkart_pegasus40_deal",
+        title="NIKE Pegasus 40 Men's Road Running Shoes Running Shoes For Men",
+        brand="Nike",
+        model="Pegasus",
+        category="running",
+        price=5055.0,
+        mrp=11895.0,
+        discount_percent=57.0,
+        available_sizes=["UK 8", "UK 10"],
+        platform="flipkart",
+        url="https://www.flipkart.com/nike-pegasus-40",
+        image_url="https://rukmini1.flixcart.com/image/600/720/pegasus.jpeg",
+        detected_at="2026-10-10T22:00:00Z",
+        deal_type="all_time_low",
+        lowest_price_seen=3045.0,
+        listing_price=5055.0,
+        coupon_discount=758.0,
+        coupon_code="BUY 2 GET 15% OFF",
+        bank_discount=1252.0,
+        bank_name="ICICI Bank Credit Card",
+        net_effective_price=3045.0,
+    )
+
+    await radar._dispatch_telegram_alert(deal)
+    assert mock_notifier.send_telegram.called
+    msg = mock_notifier.send_telegram.call_args[0][0]
+
+    assert "RUNNING SHOE" in msg
+    assert "Nike Pegasus" in msg
+    assert "Listing: ₹5,055" in msg
+    assert "Coupon (BUY 2 GET 15% OFF): -₹758" in msg
+    assert "Bank Offer (ICICI Bank Credit Card): -₹1,252" in msg
+    assert "Net Steal Price:* ₹3,045" in msg
+    assert "UK 8, UK 10" in msg
+

@@ -1632,63 +1632,25 @@
     "id": "shoe_saucony_hurricane",
     "brand": "Saucony",
     "model": "Hurricane",
-    "current_price": 573.0,
-    "mrp": 1699.0,
+    "current_price": null,
+    "mrp": 17990.0,
     "known_street_price": 12990,
     "steal_price": 7999,
-    "known_atl": 573.0,
-    "our_lowest_seen": 573.0,
-    "discount_percent": 66.0,
-    "available_sizes": [
-      "UK 10"
-    ],
+    "known_atl": 5499.0,
+    "our_lowest_seen": 5499.0,
+    "discount_percent": null,
+    "available_sizes": [],
     "platform": "flipkart",
-    "url": "https://www.flipkart.com/campus-hurricane-running-shoes-men/p/itm0ea6214ceab01?pid=SHOGB542BGAHHGAS",
+    "url": null,
     "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/8/e/b/-original-imahrrjsgxxx2vqm.jpeg?q=80",
     "last_seen": "2026-10-10T16:10:52.694116+00:00",
-    "deal_type": "steal_deal",
-    "status": "STEAL DEAL",
+    "deal_type": "standard",
+    "status": "TRACKING",
     "is_active": true,
     "times_seen": 5,
     "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
-    "last_alert_price": 573.0,
-    "variant_prices": {
-      "flipkart_SHOG6BNGG4NVTRYG": {
-        "price": 1199.0,
-        "net_effective_price": null,
-        "title": "CAMPUS HURRICANE Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:49.721554+00:00"
-      },
-      "flipkart_SHOG6DZSPKGZF6C8": {
-        "price": 1199.0,
-        "net_effective_price": null,
-        "title": "CAMPUS HURRICANE Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:50.195856+00:00"
-      },
-      "flipkart_SHOGB542BGAHHGAS": {
-        "price": 573.0,
-        "net_effective_price": null,
-        "title": "CAMPUS HURRICANE Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:52.694116+00:00"
-      },
-      "flipkart_SHOG6BNZVZHVQPBB": {
-        "price": 580.0,
-        "net_effective_price": null,
-        "title": "CAMPUS HURRICANE Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:53.117357+00:00"
-      },
-      "flipkart_SHOG6BNGY86RXJAW": {
-        "price": 1199.0,
-        "net_effective_price": null,
-        "title": "CAMPUS HURRICANE Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:53.572275+00:00"
-      }
-    },
+    "last_alert_price": null,
+    "variant_prices": {},
     "category": "running",
     "listing_price": 573.0,
     "coupon_discount": null,
@@ -4086,124 +4048,31 @@
     "brand": "Adidas",
     "model": "Campus 00s",
     "category": "sneaker",
-    "current_price": 431.0,
-    "mrp": 1499.0,
+    "current_price": null,
+    "mrp": 9999.0,
     "known_street_price": 6999,
     "steal_price": 3600,
-    "known_atl": 431.0,
-    "our_lowest_seen": 431.0,
-    "discount_percent": 71.0,
-    "available_sizes": [
-      "UK 10"
-    ],
+    "known_atl": 2899.0,
+    "our_lowest_seen": 2899.0,
+    "discount_percent": null,
+    "available_sizes": [],
     "platform": "flipkart",
-    "url": "https://www.flipkart.com/campus-crysta-pro-running-shoes-men/p/itm08f0ec4c15278?pid=SHOGANAAZPF3ZHZU",
+    "url": null,
     "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/5/m/8/-original-imahrrjsp6nxzbzf.jpeg?q=80",
     "last_seen": "2026-10-10T16:10:52.224406+00:00",
-    "deal_type": "steal_deal",
-    "status": "STEAL DEAL",
+    "deal_type": "standard",
+    "status": "TRACKING",
     "is_active": true,
     "times_seen": 14,
     "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
-    "last_alert_price": 431.0,
+    "last_alert_price": null,
     "variant_prices": {
-      "flipkart_SHOG2EYZPJGZUGRS": {
-        "price": 629.0,
-        "net_effective_price": null,
-        "title": "CAMPUS MIKE (N) Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:49.193626+00:00"
-      },
-      "flipkart_SHOG2RYJYVB7JCFU": {
-        "price": 611.0,
-        "net_effective_price": null,
-        "title": "CAMPUS MIKE (N) Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:50.648817+00:00"
-      },
-      "flipkart_SHOG4G3Y6VYVWP9B": {
-        "price": 600.0,
-        "net_effective_price": null,
-        "title": "CAMPUS MIKE (N) Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:51.195209+00:00"
-      },
-      "flipkart_SHOG2EYZKZDFCNRK": {
-        "price": 1145.0,
-        "net_effective_price": null,
-        "title": "CAMPUS MIKE (N) Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:51.697590+00:00"
-      },
-      "flipkart_SHOGANAAZPF3ZHZU": {
-        "price": 431.0,
-        "net_effective_price": null,
-        "title": "CAMPUS CRYSTA PRO Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:52.224406+00:00"
-      },
-      "flipkart_SHOGANABHZZXRCDA": {
-        "price": 512.0,
-        "net_effective_price": null,
-        "title": "CAMPUS CRYSTA PRO Running Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:54.056905+00:00"
-      },
-      "flipkart_SHOG4TKZBAQZYQHW": {
-        "price": 1110.0,
-        "net_effective_price": null,
-        "title": "CAMPUS VIBGYOR Walking Shoes For Men",
-        "platform": "flipkart",
-        "last_seen": "2026-10-10T16:10:55.649871+00:00"
-      },
       "flipkart_SHOGGW487HP9BYZC": {
         "price": 7699.0,
         "net_effective_price": 6254.0,
         "title": "ADIDAS ORIGINALS Campus 00s Shoes Sneakers For Men",
         "platform": "flipkart",
         "last_seen": "2026-10-10T16:11:11.650880+00:00"
-      },
-      "tatacliq_MP000000031422895": {
-        "price": 1449.0,
-        "net_effective_price": null,
-        "title": "Campus Men's Flynn Pinecone Walking Shoes",
-        "platform": "tatacliq",
-        "last_seen": "2026-10-10T16:10:57.158061+00:00"
-      },
-      "tatacliq_MP000000027124563": {
-        "price": 1249.0,
-        "net_effective_price": null,
-        "title": "Campus Men's White Running Shoes",
-        "platform": "tatacliq",
-        "last_seen": "2026-10-10T16:10:58.083636+00:00"
-      },
-      "tatacliq_MP000000032377730": {
-        "price": 1135.0,
-        "net_effective_price": null,
-        "title": "Campus Men's Frame Agave Green Running Shoes",
-        "platform": "tatacliq",
-        "last_seen": "2026-10-10T16:10:58.602957+00:00"
-      },
-      "tatacliq_MP000000031995021": {
-        "price": 1299.0,
-        "net_effective_price": null,
-        "title": "Campus Men's Order White & Navy Running Shoes",
-        "platform": "tatacliq",
-        "last_seen": "2026-10-10T16:10:59.088256+00:00"
-      },
-      "tatacliq_MP000000029695132": {
-        "price": 1135.0,
-        "net_effective_price": null,
-        "title": "Campus Men RELTO White & Black Running Shoes",
-        "platform": "tatacliq",
-        "last_seen": "2026-10-10T16:10:59.564222+00:00"
-      },
-      "tatacliq_MP000000031995040": {
-        "price": 1306.0,
-        "net_effective_price": null,
-        "title": "Campus Men's Chain White Running Shoes",
-        "platform": "tatacliq",
-        "last_seen": "2026-10-10T16:11:00.029842+00:00"
       }
     },
     "listing_price": 431.0,

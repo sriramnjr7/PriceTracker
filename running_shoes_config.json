@@ -1,5 +1,5 @@
 {
-  "is_active": true,
+  "is_active": false,
   "min_price": 4000.0,
   "max_price": 5999.0,
   "target_sizes": [
@@ -28,5 +28,5 @@
     "On Running": true
   },
   "last_sweep": "2026-10-10T16:30:47.319417+00:00",
-  "last_updated": "2026-10-10T17:42:25.855651+00:00"
+  "last_updated": "2026-10-10T20:05:49.275381+00:00"
 }

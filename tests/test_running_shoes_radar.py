@@ -149,13 +149,27 @@ def test_size_parsing():
     assert parse_uk_size("10.5") == 10.5
     assert parse_uk_size("UK 11") == 11.0
     assert parse_uk_size("UK10") == 10.0
+    assert parse_uk_size("UK 8") == 8.0
+    assert parse_uk_size("UK 9") == 9.0
 
     # Non-target sizes must be rejected
     assert parse_uk_size("UK 6") is None
     assert parse_uk_size("UK 7") is None
-    assert parse_uk_size("UK 8") is None
     assert parse_uk_size("UK 12") is None
     assert parse_uk_size("US 10") == 10.0 or parse_uk_size("US 10") is None  # normalized numeric check
+
+
+def test_campus_domestic_brand_exclusion():
+    assert match_running_model("CAMPUS HURRICANE Running Shoes For Men") is None
+    assert match_running_model("CAMPUS CRYSTA PRO Running Shoes For Men") is None
+    assert match_running_model("CAMPUS VIBGYOR Walking Shoes For Men") is None
+    assert match_running_model("Campus Men RELTO White & Black Running Shoes") is None
+    # Authentic Adidas Campus 00s must still match
+    assert match_running_model("ADIDAS ORIGINALS Campus 00s Shoes Sneakers For Men") == ("Adidas", "Campus 00s")
+    # Authentic Saucony Hurricane must still match
+    assert match_running_model("Saucony Hurricane 24 Mens Road Running Shoes") == ("Saucony", "Hurricane")
+    # Authentic Nike Pegasus must still match
+    assert match_running_model("NIKE Pegasus 40 Men's Road Running Shoes Running Shoes For Men") == ("Nike", "Pegasus")
 
 
 def test_toggle_state_persistence():

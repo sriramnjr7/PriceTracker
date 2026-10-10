@@ -2203,6 +2203,17 @@ async def catch_all(request: Request, full_path: str):
         pid = int(prod_id_match.group(1))
         if method == "DELETE":
             return await delete_single_product(pid)
+        if method in ("PATCH", "PUT", "POST"):
+            data = await request.json()
+            payload = UpdateTargetPricePayload(**data)
+            return await api_update_product_target_price(pid, payload)
+
+    prod_target_match = re.search(r"products/(\d+)/target[-_]price", clean)
+    if prod_target_match and method in ("POST", "PATCH", "PUT"):
+        pid = int(prod_target_match.group(1))
+        data = await request.json()
+        payload = UpdateTargetPricePayload(**data)
+        return await api_update_product_target_price(pid, payload)
 
     if clean in ("api/products", "products"):
         if method == "POST":
