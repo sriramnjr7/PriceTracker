@@ -1368,13 +1368,31 @@ def get_daemon_quick_status() -> dict[str, Any]:
         try:
             headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
             with httpx.Client(timeout=3.5) as client:
-                r = client.get(
-                    f"{supabase_url}/rest/v1/price_logs?select=timestamp&order=timestamp.desc&limit=1",
-                    headers=headers,
-                )
-                if r.status_code == 200 and r.json():
-                    p_ts = r.json()[0]["timestamp"]
-                    dt = datetime.fromisoformat(p_ts.replace("Z", "+00:00"))
+                p_ts = None
+                try:
+                    r1 = client.get(
+                        f"{supabase_url}/rest/v1/products?select=last_checked&order=last_checked.desc.nullslast&limit=1",
+                        headers=headers,
+                    )
+                    if r1.status_code == 200 and r1.json() and r1.json()[0].get("last_checked"):
+                        p_ts = r1.json()[0]["last_checked"]
+                except Exception:
+                    pass
+
+                try:
+                    r2 = client.get(
+                        f"{supabase_url}/rest/v1/price_logs?select=timestamp&order=timestamp.desc&limit=1",
+                        headers=headers,
+                    )
+                    if r2.status_code == 200 and r2.json() and r2.json()[0].get("timestamp"):
+                        p2_ts = r2.json()[0]["timestamp"]
+                        if not p_ts or str(p2_ts) > str(p_ts):
+                            p_ts = p2_ts
+                except Exception:
+                    pass
+
+                if p_ts:
+                    dt = datetime.fromisoformat(str(p_ts).replace("Z", "+00:00"))
                     now = datetime.now(timezone.utc)
                     sec_ago = max(0, int((now - dt).total_seconds()))
                     is_run = sec_ago <= 360  # GitHub Actions 5-min runner

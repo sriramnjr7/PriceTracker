@@ -6,6 +6,7 @@ and automated clearance/deal search.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -594,10 +595,40 @@ class FlipkartScraper(BaseScraper):
         for a in soup.find_all("a", href=True):
             if "swatchAttr=size" in a["href"]:
                 size_val = a.get_text(" ", strip=True)
-                # Strike-through line or disabled overlay indicates sold out
-                has_strike = any("height:1px" in str(d.get("style", "")) for d in a.find_all("div"))
-                has_disabled = any("disabled" in str(c).lower() for c in a.get("class", []))
-                in_stock = not (has_strike or has_disabled)
+
+                # Modern Flipkart out-of-stock indicators:
+                # 1. Visible strike-through line:
+                #    - Standalone 1px height line (legacy or test mocks e.g. <div style="height:1px;">)
+                #    - Modern React template 1px div with non-transparent background color or strike class
+                has_strike = any(
+                    d.get("style", "").strip().rstrip(";") in ("height:1px", "height: 1px")
+                    or (
+                        "height:1px" in str(d.get("style", "")).lower()
+                        and any(c in str(d.get("style", "")).lower() for c in ("#d6d6d6", "#878787", "#707070", "background-color:#d", "background-color:#8", "background-color:#7", "background-color:#c", "background-color:rgb", "background: rgb"))
+                    )
+                    or any("_7dzyg21s" in d.get("class", []) for d in a.find_all("div"))
+                    for d in a.find_all("div")
+                )
+
+                # 2. Disabled grey overlay
+                has_disabled_overlay = any(
+                    "background-color:#0000000f" in str(d.get("style", "")).lower()
+                    or "_7dzyg24z" in d.get("class", [])
+                    for d in a.find_all("div")
+                )
+
+                # 3. Disabled grey text color
+                has_grey_text = any(
+                    any(c in str(d.get("style", "")).lower() for c in ("#707070", "#878787", "rgb(112", "rgb(135"))
+                    for d in a.find_all("div")
+                )
+
+                # 4. Standard class/attribute disabled checks
+                has_disabled_attr = any("disabled" in str(c).lower() for c in a.get("class", [])) or a.get("aria-disabled") == "true"
+
+                is_oos = has_strike or has_disabled_overlay or has_grey_text or has_disabled_attr
+                in_stock = not is_oos
+
                 href = a["href"]
                 full_url = "https://www.flipkart.com" + href if href.startswith("/") else href
                 sizes.append({
@@ -710,33 +741,39 @@ class FlipkartScraper(BaseScraper):
         swatch_links = self._extract_color_swatches_from_soup(soup, current_url=url)
         total_colors = 1 + len(swatch_links)
 
-        for swatch in swatch_links:
-            if swatch.get("is_oos", False):
-                continue
-
+        async def _check_swatch(swatch: dict[str, Any]) -> Optional[dict[str, Any]]:
             swatch_url = swatch["url"]
-            s_html = await self._static_fetch(swatch_url)
-            if not s_html:
-                s_html = await self._js_fetch(swatch_url)
-            if not s_html:
-                continue
+            try:
+                s_html = await self._static_fetch(swatch_url)
+                if not s_html:
+                    return None
 
-            s_soup = BeautifulSoup(s_html, "html.parser")
-            s_color = self._extract_color_from_soup(s_soup) or f"Color ({swatch.get('pid', '')})"
-            s_sizes = self._extract_sizes_from_soup(s_soup)
-            s_in_stock_sizes = [s["size"] for s in s_sizes if s["in_stock"]]
-            s_price = self._extract_price(s_soup)
-            s_mrp = self._extract_mrp_from_soup(s_soup) or s_price
+                s_soup = BeautifulSoup(s_html, "html.parser")
+                s_color = self._extract_color_from_soup(s_soup) or f"Color ({swatch.get('pid', '')})"
+                s_sizes = self._extract_sizes_from_soup(s_soup)
+                s_in_stock_sizes = [s["size"] for s in s_sizes if s["in_stock"]]
+                s_price = self._extract_price(s_soup)
+                s_mrp = self._extract_mrp_from_soup(s_soup) or s_price
 
-            s_in_stock = self._extract_stock(s_soup) and (len(s_in_stock_sizes) > 0 or not s_sizes)
-            if s_in_stock and s_price is not None and s_price > 0:
-                in_stock_variants.append({
-                    "color": s_color,
-                    "sizes": s_in_stock_sizes or ["Standard"],
-                    "price": s_price,
-                    "mrp": s_mrp or s_price,
-                    "url": swatch_url,
-                })
+                s_in_stock = self._extract_stock(s_soup) and (len(s_in_stock_sizes) > 0 or not s_sizes)
+                if s_in_stock and s_price is not None and s_price > 0:
+                    return {
+                        "color": s_color,
+                        "sizes": s_in_stock_sizes or ["Standard"],
+                        "price": s_price,
+                        "mrp": s_mrp or s_price,
+                        "url": swatch_url,
+                    }
+            except Exception as e:
+                logger.debug("Failed inspecting swatch %s: %s", swatch.get("pid"), e)
+            return None
+
+        swatches_to_check = [sw for sw in swatch_links if not sw.get("is_oos", False)]
+        if swatches_to_check:
+            swatch_results = await asyncio.gather(*[_check_swatch(sw) for sw in swatches_to_check], return_exceptions=True)
+            for res in swatch_results:
+                if isinstance(res, dict) and res:
+                    in_stock_variants.append(res)
 
         lowest_price = min((v["price"] for v in in_stock_variants), default=None)
 

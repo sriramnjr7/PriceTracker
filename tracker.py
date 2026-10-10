@@ -97,8 +97,10 @@ class Tracker:
             or "literide" in product.url.lower()
             or "variants" in (product.title or "").lower()
             or "size " in (product.title or "").lower()
+            or "sizes " in (product.title or "").lower()
             or "size 8" in (product.title or "").lower()
             or "skechers" in (product.title or "").lower()
+            or "skechers" in product.url.lower()
         ):
             return await self._check_flipkart_variants(product)
 
@@ -485,43 +487,59 @@ class Tracker:
         model_title = report.get("model_title") or product.title or "CROCS LiteRide 360 Clog"
         clean_model = model_title.split("(")[0].strip() if "(" in model_title else model_title
 
-        # Check if a specific target size is specified in product.title (e.g. Size 8)
-        target_size = None
-        m_size = re.search(r"\bsize\s*[:\s-]?\s*([0-9]+(?:\.[0-9]+)?)\b", (product.title or ""), re.IGNORECASE)
-        if m_size:
-            target_size = m_size.group(1).strip()
+        # Check if specific target size(s) are specified in product.title (e.g. "Size 8", "Sizes 8 & 9", "Size 8, 9", "Size 8 and 9")
+        target_sizes: list[str] = []
+        m_sizes = re.search(r"\bsizes?\s*[:\s-]?\s*([0-9\s,\.&/and]+)\b", (product.title or ""), re.IGNORECASE)
+        if m_sizes:
+            raw_nums = re.findall(r"\b([0-9]+(?:\.[0-9]+)?)\b", m_sizes.group(1))
+            target_sizes = [n.strip() for n in raw_nums if n.strip()]
+        if not target_sizes:
+            m_single = re.search(r"\b(?:uk|us)?\s*size\s*[:\s-]?\s*([0-9]+(?:\.[0-9]+)?)\b", (product.title or ""), re.IGNORECASE)
+            if m_single:
+                target_sizes = [m_single.group(1).strip()]
 
         in_stock_variants = report.get("in_stock_variants", [])
 
-        # Filter by target size if specified
-        if target_size:
-            def has_target_size(v):
-                return any(
-                    s.strip() == target_size
-                    or s.strip().lower() == f"uk{target_size}".lower()
-                    or s.strip().lower() == f"us{target_size}".lower()
-                    for s in v.get("sizes", [])
-                )
-            in_stock_variants = [v for v in in_stock_variants if has_target_size(v)]
+        # Filter by target sizes if specified
+        if target_sizes:
+            def matches_target_sizes(v):
+                v_sizes = [s.strip().lower() for s in v.get("sizes", [])]
+                for ts in target_sizes:
+                    ts_clean = ts.strip().lower()
+                    if any(
+                        s == ts_clean
+                        or s == f"uk{ts_clean}"
+                        or s == f"us{ts_clean}"
+                        or s == f"uk {ts_clean}"
+                        or s == f"us {ts_clean}"
+                        or s.startswith(f"{ts_clean} ")
+                        or s.endswith(f" {ts_clean}")
+                        for s in v_sizes
+                    ):
+                        return True
+                return False
+            in_stock_variants = [v for v in in_stock_variants if matches_target_sizes(v)]
 
         lowest_price = min((v["price"] for v in in_stock_variants), default=None)
+        size_prefix = "Size" if len(target_sizes) == 1 else "Sizes"
+        sizes_label = " & ".join(target_sizes) if len(target_sizes) <= 2 else ", ".join(target_sizes)
 
         if not in_stock_variants:
-            if target_size:
-                updated_title = f"{clean_model} (Size {target_size} - All Colors Out of Stock)"
+            if target_sizes:
+                updated_title = f"{clean_model} ({size_prefix} {sizes_label} - All Colors Out of Stock)"
             else:
                 updated_title = f"{clean_model} (All Colors & Sizes - Out of Stock)"
             await self.db.update_price(product.id, None, title=updated_title)
             logger.info(
-                "[flipkart] Multi-variant product %s: all %s colorways currently out of stock (target size: %s).",
+                "[flipkart] Multi-variant product %s: all %s colorways currently out of stock (target sizes: %s).",
                 product.id,
                 report.get("total_colors_checked", 0),
-                target_size or "any",
+                sizes_label or "any",
             )
             return False
 
-        if target_size:
-            updated_title = f"{clean_model} (Size {target_size} - {len(in_stock_variants)} color{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
+        if target_sizes:
+            updated_title = f"{clean_model} ({size_prefix} {sizes_label} - {len(in_stock_variants)} color{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
         else:
             updated_title = f"{clean_model} ({len(in_stock_variants)} variant{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
         await self.db.update_price(product.id, lowest_price, title=updated_title)
@@ -556,8 +574,8 @@ class Tracker:
             if target_price is not None:
                 target_display = f"₹{target_price:,.0f}" if target_price.is_integer() else f"₹{target_price:,.2f}"
                 target_line = f"🎯 *Target Price:* Below {target_display}\n"
-            elif target_size:
-                target_line = f"🎯 *Target:* In-Stock Alert (Size {target_size})\n"
+            elif target_sizes:
+                target_line = f"🎯 *Target:* In-Stock Alert ({size_prefix} {sizes_label})\n"
             else:
                 target_line = f"🎯 *Target:* In-Stock Alert\n"
 

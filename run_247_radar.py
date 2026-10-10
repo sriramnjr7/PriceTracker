@@ -495,6 +495,8 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
         except Exception as hb_exc:
             logger.debug("Heartbeat check error: %s", hb_exc)
 
+        shipper_task = asyncio.create_task(supabase_log_shipper_loop(interval_seconds=10))
+
         # Maintain active VIP vigilance every 60s for the entire duration_seconds surveillance window
         elapsed = loop.time() - start_time
         remaining = duration_seconds - elapsed - 5
@@ -507,6 +509,11 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
 
         stop_event.set()
         await vip_task
+        shipper_task.cancel()
+        try:
+            await shipper_task
+        except asyncio.CancelledError:
+            pass
         total_alerts += vip_alerts_total
 
         print(f"\n✅ [Cloud Runner] Surveillance window concluded. Total alerts dispatched: {total_alerts}")
@@ -569,6 +576,13 @@ async def run_repeating_sweep(repeats: int = 3, interval_seconds: int = 110) -> 
 
 async def main():
     if "--runner" in sys.argv:
+        supa_url = os.getenv("SUPABASE_URL")
+        supa_key = os.getenv("SUPABASE_KEY")
+        if not supa_url or not supa_key:
+            err = "❌ CRITICAL: SUPABASE_URL or SUPABASE_KEY missing in cloud runner environment! Ensure 'environment: Production' is enabled in GitHub Actions workflow."
+            logger.error(err)
+            print(err)
+            sys.exit(1)
         duration = 240
         for i, arg in enumerate(sys.argv):
             if arg == "--duration" and i + 1 < len(sys.argv) and sys.argv[i + 1].isdigit():
