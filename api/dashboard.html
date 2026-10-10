@@ -6800,14 +6800,14 @@
       if (spinner) spinner.style.display = "inline";
 
       try {
-        let res = await fetch(`/api/products/${currentEditTargetId}`, {
-          method: "PATCH",
+        let res = await fetch(`/api/products/${currentEditTargetId}/target-price`, {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ target_price: newTarget })
         });
         if (!res.ok) {
-          res = await fetch(`/api/products/${currentEditTargetId}/target-price`, {
-            method: "POST",
+          res = await fetch(`/api/products/${currentEditTargetId}`, {
+            method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ target_price: newTarget })
           });
