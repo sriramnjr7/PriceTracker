@@ -523,15 +523,16 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
 
         shipper_task = asyncio.create_task(supabase_log_shipper_loop(interval_seconds=10))
 
-        # Maintain active VIP vigilance every 60s for the entire duration_seconds surveillance window
-        elapsed = loop.time() - start_time
-        remaining = duration_seconds - elapsed - 5
-        if remaining > 0:
-            print(f"⏳ Cloud Runner maintaining active sub-minute VIP vigilance for {int(remaining)}s remaining...")
-            try:
-                await asyncio.wait_for(stop_event.wait(), timeout=remaining)
-            except asyncio.TimeoutError:
-                pass
+        # Maintain active VIP vigilance every 60s for the entire duration_seconds surveillance window if specified
+        if duration_seconds > 0:
+            elapsed = loop.time() - start_time
+            remaining = duration_seconds - elapsed - 5
+            if remaining > 0:
+                print(f"⏳ Cloud Runner maintaining active sub-minute VIP vigilance for {int(remaining)}s remaining...")
+                try:
+                    await asyncio.wait_for(stop_event.wait(), timeout=remaining)
+                except asyncio.TimeoutError:
+                    pass
 
         stop_event.set()
         await vip_task
@@ -609,7 +610,7 @@ async def main():
             logger.error(err)
             print(err)
             sys.exit(1)
-        duration = 240
+        duration = 0
         for i, arg in enumerate(sys.argv):
             if arg == "--duration" and i + 1 < len(sys.argv) and sys.argv[i + 1].isdigit():
                 duration = int(sys.argv[i + 1])
