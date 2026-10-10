@@ -255,32 +255,65 @@
     "id": "shoe_nike_pegasus",
     "brand": "Nike",
     "model": "Pegasus",
-    "current_price": null,
-    "mrp": 11995,
+    "current_price": 5948.0,
+    "mrp": 11895.0,
     "known_street_price": 8995,
     "steal_price": 5499,
     "known_atl": 3799,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 5948.0,
+    "discount_percent": 50.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/sports-shoes/nike/nike-zoom-pegasus-40-laced-up-running-sports-shoes/25055778/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/25055778/2023/9/30/0334f41c-956e-4cf9-aad9-57c1714d80401696096196363NikeLacedUpRunningSportsShoes1.jpg",
+    "last_seen": "2026-10-10T16:12:06.163656+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 5,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "myntra_25055778": {
+        "price": 5948.0,
+        "net_effective_price": null,
+        "title": "Nike Zoom Pegasus 40 Laced Up Running Sports Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:06.163656+00:00"
+      },
+      "myntra_36731465": {
+        "price": 19295.0,
+        "net_effective_price": null,
+        "title": "Nike Pegasus Premium Men's Road Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:07.156977+00:00"
+      },
+      "myntra_41050600": {
+        "price": 12995.0,
+        "net_effective_price": null,
+        "title": "Nike Pegasus 42 Men's Road-Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:11.891595+00:00"
+      },
+      "myntra_46284802": {
+        "price": 13995.0,
+        "net_effective_price": null,
+        "title": "Nike Pegasus 42  Men's Road Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:13.805240+00:00"
+      },
+      "myntra_41276624": {
+        "price": 15436.0,
+        "net_effective_price": null,
+        "title": "Nike Pegasus Premium Men's Road Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:40.035974+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 5948.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -291,32 +324,51 @@
     "id": "shoe_nike_structure",
     "brand": "Nike",
     "model": "Structure",
-    "current_price": null,
-    "mrp": 11495,
+    "current_price": 7315.0,
+    "mrp": 11895.0,
     "known_street_price": 8495,
     "steal_price": 5199,
     "known_atl": 3499,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 7315.0,
+    "discount_percent": 39.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "tatacliq",
+    "url": "https://www.tatacliq.com/p-mp000000030531799",
+    "image_url": "https://img.tatacliq.com/images/i30//437Wx649H/MP000000030531791_437Wx649H_202603251839541.jpeg",
+    "last_seen": "2026-10-10T16:11:03.833285+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 3,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "tatacliq_MP000000030531795": {
+        "price": 7315.0,
+        "net_effective_price": null,
+        "title": "Nike Men Structure 26 Wide Black Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:11:01.139768+00:00"
+      },
+      "tatacliq_MP000000030531799": {
+        "price": 7315.0,
+        "net_effective_price": null,
+        "title": "Nike Men Structure 26 Wide Black Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:11:03.833285+00:00"
+      },
+      "tatacliq_MP000000030738790": {
+        "price": 8505.0,
+        "net_effective_price": null,
+        "title": "Nike Men Structure 26 Green Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:11:04.342323+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 7315.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -579,32 +631,44 @@
     "id": "shoe_adidas_adizero_sl",
     "brand": "Adidas",
     "model": "Adizero SL",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 15999.0,
+    "mrp": 15999.0,
     "known_street_price": 6999,
     "steal_price": 3999,
     "known_atl": 2599,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 15999.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/sports-shoes/adidas/adidas-men-adizero-evo-sl-running-shoes/46757484/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2026/SEPTEMBER/28/b43173e85bd9493c891f31433c2c8fc8.jpg",
+    "last_seen": "2026-10-10T16:11:32.528296+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "myntra_40557695": {
+        "price": 16999.0,
+        "net_effective_price": null,
+        "title": "ADIDAS Men Adizero EVO SL AMG Motorsport Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:11:31.617486+00:00"
+      },
+      "myntra_46757484": {
+        "price": 15999.0,
+        "net_effective_price": null,
+        "title": "ADIDAS Men Adizero EVO SL Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:11:32.528296+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 15999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -795,32 +859,44 @@
     "id": "shoe_asics_gel_nimbus",
     "brand": "Asics",
     "model": "Gel-Nimbus",
-    "current_price": null,
-    "mrp": 16999,
+    "current_price": 16999.0,
+    "mrp": 16999.0,
     "known_street_price": 12499,
     "steal_price": 7500,
     "known_atl": 4999,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 16999.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/asics-gel-nimbus-28-running-shoes-men/p/itm2bac27282cccb?pid=SHOHZNQSBZ2BQPB3",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/i/v/u/10-1011c127-251-10-0-asics-soft-oat-cream-original-imahznqrg9zksfkd.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:52.089537+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "flipkart_SHOHZNFMFSUKMUZ3": {
+        "price": 16999.0,
+        "net_effective_price": null,
+        "title": "Asics GEL-NIMBUS 28 TR Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:49.513100+00:00"
+      },
+      "flipkart_SHOHZNQSBZ2BQPB3": {
+        "price": 16999.0,
+        "net_effective_price": null,
+        "title": "Asics GEL-NIMBUS 28 Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:52.089537+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 16999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -831,32 +907,37 @@
     "id": "shoe_asics_gel_kayano",
     "brand": "Asics",
     "model": "Gel-Kayano",
-    "current_price": null,
-    "mrp": 16999,
+    "current_price": 17999.0,
+    "mrp": 17999.0,
     "known_street_price": 12999,
     "steal_price": 7999,
     "known_atl": 5499,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 17999.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/asics-gel-kayano-33-lite-show-running-shoes-men/p/itm84da2920c0d5e?pid=SHOHZGP5TWNAGZNM",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/h/m/c/11-1011c315-400-12-0-asics-lite-show-orange-glow-original-imahzgp4xtezmfyw.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:48.515332+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 1,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "flipkart_SHOHZGP5TWNAGZNM": {
+        "price": 17999.0,
+        "net_effective_price": null,
+        "title": "Asics GEL-KAYANO 33 LITE-SHOW Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:48.515332+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 17999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -867,32 +948,44 @@
     "id": "shoe_asics_novablast",
     "brand": "Asics",
     "model": "Novablast",
-    "current_price": null,
-    "mrp": 13999,
+    "current_price": 11199.0,
+    "mrp": 13999.0,
     "known_street_price": 10499,
     "steal_price": 6200,
     "known_atl": 4299,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 11199.0,
+    "discount_percent": 20.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/sports-shoes/asics/asics-novablast-5-tr-women-lace-ups-running-sports-shoes/40204201/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2026/FEBRUARY/20/xn9FiNZ3_1de5e4d9088a4146b2ab8a24b20d5429.jpg",
+    "last_seen": "2026-10-10T16:13:16.863264+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "myntra_35148616": {
+        "price": 11999.0,
+        "net_effective_price": null,
+        "title": "ASICS Novablast 5 Lite-Show Women Lace-Ups Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:15.080524+00:00"
+      },
+      "myntra_40204201": {
+        "price": 11199.0,
+        "net_effective_price": null,
+        "title": "ASICS NOVABLAST 5 TR Women Lace-Ups Running Sports Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:16.863264+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 11199.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -903,32 +996,44 @@
     "id": "shoe_asics_gel_cumulus",
     "brand": "Asics",
     "model": "Gel-Cumulus",
-    "current_price": null,
-    "mrp": 12499,
+    "current_price": 12999.0,
+    "mrp": 12999.0,
     "known_street_price": 8999,
     "steal_price": 5499,
     "known_atl": 3699,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 12999.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/asics-gel-cumulus-28-running-shoes-men/p/itmb704e3eee8fe7?pid=SHOHZNMBCAUYVRKG",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/d/g/r/7-1011c143-750-7-0-asics-illuminate-yellow-energy-aqua-original-imahznm8p8ggrdsw.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:46.997046+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "flipkart_SHOHZNMADQ5HZ5MN": {
+        "price": 12999.0,
+        "net_effective_price": null,
+        "title": "Asics GEL-CUMULUS 28 Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:46.409082+00:00"
+      },
+      "flipkart_SHOHZNMBCAUYVRKG": {
+        "price": 12999.0,
+        "net_effective_price": null,
+        "title": "Asics GEL-CUMULUS 28 Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:46.997046+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 12999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -939,32 +1044,51 @@
     "id": "shoe_asics_gt_2000",
     "brand": "Asics",
     "model": "GT-2000",
-    "current_price": null,
-    "mrp": 11999,
+    "current_price": 5879.0,
+    "mrp": 13999.0,
     "known_street_price": 8499,
     "steal_price": 4999,
     "known_atl": 3499,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 5879.0,
+    "discount_percent": 58.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/asics-gt-2000-14-running-shoes-men/p/itmac92b13fd2212?pid=SHOHGT5H3ZDZ2XM7",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/w/a/h/12-1011c056-403-13-0-asics-midnight-light-orange-watermarked-original-imahgt5hfzdwcppv.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:51.130131+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 3,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "flipkart_SHOHDEYGSVGXHKXQ": {
+        "price": 5879.0,
+        "net_effective_price": null,
+        "title": "Asics GT-2000 14 Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:56.181663+00:00"
+      },
+      "flipkart_SHOHDEYHMUVTTCHD": {
+        "price": 11999.0,
+        "net_effective_price": null,
+        "title": "Asics GT-2000 14 LITE-SHOW Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:47.996668+00:00"
+      },
+      "flipkart_SHOHGT5H3ZDZ2XM7": {
+        "price": 5879.0,
+        "net_effective_price": null,
+        "title": "Asics GT-2000 14 Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:51.130131+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 5879.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -975,32 +1099,44 @@
     "id": "shoe_puma_fast_r_nitro_elite",
     "brand": "Puma",
     "model": "Fast-R Nitro Elite",
-    "current_price": null,
-    "mrp": 21999,
+    "current_price": 23999.0,
+    "mrp": 23999.0,
     "known_street_price": 16999,
     "steal_price": 10999,
     "known_atl": 7499,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 23999.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 10.5"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/sports-shoes/puma/puma-fast-r-nitro-elite-3-mens-road-running-shoes/41542827/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2026/APRIL/23/0QqMc3j4_d5a83135721b46f8b4174074d3d83d38.jpg",
+    "last_seen": "2026-10-10T16:14:04.029841+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "myntra_42145555": {
+        "price": 23999.0,
+        "net_effective_price": null,
+        "title": "Puma FAST-R NITRO Elite 3 Men's Road Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:58.106741+00:00"
+      },
+      "myntra_41542827": {
+        "price": 23999.0,
+        "net_effective_price": null,
+        "title": "Puma FAST-R NITRO Elite 3 Men's Road Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:04.029841+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 23999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -1155,32 +1291,44 @@
     "id": "shoe_puma_foreverrun_nitro",
     "brand": "Puma",
     "model": "ForeverRun Nitro",
-    "current_price": null,
-    "mrp": 13999,
+    "current_price": 11249.0,
+    "mrp": 14999.0,
     "known_street_price": 9999,
     "steal_price": 5999,
     "known_atl": 3899,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 11249.0,
+    "discount_percent": 25.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/sports-shoes/puma/puma-foreverrun-nitro-2-mens-comfort-running-shoes/37542919/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2025/OCTOBER/17/qQuE4uEr_3507f6fe5c39416ab190bcf4cbd5b011.jpg",
+    "last_seen": "2026-10-10T16:14:07.307948+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "myntra_36461820": {
+        "price": 11999.0,
+        "net_effective_price": null,
+        "title": "Puma ForeverRun NITRO Men's Engineered Stability Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:02.127431+00:00"
+      },
+      "myntra_37542919": {
+        "price": 11249.0,
+        "net_effective_price": null,
+        "title": "Puma ForeverRun NITRO 2 Men's Comfort Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:07.307948+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 11249.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -1227,32 +1375,37 @@
     "id": "shoe_puma_velocity_nitro",
     "brand": "Puma",
     "model": "Velocity Nitro",
-    "current_price": null,
-    "mrp": 10999,
+    "current_price": 12999.0,
+    "mrp": 12999.0,
     "known_street_price": 7499,
     "steal_price": 4499,
     "known_atl": 2899,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 12999.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 9.5"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "tatacliq",
+    "url": "https://www.tatacliq.com/p-mp000000031674532",
+    "image_url": "https://img.tatacliq.com/images/i32/437Wx649H/MP000000031674525_437Wx649H_202607081855551.jpeg",
+    "last_seen": "2026-10-10T16:10:47.624108+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 1,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "tatacliq_MP000000031674532": {
+        "price": 12999.0,
+        "net_effective_price": null,
+        "title": "Puma Men's HYROX Velocity NITRO 5 Intense Mint & Light Lavender Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:10:47.624108+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 12999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -1479,32 +1632,65 @@
     "id": "shoe_saucony_hurricane",
     "brand": "Saucony",
     "model": "Hurricane",
-    "current_price": null,
-    "mrp": 17990,
+    "current_price": 573.0,
+    "mrp": 1699.0,
     "known_street_price": 12990,
     "steal_price": 7999,
-    "known_atl": 5499,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "known_atl": 573.0,
+    "our_lowest_seen": 573.0,
+    "discount_percent": 66.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/campus-hurricane-running-shoes-men/p/itm0ea6214ceab01?pid=SHOGB542BGAHHGAS",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/8/e/b/-original-imahrrjsgxxx2vqm.jpeg?q=80",
+    "last_seen": "2026-10-10T16:10:52.694116+00:00",
+    "deal_type": "steal_deal",
+    "status": "STEAL DEAL",
     "is_active": true,
-    "times_seen": 0,
-    "last_alert_at": null,
-    "last_alert_price": null,
-    "variant_prices": {},
+    "times_seen": 5,
+    "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
+    "last_alert_price": 573.0,
+    "variant_prices": {
+      "flipkart_SHOG6BNGG4NVTRYG": {
+        "price": 1199.0,
+        "net_effective_price": null,
+        "title": "CAMPUS HURRICANE Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:49.721554+00:00"
+      },
+      "flipkart_SHOG6DZSPKGZF6C8": {
+        "price": 1199.0,
+        "net_effective_price": null,
+        "title": "CAMPUS HURRICANE Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:50.195856+00:00"
+      },
+      "flipkart_SHOGB542BGAHHGAS": {
+        "price": 573.0,
+        "net_effective_price": null,
+        "title": "CAMPUS HURRICANE Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:52.694116+00:00"
+      },
+      "flipkart_SHOG6BNZVZHVQPBB": {
+        "price": 580.0,
+        "net_effective_price": null,
+        "title": "CAMPUS HURRICANE Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:53.117357+00:00"
+      },
+      "flipkart_SHOG6BNGY86RXJAW": {
+        "price": 1199.0,
+        "net_effective_price": null,
+        "title": "CAMPUS HURRICANE Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:53.572275+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 573.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -2847,32 +3033,37 @@
     "id": "shoe_skechers_go_run_pure",
     "brand": "Skechers",
     "model": "Go Run Pure",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 4566.0,
+    "mrp": 9999.0,
     "known_street_price": 6999,
     "steal_price": 3999,
     "known_atl": 2499,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 4566.0,
+    "discount_percent": 54.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/alberto-torresi-headon-series-devl550-suede-distress-pure-grain-leather-double-neck-ankle-boot-boots-men/p/itm5452a037197ac?pid=SHOH8VMFYVYSYKDG",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/s/q/u/6-88550-40-alberto-torresi-tan-original-imahgznpdmrwyzc2.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:31.467574+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 1,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
+    "variant_prices": {
+      "flipkart_SHOH8VMFYVYSYKDG": {
+        "price": 4566.0,
+        "net_effective_price": null,
+        "title": "ALBERTO TORRESI HEADON Series Devl550 Suede Distress & Pure Grain Leather Double Neck Ankle Boot Boots For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:31.467574+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 4566.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -3351,32 +3542,51 @@
     "id": "shoe_reebok_floatride_energy",
     "brand": "Reebok",
     "model": "Floatride Energy",
-    "current_price": null,
-    "mrp": 8999,
+    "current_price": 3899.0,
+    "mrp": 12999.0,
     "known_street_price": 7000,
     "steal_price": 4500,
     "known_atl": 3500,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 3899.0,
+    "discount_percent": 70.0,
     "available_sizes": [
-      "UK 9.5",
-      "UK 10",
-      "UK 10.5",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/sports-shoes/reebok/reebok-men-floatride-energy-5-running-shoes/23102548/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/23102548/2023/5/10/445400f4-70c3-4e1c-ad74-d4396e82d9801683657105675MensReebokFloatrideEnergy5Shoes1.jpg",
+    "last_seen": "2026-10-10T16:14:36.711023+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
-    "last_alert_at": null,
-    "last_alert_price": null,
-    "variant_prices": {},
+    "times_seen": 3,
+    "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
+    "last_alert_price": 3899.0,
+    "variant_prices": {
+      "myntra_23102548": {
+        "price": 3899.0,
+        "net_effective_price": null,
+        "title": "Reebok Men Floatride Energy 5 Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:36.711023+00:00"
+      },
+      "flipkart_SHOHCRJHZFGH3K9N": {
+        "price": 4899.0,
+        "net_effective_price": null,
+        "title": "REEBOK FLOATRIDE ENERGY 6 Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:05.451521+00:00"
+      },
+      "flipkart_SHOHCRJHDHBWF63T": {
+        "price": 9799.0,
+        "net_effective_price": null,
+        "title": "REEBOK FLOATRIDE ENERGY 6 Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:05.950120+00:00"
+      }
+    },
     "category": "running",
-    "listing_price": null,
+    "listing_price": 3899.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -3388,152 +3598,269 @@
     "brand": "Adidas",
     "model": "SL 72",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 3999.0,
+    "mrp": 9999.0,
     "known_street_price": 6999,
     "steal_price": 3500,
     "known_atl": 2752,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 3059.0,
+    "discount_percent": 60.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/adidas-originals-sl-72-rs-sneakers-men/p/itm4eba3f4d8c95e?pid=SHOHDANFGNXNYHFM",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/z/2/a/-original-imahq9bykjdwcmus.jpeg?q=80",
+    "last_seen": "2026-10-10T16:11:10.173001+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
-    "last_alert_at": null,
-    "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "times_seen": 9,
+    "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
+    "last_alert_price": 3059.0,
+    "variant_prices": {
+      "flipkart_SHOHKEVUFQU5HTQ2": {
+        "price": 4499.0,
+        "net_effective_price": 3442.0,
+        "title": "ADIDAS ORIGINALS SL 72 RS Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:07.707630+00:00"
+      },
+      "flipkart_SHOHDANFK84NX2A8": {
+        "price": 3999.0,
+        "net_effective_price": 3059.0,
+        "title": "ADIDAS ORIGINALS SL 72 RS Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:08.168640+00:00"
+      },
+      "flipkart_SHOHCGGHYZUQSFXZ": {
+        "price": 3999.0,
+        "net_effective_price": 3059.0,
+        "title": "ADIDAS ORIGINALS SL 72 RS Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:08.608527+00:00"
+      },
+      "flipkart_SHOHDANFH2BAYUF9": {
+        "price": 4399.0,
+        "net_effective_price": 3365.0,
+        "title": "ADIDAS ORIGINALS SL 72 RS Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:09.631480+00:00"
+      },
+      "flipkart_SHOHDANFGNXNYHFM": {
+        "price": 3999.0,
+        "net_effective_price": 3059.0,
+        "title": "ADIDAS ORIGINALS SL 72 RS Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:10.173001+00:00"
+      },
+      "flipkart_SHOHKEVUGUSDMVHP": {
+        "price": 4499.0,
+        "net_effective_price": 3442.0,
+        "title": "ADIDAS ORIGINALS SL 72 RS Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:10.660372+00:00"
+      },
+      "flipkart_SHOHKYY2QVGN35FS": {
+        "price": 7699.0,
+        "net_effective_price": 6254.0,
+        "title": "ADIDAS SL 72 RS AUDI Motorsport Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:00.373056+00:00"
+      },
+      "tatacliq_MP000000025624099": {
+        "price": 4499.55,
+        "net_effective_price": null,
+        "title": "Adidas Originals Men's SL 72 RS Grey Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:11:00.530983+00:00"
+      },
+      "tatacliq_MP000000025624116": {
+        "price": 4499.55,
+        "net_effective_price": null,
+        "title": "Adidas Originals Men's SL 72 RS Grey Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:11:03.328204+00:00"
+      }
+    },
+    "listing_price": 3999.0,
+    "coupon_discount": 600,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 340,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 3059.0
   },
   "adidas_samba": {
     "id": "shoe_adidas_samba",
     "brand": "Adidas",
     "model": "Samba",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 10999,
+    "current_price": 7699.0,
+    "mrp": 10999.0,
     "known_street_price": 8999,
     "steal_price": 4500,
     "known_atl": 3799,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 6254.0,
+    "discount_percent": 30.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 7"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/adidas-originals-samba-og-sneakers-men/p/itm84c2c3f244f57?pid=SHOHDANF4FEEAVZJ",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/n/5/w/-original-imahq9fgzpghchhq.jpeg?q=80",
+    "last_seen": "2026-10-10T16:11:22.476854+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 5,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "myntra_44094398": {
+        "price": 9599.0,
+        "net_effective_price": null,
+        "title": "ADIDAS Originals Unisex Samba 62 Super Mercedes Amg Petronas F1 Team Motorsport Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:11:38.870522+00:00"
+      },
+      "flipkart_SHOHJJ8KBJJGDNVW": {
+        "price": 7699.0,
+        "net_effective_price": 6254.0,
+        "title": "ADIDAS ORIGINALS Samba OG Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:21.076701+00:00"
+      },
+      "flipkart_SHOHDANEEHBPKTH8": {
+        "price": 7699.0,
+        "net_effective_price": 6254.0,
+        "title": "ADIDAS ORIGINALS SAMBA OG Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:22.016467+00:00"
+      },
+      "flipkart_SHOHDANF4FEEAVZJ": {
+        "price": 7699.0,
+        "net_effective_price": 6254.0,
+        "title": "ADIDAS ORIGINALS SAMBA OG Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:22.476854+00:00"
+      },
+      "flipkart_SHOHJJ8KAYYZ5SRF": {
+        "price": 8399.0,
+        "net_effective_price": 6884.0,
+        "title": "ADIDAS ORIGINALS Samba OG Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:24.331108+00:00"
+      }
+    },
+    "listing_price": 7699.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 695,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 6254.0
   },
   "adidas_gazelle": {
     "id": "shoe_adidas_gazelle",
     "brand": "Adidas",
     "model": "Gazelle",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 7199.0,
+    "mrp": 11999.0,
     "known_street_price": 7999,
     "steal_price": 3999,
     "known_atl": 3299,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 5804.0,
+    "discount_percent": 40.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 8"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/adidas-originals-gazelle-indoor-sneakers-men/p/itm3ac1f4cb8670a?pid=SHOHJJ8HH9AK5E4G",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/s/t/x/-watermarked-original-imahha94kxd6uhha.jpeg?q=80",
+    "last_seen": "2026-10-10T16:11:55.185528+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 4,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "flipkart_SHOHJJ8KFVFCGRYQ": {
+        "price": 7199.0,
+        "net_effective_price": 5804.0,
+        "title": "ADIDAS ORIGINALS GAZELLE INDOOR Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:12.158471+00:00"
+      },
+      "flipkart_SHOHJJ8KCGEMVDZF": {
+        "price": 7199.0,
+        "net_effective_price": 5804.0,
+        "title": "ADIDAS ORIGINALS GAZELLE INDOOR Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:53.766266+00:00"
+      },
+      "flipkart_SHOHJJ8HH9AK5E4G": {
+        "price": 7199.0,
+        "net_effective_price": 5804.0,
+        "title": "ADIDAS ORIGINALS GAZELLE INDOOR Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:55.185528+00:00"
+      },
+      "flipkart_SHOHJZ8XCJ9KVCKS": {
+        "price": 8399.0,
+        "net_effective_price": 6884.0,
+        "title": "ADIDAS ORIGINALS GAZELLE INDOOR Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:59.885379+00:00"
+      }
+    },
+    "listing_price": 7199.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 645,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 5804.0
   },
   "adidas_handball_spezial": {
     "id": "shoe_adidas_handball_spezial",
     "brand": "Adidas",
     "model": "Handball Spezial",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 10999,
+    "current_price": 4399.0,
+    "mrp": 10999.0,
     "known_street_price": 8499,
     "steal_price": 4499,
-    "known_atl": 3599,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "known_atl": 3365.0,
+    "our_lowest_seen": 3365.0,
+    "discount_percent": 60.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 6"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/adidas-originals-handball-spezial-sneakers-men/p/itmbe0a61b4ece24?pid=SHOHDNUPYUYPJVHH",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/v/y/f/-original-imahq9bykwkyxs5k.jpeg?q=80",
+    "last_seen": "2026-10-10T16:12:03.837712+00:00",
+    "deal_type": "all_time_low",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 1,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "flipkart_SHOHDNUPYUYPJVHH": {
+        "price": 4399.0,
+        "net_effective_price": 3365.0,
+        "title": "ADIDAS ORIGINALS HANDBALL SPEZIAL Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:03.837712+00:00"
+      }
+    },
+    "listing_price": 4399.0,
+    "coupon_discount": 660,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 374,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 3365.0
   },
   "adidas_stan_smith": {
     "id": "shoe_adidas_stan_smith",
@@ -3578,71 +3905,308 @@
     "brand": "Adidas",
     "model": "Superstar",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 8999,
+    "current_price": 4099.0,
+    "mrp": 9999.0,
     "known_street_price": 5999,
     "steal_price": 3200,
     "known_atl": 2499,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 3136.0,
+    "discount_percent": 59.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/adidas-originals-superstar-ii-sneakers-men/p/itm3078e53f771fd?pid=SHOHCQPYH6FGYXXN",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/0/u/h/-watermarked-original-imahgapfkmdagdmm.jpeg?q=80",
+    "last_seen": "2026-10-10T16:11:47.371947+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
-    "last_alert_at": null,
-    "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "times_seen": 21,
+    "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
+    "last_alert_price": 3136.0,
+    "variant_prices": {
+      "flipkart_SHOHNEVTGTBYZBGS": {
+        "price": 4509.0,
+        "net_effective_price": 3450.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:11.180077+00:00"
+      },
+      "flipkart_SHOHCQPYMQCTCC2W": {
+        "price": 4099.0,
+        "net_effective_price": 3136.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:12.647531+00:00"
+      },
+      "flipkart_SHOHNEVTHEKWJZEV": {
+        "price": 4509.0,
+        "net_effective_price": 3450.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:14.622496+00:00"
+      },
+      "flipkart_SHOHCQPYSSN6AJNF": {
+        "price": 4099.0,
+        "net_effective_price": 3136.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:39.658630+00:00"
+      },
+      "flipkart_SHOHCQPYBBCQ9V2J": {
+        "price": 4099.0,
+        "net_effective_price": 3136.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:40.121499+00:00"
+      },
+      "flipkart_SHOHNEY4WRUM9VZQ": {
+        "price": 5329.0,
+        "net_effective_price": 4121.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:40.534159+00:00"
+      },
+      "flipkart_SHOHCQPYFUCYXYFV": {
+        "price": 4099.0,
+        "net_effective_price": 3136.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:40.994728+00:00"
+      },
+      "flipkart_SHOHNEVT6FG43CAS": {
+        "price": 4509.0,
+        "net_effective_price": 3450.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:41.486832+00:00"
+      },
+      "flipkart_SHOHNEWZAYNGUWRY": {
+        "price": 4509.0,
+        "net_effective_price": 3450.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:42.003205+00:00"
+      },
+      "flipkart_SHOHNEY88CYGSNSJ": {
+        "price": 4099.0,
+        "net_effective_price": 3136.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:43.518267+00:00"
+      },
+      "flipkart_SHOHNEY4ZXZMHHUW": {
+        "price": 5329.0,
+        "net_effective_price": 4121.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:44.024061+00:00"
+      },
+      "flipkart_SHOFZBQGPEBJWJQG": {
+        "price": 4200.0,
+        "net_effective_price": 3213.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:44.505565+00:00"
+      },
+      "flipkart_SHOFNR6VGTRGVSYW": {
+        "price": 8999.0,
+        "net_effective_price": 7424.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:45.012567+00:00"
+      },
+      "flipkart_SHOFNR6VZ9FFEHHD": {
+        "price": 8999.0,
+        "net_effective_price": 7424.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:45.521476+00:00"
+      },
+      "flipkart_SHOHNEY4ES9HTRXQ": {
+        "price": 4099.0,
+        "net_effective_price": 3136.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:45.977135+00:00"
+      },
+      "flipkart_SHOHY4GH3B9R78G8": {
+        "price": 6499.0,
+        "net_effective_price": 5174.0,
+        "title": "ADIDAS ORIGINALS Superstar Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:46.438072+00:00"
+      },
+      "flipkart_SHOHNEVTGSYEKEWC": {
+        "price": 4509.0,
+        "net_effective_price": 3450.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:46.905261+00:00"
+      },
+      "flipkart_SHOHCQPYH6FGYXXN": {
+        "price": 4099.0,
+        "net_effective_price": 3136.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:47.371947+00:00"
+      },
+      "flipkart_SHOHY4GHB7YTEJRD": {
+        "price": 8999.0,
+        "net_effective_price": 7424.0,
+        "title": "ADIDAS ORIGINALS Superstar Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:48.812310+00:00"
+      },
+      "flipkart_SHOHY4GHTJUM7ZU3": {
+        "price": 8999.0,
+        "net_effective_price": 7424.0,
+        "title": "ADIDAS ORIGINALS Superstar Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:49.821525+00:00"
+      },
+      "flipkart_SHOHNEVTFMET4J7U": {
+        "price": 4509.0,
+        "net_effective_price": 3450.0,
+        "title": "ADIDAS ORIGINALS SUPERSTAR II Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:01.311178+00:00"
+      }
+    },
+    "listing_price": 4099.0,
+    "coupon_discount": 615,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 348,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 3136.0
   },
   "adidas_campus_00s": {
     "id": "shoe_adidas_campus_00s",
     "brand": "Adidas",
     "model": "Campus 00s",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 431.0,
+    "mrp": 1499.0,
     "known_street_price": 6999,
     "steal_price": 3600,
-    "known_atl": 2899,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "known_atl": 431.0,
+    "our_lowest_seen": 431.0,
+    "discount_percent": 71.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/campus-crysta-pro-running-shoes-men/p/itm08f0ec4c15278?pid=SHOGANAAZPF3ZHZU",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/5/m/8/-original-imahrrjsp6nxzbzf.jpeg?q=80",
+    "last_seen": "2026-10-10T16:10:52.224406+00:00",
+    "deal_type": "steal_deal",
+    "status": "STEAL DEAL",
     "is_active": true,
-    "times_seen": 0,
-    "last_alert_at": null,
-    "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "times_seen": 14,
+    "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
+    "last_alert_price": 431.0,
+    "variant_prices": {
+      "flipkart_SHOG2EYZPJGZUGRS": {
+        "price": 629.0,
+        "net_effective_price": null,
+        "title": "CAMPUS MIKE (N) Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:49.193626+00:00"
+      },
+      "flipkart_SHOG2RYJYVB7JCFU": {
+        "price": 611.0,
+        "net_effective_price": null,
+        "title": "CAMPUS MIKE (N) Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:50.648817+00:00"
+      },
+      "flipkart_SHOG4G3Y6VYVWP9B": {
+        "price": 600.0,
+        "net_effective_price": null,
+        "title": "CAMPUS MIKE (N) Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:51.195209+00:00"
+      },
+      "flipkart_SHOG2EYZKZDFCNRK": {
+        "price": 1145.0,
+        "net_effective_price": null,
+        "title": "CAMPUS MIKE (N) Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:51.697590+00:00"
+      },
+      "flipkart_SHOGANAAZPF3ZHZU": {
+        "price": 431.0,
+        "net_effective_price": null,
+        "title": "CAMPUS CRYSTA PRO Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:52.224406+00:00"
+      },
+      "flipkart_SHOGANABHZZXRCDA": {
+        "price": 512.0,
+        "net_effective_price": null,
+        "title": "CAMPUS CRYSTA PRO Running Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:54.056905+00:00"
+      },
+      "flipkart_SHOG4TKZBAQZYQHW": {
+        "price": 1110.0,
+        "net_effective_price": null,
+        "title": "CAMPUS VIBGYOR Walking Shoes For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:10:55.649871+00:00"
+      },
+      "flipkart_SHOGGW487HP9BYZC": {
+        "price": 7699.0,
+        "net_effective_price": 6254.0,
+        "title": "ADIDAS ORIGINALS Campus 00s Shoes Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:11.650880+00:00"
+      },
+      "tatacliq_MP000000031422895": {
+        "price": 1449.0,
+        "net_effective_price": null,
+        "title": "Campus Men's Flynn Pinecone Walking Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:10:57.158061+00:00"
+      },
+      "tatacliq_MP000000027124563": {
+        "price": 1249.0,
+        "net_effective_price": null,
+        "title": "Campus Men's White Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:10:58.083636+00:00"
+      },
+      "tatacliq_MP000000032377730": {
+        "price": 1135.0,
+        "net_effective_price": null,
+        "title": "Campus Men's Frame Agave Green Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:10:58.602957+00:00"
+      },
+      "tatacliq_MP000000031995021": {
+        "price": 1299.0,
+        "net_effective_price": null,
+        "title": "Campus Men's Order White & Navy Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:10:59.088256+00:00"
+      },
+      "tatacliq_MP000000029695132": {
+        "price": 1135.0,
+        "net_effective_price": null,
+        "title": "Campus Men RELTO White & Black Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:10:59.564222+00:00"
+      },
+      "tatacliq_MP000000031995040": {
+        "price": 1306.0,
+        "net_effective_price": null,
+        "title": "Campus Men's Chain White Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:11:00.029842+00:00"
+      }
+    },
+    "listing_price": 431.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -3654,71 +4218,161 @@
     "brand": "Adidas",
     "model": "Forum Low",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 8799.0,
+    "mrp": 10999.0,
     "known_street_price": 6499,
     "steal_price": 3400,
     "known_atl": 2699,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 7244.0,
+    "discount_percent": 20.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 8"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/adidas-originals-forum-low-cl-sneakers-men/p/itme1fa785a0b394?pid=SHOHFCDGSWHEYJCP",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/x/d/d/-original-imahq9fgxmjyp8y3.jpeg?q=80",
+    "last_seen": "2026-10-10T16:11:52.200352+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 3,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "flipkart_SHOHFCDG3CKKUZEH": {
+        "price": 8799.0,
+        "net_effective_price": 7244.0,
+        "title": "ADIDAS ORIGINALS FORUM LOW CL Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:14.140497+00:00"
+      },
+      "flipkart_SHOHFCDGCEUFJEEP": {
+        "price": 8799.0,
+        "net_effective_price": 7244.0,
+        "title": "ADIDAS ORIGINALS FORUM LOW CL Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:17.037669+00:00"
+      },
+      "flipkart_SHOHFCDGSWHEYJCP": {
+        "price": 8799.0,
+        "net_effective_price": 7244.0,
+        "title": "ADIDAS ORIGINALS FORUM LOW CL Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:11:52.200352+00:00"
+      }
+    },
+    "listing_price": 8799.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 805,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 7244.0
   },
   "nike_p_6000": {
     "id": "shoe_nike_p_6000",
     "brand": "Nike",
     "model": "P-6000",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 8995,
+    "current_price": 7271.0,
+    "mrp": 9695.0,
     "known_street_price": 6495,
     "steal_price": 3500,
     "known_atl": 2895,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 7271.0,
+    "discount_percent": 25.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 6"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/casual-shoes/nike/nike-p-6000-womens-shoes/43092247/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2026/JUNE/15/wWscVskV_8571e04e3c964fbd861ae4bfd31fed8a.jpg",
+    "last_seen": "2026-10-10T16:12:29.447499+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 11,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "myntra_46383966": {
+        "price": 9695.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Shoe",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:22.299074+00:00"
+      },
+      "myntra_46383970": {
+        "price": 9695.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Shoe",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:22.862082+00:00"
+      },
+      "myntra_46615104": {
+        "price": 9695.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Shoe",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:23.362328+00:00"
+      },
+      "myntra_46615106": {
+        "price": 7995.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Women's Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:23.890394+00:00"
+      },
+      "myntra_40939418": {
+        "price": 7995.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:24.401752+00:00"
+      },
+      "myntra_45710104": {
+        "price": 9695.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Men's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:24.902412+00:00"
+      },
+      "myntra_43702306": {
+        "price": 7271.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Men's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:26.951427+00:00"
+      },
+      "myntra_45710084": {
+        "price": 9695.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Men's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:27.442739+00:00"
+      },
+      "myntra_34951395": {
+        "price": 7995.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Men Leather Lace-Ups Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:28.518229+00:00"
+      },
+      "myntra_33473112": {
+        "price": 7995.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Men Lace-Ups Round Toe Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:28.997163+00:00"
+      },
+      "myntra_43092247": {
+        "price": 7271.0,
+        "net_effective_price": null,
+        "title": "Nike P-6000 Women's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:12:29.447499+00:00"
+      }
+    },
+    "listing_price": 7271.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -3730,33 +4384,43 @@
     "brand": "Nike",
     "model": "Dunk Low",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 8695,
+    "current_price": 6787.0,
+    "mrp": 9695.0,
     "known_street_price": 7495,
     "steal_price": 4500,
     "known_atl": 3699,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 6787.0,
+    "discount_percent": 30.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 8"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/casual-shoes/nike/nike-dunk-low-womens-shoes/38434102/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2025/DECEMBER/5/hXxFIDZj_33e28f599d5b4657abab92ca8aa358f2.jpg",
+    "last_seen": "2026-10-10T16:13:06.382468+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "myntra_38434102": {
+        "price": 6787.0,
+        "net_effective_price": null,
+        "title": "Nike Dunk Low Women's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:06.382468+00:00"
+      },
+      "myntra_45710097": {
+        "price": 7697.0,
+        "net_effective_price": null,
+        "title": "Nike Dunk Low Retro Men's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:06.891079+00:00"
+      }
+    },
+    "listing_price": 6787.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -3768,33 +4432,50 @@
     "brand": "Nike",
     "model": "Air Force 1 '07",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 9695,
+    "current_price": 6787.0,
+    "mrp": 9695.0,
     "known_street_price": 7995,
     "steal_price": 4400,
     "known_atl": 3495,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 6787.0,
+    "discount_percent": 30.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 9"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/casual-shoes/nike/nike-air-force-1-07-mens-shoes/38361202/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2025/DECEMBER/2/u1Wa5qKK_4ad29b6081194795822ce7361e8448c1.jpg",
+    "last_seen": "2026-10-10T16:13:05.447910+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 3,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "myntra_40939393": {
+        "price": 6787.0,
+        "net_effective_price": null,
+        "title": "Nike Air Force 1 '07 Men's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:04.997801+00:00"
+      },
+      "myntra_38361202": {
+        "price": 6787.0,
+        "net_effective_price": null,
+        "title": "Nike Air Force 1 '07 Men's Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:05.447910+00:00"
+      },
+      "myntra_13327736": {
+        "price": 7495.0,
+        "net_effective_price": null,
+        "title": "Nike Men Perforated Air Force 1 '07 Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:05.920056+00:00"
+      }
+    },
+    "listing_price": 6787.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -3844,38 +4525,55 @@
     "brand": "Nike",
     "model": "Killshot 2",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 7995,
+    "current_price": 5597.0,
+    "mrp": 7995.0,
     "known_street_price": 5995,
     "steal_price": 3400,
     "known_atl": 2795,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 4362.0,
+    "discount_percent": 29.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 8"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/nike-killshot-2-leather-sneakers-men/p/itmb4809f9b6b2da?pid=SHOHF5PFPRTTJBTM",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/n/1/c/-watermarked-original-imahgbrssejhgnrq.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:30.445475+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 3,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "flipkart_SHOHF5RU6RDV5DTV": {
+        "price": 5597.0,
+        "net_effective_price": 4362.0,
+        "title": "NIKE KILLSHOT 2 LEATHER Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:29.954541+00:00"
+      },
+      "flipkart_SHOHF5PFPRTTJBTM": {
+        "price": 5597.0,
+        "net_effective_price": 4362.0,
+        "title": "NIKE KILLSHOT 2 LEATHER Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:30.445475+00:00"
+      },
+      "flipkart_SHOGQZMGDG8GRXGC": {
+        "price": 7995.0,
+        "net_effective_price": 6521.0,
+        "title": "NIKE KILLSHOT 2 LEATHER Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:30.941050+00:00"
+      }
+    },
+    "listing_price": 5597.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 485,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 4362.0
   },
   "nike_vomero_5": {
     "id": "shoe_nike_vomero_5",
@@ -4034,76 +4732,215 @@
     "brand": "Nike",
     "model": "Initiator",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 5495,
+    "current_price": 7495.0,
+    "mrp": 7495.0,
     "known_street_price": 3995,
     "steal_price": 2499,
     "known_atl": 1995,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 6071.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/nike-initiator-sneakers-men/p/itm9708f19887dc6?pid=SHOHP2SXWYG57GEY",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/i/o/g/6-394055-103-6-nike-pale-ivory-grey-fog-photon-dust-sail-original-imahzymmxzyu2emz.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:32.197274+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 1,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "flipkart_SHOHP2SXWYG57GEY": {
+        "price": 7495.0,
+        "net_effective_price": 6071.0,
+        "title": "NIKE Initiator Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:32.197274+00:00"
+      }
+    },
+    "listing_price": 7495.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 674,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 6071.0
   },
   "asics_gel_1130": {
     "id": "shoe_asics_gel_1130",
     "brand": "Asics",
     "model": "Gel-1130",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 8999,
+    "current_price": 3869.0,
+    "mrp": 8999.0,
     "known_street_price": 6999,
     "steal_price": 3800,
-    "known_atl": 3199,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "known_atl": 2960.0,
+    "our_lowest_seen": 2960.0,
+    "discount_percent": 57.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 7"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/asics-gel-1130-sneakers-unisex/p/itmc3b1422b2b113?pid=SHOHZQQMP7EZHFDF",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/d/p/t/-original-imahrrjtxxggzuu8.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:44.020979+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
-    "last_alert_at": null,
-    "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "times_seen": 20,
+    "last_alert_at": "2026-10-10T16:16:41.176635+00:00",
+    "last_alert_price": 3599.0,
+    "variant_prices": {
+      "myntra_38419365": {
+        "price": 7199.0,
+        "net_effective_price": null,
+        "title": "ASICS GEL-1130 Unisex Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:32.687349+00:00"
+      },
+      "myntra_32284231": {
+        "price": 5399.0,
+        "net_effective_price": null,
+        "title": "ASICS Unisex GEL-1130 Running Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:33.152448+00:00"
+      },
+      "myntra_38419384": {
+        "price": 7199.0,
+        "net_effective_price": null,
+        "title": "ASICS GEL-1130 Round Toe Lace-Ups Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:33.645571+00:00"
+      },
+      "myntra_38419398": {
+        "price": 7999.0,
+        "net_effective_price": null,
+        "title": "ASICS GEL-1130 Round Toe Lace-Ups Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:34.112060+00:00"
+      },
+      "myntra_35128218": {
+        "price": 6299.0,
+        "net_effective_price": null,
+        "title": "ASICS Gel-1130 Unisex Casual Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:34.580688+00:00"
+      },
+      "myntra_38419397": {
+        "price": 7999.0,
+        "net_effective_price": null,
+        "title": "ASICS GEL-1130 Round Toe Lace-Ups Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:35.056514+00:00"
+      },
+      "myntra_35128106": {
+        "price": 4999.0,
+        "net_effective_price": null,
+        "title": "ASICS Gel-1130 Unisex Leather Casual Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:35.559651+00:00"
+      },
+      "myntra_38419352": {
+        "price": 7199.0,
+        "net_effective_price": null,
+        "title": "ASICS GEL-1130 Round Toe Lace-Ups Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:36.051497+00:00"
+      },
+      "myntra_35128098": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "ASICS GEL-1130 Casual Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:36.525533+00:00"
+      },
+      "myntra_42781651": {
+        "price": 4999.0,
+        "net_effective_price": null,
+        "title": "ASICS Unisex GEL-1130 Colourblocked Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:37.012553+00:00"
+      },
+      "myntra_43660808": {
+        "price": 3599.0,
+        "net_effective_price": null,
+        "title": "ASICS Unisex Gel 1130 Colourblocked Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:37.988222+00:00"
+      },
+      "myntra_42781652": {
+        "price": 4799.0,
+        "net_effective_price": null,
+        "title": "ASICS Unisex GEL-1130 Colourblocked Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:38.750492+00:00"
+      },
+      "myntra_35125000": {
+        "price": 6299.0,
+        "net_effective_price": null,
+        "title": "ASICS GEL-1130",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:39.238617+00:00"
+      },
+      "myntra_35125006": {
+        "price": 6299.0,
+        "net_effective_price": null,
+        "title": "ASICS Gel-1130 Women Casual Lace-Ups Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:13:39.757356+00:00"
+      },
+      "flipkart_SHOHZQQ8KQP6DYAX": {
+        "price": 3869.0,
+        "net_effective_price": 2960.0,
+        "title": "Asics GEL-1130 Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:43.584505+00:00"
+      },
+      "flipkart_SHOHZQQMP7EZHFDF": {
+        "price": 3869.0,
+        "net_effective_price": 2960.0,
+        "title": "Asics GEL-1130 Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:44.020979+00:00"
+      },
+      "flipkart_SHOHDH3YBXZN8RCK": {
+        "price": 6299.0,
+        "net_effective_price": 4994.0,
+        "title": "Asics GEL-1130 Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:44.483341+00:00"
+      },
+      "flipkart_SHOHZQQ8USTJDZHW": {
+        "price": 6299.0,
+        "net_effective_price": 4994.0,
+        "title": "Asics GEL-1130 Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:44.957213+00:00"
+      },
+      "flipkart_SHOHDH3YGZM67HWV": {
+        "price": 6299.0,
+        "net_effective_price": 4994.0,
+        "title": "Asics GEL-1130 Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:45.410278+00:00"
+      },
+      "flipkart_SHOHGFW7HSMDBBDF": {
+        "price": 7999.0,
+        "net_effective_price": 6524.0,
+        "title": "Asics GEL-1130 Sneakers For Unisex",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:45.884104+00:00"
+      }
+    },
+    "listing_price": 3869.0,
+    "coupon_discount": 580,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 329,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 2960.0
   },
   "asics_gel_kayano_14": {
     "id": "shoe_asics_gel_kayano_14",
@@ -4300,71 +5137,532 @@
     "brand": "Puma",
     "model": "Palermo",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 6999,
+    "current_price": 5249.0,
+    "mrp": 6999.0,
     "known_street_price": 4999,
     "steal_price": 2800,
     "known_atl": 2299,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 4049.0,
+    "discount_percent": 25.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 10"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/puma-palermo-sneakers-men/p/itma4963c231cdc2?pid=SHOHCFHGZGRA8XQM",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/q/o/n/-original-imahrrjnrrchdwrd.jpeg?q=80",
+    "last_seen": "2026-10-10T16:13:01.554492+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 65,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "myntra_34970813": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:11.191918+00:00"
+      },
+      "myntra_32846318": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Lth Unisex Leather Casual Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:11.648793+00:00"
+      },
+      "myntra_37542889": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:12.115121+00:00"
+      },
+      "myntra_43244531": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Leather Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:12.598491+00:00"
+      },
+      "myntra_34536450": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Adults Unisex Textured Round Toe Palermo Lth Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:13.063151+00:00"
+      },
+      "myntra_43244526": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Leather Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:14.019124+00:00"
+      },
+      "myntra_30165791": {
+        "price": 7999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Supertifo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:14.537103+00:00"
+      },
+      "myntra_39315011": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:15.459456+00:00"
+      },
+      "myntra_43897312": {
+        "price": 5599.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:15.865108+00:00"
+      },
+      "myntra_30165834": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Lth Unisex Round Toe Lace Ups Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:17.791187+00:00"
+      },
+      "myntra_39315034": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:18.226967+00:00"
+      },
+      "myntra_30165812": {
+        "price": 6499.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Citrus Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:20.144279+00:00"
+      },
+      "myntra_39315065": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Classic Comfort Low Boot Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:21.071920+00:00"
+      },
+      "myntra_39317204": {
+        "price": 7999.0,
+        "net_effective_price": null,
+        "title": "Puma x SUPERKICKS Palermo Jamun Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:22.048183+00:00"
+      },
+      "myntra_34970817": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:23.004645+00:00"
+      },
+      "myntra_35163329": {
+        "price": 5249.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Moda Leather Women's Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:23.474157+00:00"
+      },
+      "myntra_35756697": {
+        "price": 9999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Club Vegas Leather Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:24.881634+00:00"
+      },
+      "myntra_44404207": {
+        "price": 7999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Bomber Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:26.297752+00:00"
+      },
+      "myntra_36782910": {
+        "price": 7999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Elevata Women's Leather Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:26.809477+00:00"
+      },
+      "myntra_43897313": {
+        "price": 5599.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:27.224066+00:00"
+      },
+      "myntra_34970807": {
+        "price": 7999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Premium Leather Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:28.144759+00:00"
+      },
+      "myntra_30165790": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Lth Unisex Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:28.672641+00:00"
+      },
+      "myntra_35757452": {
+        "price": 5999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Elevata Gentle Meld Women's Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:29.694665+00:00"
+      },
+      "myntra_39315030": {
+        "price": 5999.0,
+        "net_effective_price": null,
+        "title": "Puma x RCB 2026 Palermo Leather Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:30.630109+00:00"
+      },
+      "myntra_30165854": {
+        "price": 6999.0,
+        "net_effective_price": null,
+        "title": "Puma Palermo Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:31.606214+00:00"
+      },
+      "flipkart_SHOHPPYHGZUE9MNE": {
+        "price": 5599.0,
+        "net_effective_price": 4364.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:44.320379+00:00"
+      },
+      "flipkart_SHOH8Y2PJHZHXQYG": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:44.764947+00:00"
+      },
+      "flipkart_SHOHPPYH7VMCTZZZ": {
+        "price": 5599.0,
+        "net_effective_price": 4364.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:45.225647+00:00"
+      },
+      "flipkart_SHOHPP479T8FMETP": {
+        "price": 5830.0,
+        "net_effective_price": 4572.0,
+        "title": "PUMA Palermo Lth Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:45.689998+00:00"
+      },
+      "flipkart_SHOHQ7Z3E7YYRB9A": {
+        "price": 5949.0,
+        "net_effective_price": 4679.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:46.140223+00:00"
+      },
+      "flipkart_SHOHE4DFYRFTP7HG": {
+        "price": 6663.0,
+        "net_effective_price": 5322.0,
+        "title": "PUMA Palermo Premium Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:46.663847+00:00"
+      },
+      "flipkart_SHOH8Y2P9A2VDHJF": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:47.317313+00:00"
+      },
+      "flipkart_SHOHD4HVHCAATUAE": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:47.830430+00:00"
+      },
+      "flipkart_SHOHD4HVAKCENAZY": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:48.347416+00:00"
+      },
+      "flipkart_SHOHPP47YRZHR9HC": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:48.842855+00:00"
+      },
+      "flipkart_SHOH2M349ZKRRYVD": {
+        "price": 5830.0,
+        "net_effective_price": 4572.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:49.325691+00:00"
+      },
+      "flipkart_SHOH2M34ZGYPADFV": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:49.826995+00:00"
+      },
+      "flipkart_SHOH8Y2PKFH8GNZ9": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:50.315618+00:00"
+      },
+      "flipkart_SHOHD4HVHYYBMJQA": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:50.853442+00:00"
+      },
+      "flipkart_SHOHD4HVTZHBS93X": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:51.300623+00:00"
+      },
+      "flipkart_SHOGVZ47V5VRBYBN": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:51.745231+00:00"
+      },
+      "flipkart_SHOH2M34YJPSGHZY": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:52.175645+00:00"
+      },
+      "flipkart_SHOH2M34GGZFF474": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:52.647426+00:00"
+      },
+      "flipkart_SHOHKSDNJ7PXVDDB": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:53.097288+00:00"
+      },
+      "flipkart_SHOH9H25S4PUUQXM": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:53.592595+00:00"
+      },
+      "flipkart_SHOHCFHGGHBMUAGX": {
+        "price": 5249.0,
+        "net_effective_price": 4049.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:54.045478+00:00"
+      },
+      "flipkart_SHOHFF7DRBNDNHHK": {
+        "price": 7999.0,
+        "net_effective_price": 6524.0,
+        "title": "PUMA Ferrari Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:54.513555+00:00"
+      },
+      "flipkart_SHOHCFHGWGHGXYCW": {
+        "price": 5249.0,
+        "net_effective_price": 4049.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:54.976324+00:00"
+      },
+      "flipkart_SHOHD4HVA4NVQRPG": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:55.485894+00:00"
+      },
+      "flipkart_SHOHQ94D2GMTKJYD": {
+        "price": 5949.0,
+        "net_effective_price": 4679.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:55.932313+00:00"
+      },
+      "flipkart_SHOH2M34H6TFYYF8": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:56.407891+00:00"
+      },
+      "flipkart_SHOHKE4ZHZHSPG8S": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:56.848907+00:00"
+      },
+      "flipkart_SHOH2M34WUQM7KZW": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:57.293675+00:00"
+      },
+      "flipkart_SHOHD4HVAGJQDKDD": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:57.753184+00:00"
+      },
+      "flipkart_SHOH2M34J8W3HUVJ": {
+        "price": 5413.0,
+        "net_effective_price": 4197.0,
+        "title": "PUMA Palermo Citrus Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:58.245241+00:00"
+      },
+      "flipkart_SHOHKSDN6VHZD3MD": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:58.701098+00:00"
+      },
+      "flipkart_SHOHD4HVHFE2GHNR": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:59.188313+00:00"
+      },
+      "flipkart_SHOHKE4ZRZHQVUJB": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:12:59.647760+00:00"
+      },
+      "flipkart_SHOHFF7DTU8ECKHD": {
+        "price": 7999.0,
+        "net_effective_price": 6524.0,
+        "title": "PUMA Ferrari Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:00.130763+00:00"
+      },
+      "flipkart_SHOHD4HV9CGS8QK9": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:00.640754+00:00"
+      },
+      "flipkart_SHOH2M34PBHQTA83": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Vintage Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:01.095141+00:00"
+      },
+      "flipkart_SHOHCFHGZGRA8XQM": {
+        "price": 5249.0,
+        "net_effective_price": 4049.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:01.554492+00:00"
+      },
+      "flipkart_SHOHPPYHRBCKH4MV": {
+        "price": 5599.0,
+        "net_effective_price": 4364.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:02.037785+00:00"
+      },
+      "flipkart_SHOHPPYGMHKRYGEU": {
+        "price": 7999.0,
+        "net_effective_price": 6524.0,
+        "title": "PUMA Palermo Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:02.489866+00:00"
+      },
+      "flipkart_SHOHHE9PNUES9BDS": {
+        "price": 6999.0,
+        "net_effective_price": 5624.0,
+        "title": "PUMA Palermo Lth Res Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:02.984676+00:00"
+      }
+    },
+    "listing_price": 5249.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 450,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 4049.0
   },
   "puma_suede_classic": {
     "id": "shoe_puma_suede_classic",
     "brand": "Puma",
     "model": "Suede Classic",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 6999,
+    "current_price": 2799.0,
+    "mrp": 7999.0,
     "known_street_price": 4499,
     "steal_price": 2600,
     "known_atl": 1999,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 2799.0,
+    "discount_percent": 65.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 7"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/casual-shoes/new+balance/new-balance-unisex-bb100-colourblocked-suede-sneakers/37506140/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2025/NOVEMBER/17/3tGZCRlz_56702a0b198f47469299e240847ca0fa.jpg",
+    "last_seen": "2026-10-10T16:14:45.854679+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "myntra_37506140": {
+        "price": 2799.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex BB100 Colourblocked Suede Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:45.854679+00:00"
+      },
+      "flipkart_SHOHGWN97RFETGE9": {
+        "price": 7995.0,
+        "net_effective_price": 6521.0,
+        "title": "NIKE V5 RNR SUEDE Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:13:07.866989+00:00"
+      }
+    },
+    "listing_price": 2799.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -4376,33 +5674,43 @@
     "brand": "Puma",
     "model": "Clyde",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 7999,
+    "current_price": 3499.5,
+    "mrp": 6999.0,
     "known_street_price": 5499,
     "steal_price": 3000,
     "known_atl": 2399,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 3499.5,
+    "discount_percent": 50.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
       "UK 11"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "tatacliq",
+    "url": "https://www.tatacliq.com/p-mp000000027103040",
+    "image_url": "https://img.tatacliq.com/images/i27//437Wx649H/MP000000027103025_437Wx649H_202510142239121.jpeg",
+    "last_seen": "2026-10-10T16:11:02.834853+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 2,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "tatacliq_MP000000027103025": {
+        "price": 3499.5,
+        "net_effective_price": null,
+        "title": "Puma Men's Clyde Royal, White & Lime Smash Galaxis Pro Performance Boost Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:10:57.625460+00:00"
+      },
+      "tatacliq_MP000000027103040": {
+        "price": 3499.5,
+        "net_effective_price": null,
+        "title": "Puma Men's Clyde Royal, White & Lime Smash Galaxis Pro Performance Boost Running Shoes",
+        "platform": "tatacliq",
+        "last_seen": "2026-10-10T16:11:02.834853+00:00"
+      }
+    },
+    "listing_price": 3499.5,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -4490,71 +5798,112 @@
     "brand": "New Balance",
     "model": "New Balance 550",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 10999,
+    "current_price": 6080.0,
+    "mrp": 15999.0,
     "known_street_price": 7999,
     "steal_price": 4200,
     "known_atl": 3499,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 4797.0,
+    "discount_percent": 61.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 7.5"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/new-balance-550-sneakers-men/p/itm4bfc9c75b2bb0?pid=SHOGVRDHFTVMFRZZ",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/w/f/w/-watermarked-original-imahggezczzpx2kq.jpeg?q=80",
+    "last_seen": "2026-10-10T16:14:32.454070+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 1,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "flipkart_SHOGVRDHFTVMFRZZ": {
+        "price": 6080.0,
+        "net_effective_price": 4797.0,
+        "title": "New Balance 550 Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:14:32.454070+00:00"
+      }
+    },
+    "listing_price": 6080.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 533,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 4797.0
   },
   "new_balance_new_balance_574": {
     "id": "shoe_new_balance_new_balance_574",
     "brand": "New Balance",
     "model": "New Balance 574",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 8999,
+    "current_price": 3999.0,
+    "mrp": 9999.0,
     "known_street_price": 5999,
     "steal_price": 3200,
     "known_atl": 2499,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 3999.0,
+    "discount_percent": 60.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 9"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/casual-shoes/new+balance/new-balance-unisex-574-suede-sneakers/35510795/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2026/MAY/15/0fh1UUiB_1eb213cca36a446b853e2f96905b3604.jpg",
+    "last_seen": "2026-10-10T16:14:44.906308+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 6,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "myntra_43618936": {
+        "price": 4399.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 574 Colourblocked Suede Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:40.059027+00:00"
+      },
+      "myntra_38760324": {
+        "price": 4399.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 574 Casual Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:42.395473+00:00"
+      },
+      "myntra_42935089": {
+        "price": 4949.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 574 Casual Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:43.360160+00:00"
+      },
+      "myntra_26175272": {
+        "price": 4499.0,
+        "net_effective_price": null,
+        "title": "New Balance 574 BLACK  Men Casual Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:43.827078+00:00"
+      },
+      "myntra_35510795": {
+        "price": 3999.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 574 Suede Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:44.906308+00:00"
+      },
+      "myntra_35510790": {
+        "price": 5169.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 574 Suede Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:45.370352+00:00"
+      }
+    },
+    "listing_price": 3999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -4604,33 +5953,36 @@
     "brand": "New Balance",
     "model": "New Balance 2002R",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 13999,
+    "current_price": 7309.0,
+    "mrp": 16999.0,
     "known_street_price": 10999,
     "steal_price": 6200,
     "known_atl": 4799,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 7309.0,
+    "discount_percent": 57.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 7"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "myntra",
+    "url": "https://www.myntra.com/casual-shoes/new+balance/new-balance-2002-castlerock--unisex-casual-shoes/26175252/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2026/MAY/15/t2V4rnwz_296df26812864652be2bdc261a91372d.jpg",
+    "last_seen": "2026-10-10T16:14:41.442696+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 1,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "myntra_26175252": {
+        "price": 7309.0,
+        "net_effective_price": null,
+        "title": "New Balance 2002 CASTLEROCK  Unisex Casual Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:41.442696+00:00"
+      }
+    },
+    "listing_price": 7309.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,
@@ -4642,109 +5994,181 @@
     "brand": "New Balance",
     "model": "New Balance 530",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 6599.0,
+    "mrp": 11999.0,
     "known_street_price": 7499,
     "steal_price": 3999,
     "known_atl": 3199,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 5264.0,
+    "discount_percent": 45.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 9.5"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/new-balance-530-sneakers-men/p/itmbe8af7a948724?pid=SHOHMBRHHXE3GRHF",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/b/l/y/-original-imahrnyzbz7ygs6g.jpeg?q=80",
+    "last_seen": "2026-10-10T16:14:33.547710+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 6,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "myntra_35510835": {
+        "price": 5759.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 530 Striped Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:40.523593+00:00"
+      },
+      "myntra_36427528": {
+        "price": 5399.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 530 Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:40.984559+00:00"
+      },
+      "myntra_38760288": {
+        "price": 5399.0,
+        "net_effective_price": null,
+        "title": "New Balance Men 530 Casual Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:46.832450+00:00"
+      },
+      "myntra_32245807": {
+        "price": 5639.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 530  Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:47.314662+00:00"
+      },
+      "myntra_36427550": {
+        "price": 5399.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 530 Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:48.677509+00:00"
+      },
+      "flipkart_SHOHMBRHHXE3GRHF": {
+        "price": 6599.0,
+        "net_effective_price": 5264.0,
+        "title": "New Balance 530 Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:14:33.547710+00:00"
+      }
+    },
+    "listing_price": 6599.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 585,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 5264.0
   },
   "new_balance_new_balance_327": {
     "id": "shoe_new_balance_new_balance_327",
     "brand": "New Balance",
     "model": "New Balance 327",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 9999,
+    "current_price": 6049.0,
+    "mrp": 10999.0,
     "known_street_price": 6999,
     "steal_price": 3600,
     "known_atl": 2799,
-    "our_lowest_seen": null,
-    "discount_percent": null,
+    "our_lowest_seen": 4769.0,
+    "discount_percent": 45.0,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 6.5"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
-    "deal_type": "tracking",
-    "status": "TRACKING",
+    "platform": "flipkart",
+    "url": "https://www.flipkart.com/new-balance-327-sneakers-men/p/itm80c4f916ffe14?pid=SHOHDWJYFEUUVFEH",
+    "image_url": "http://rukmini1.flixcart.com/image/600/720/xif0q/shoe/x/c/d/-watermarked-original-imahgbvf8cbtehkw.jpeg?q=80",
+    "last_seen": "2026-10-10T16:14:34.022709+00:00",
+    "deal_type": "good_deal",
+    "status": "GOOD DEAL",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 3,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
-    "coupon_discount": null,
-    "coupon_code": null,
-    "bank_discount": null,
-    "bank_name": null,
-    "net_effective_price": null
+    "variant_prices": {
+      "myntra_38760183": {
+        "price": 5169.0,
+        "net_effective_price": null,
+        "title": "New Balance Women 327 Casual Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:48.199627+00:00"
+      },
+      "myntra_36427497": {
+        "price": 5169.0,
+        "net_effective_price": null,
+        "title": "New Balance Women 327 Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:49.688345+00:00"
+      },
+      "flipkart_SHOHDWJYFEUUVFEH": {
+        "price": 6049.0,
+        "net_effective_price": 4769.0,
+        "title": "New Balance 327 Sneakers For Men",
+        "platform": "flipkart",
+        "last_seen": "2026-10-10T16:14:34.022709+00:00"
+      }
+    },
+    "listing_price": 6049.0,
+    "coupon_discount": 750.0,
+    "coupon_code": "FLIPKART15",
+    "bank_discount": 530,
+    "bank_name": "Axis / ICICI Cards",
+    "net_effective_price": 4769.0
   },
   "new_balance_new_balance_9060": {
     "id": "shoe_new_balance_new_balance_9060",
     "brand": "New Balance",
     "model": "New Balance 9060",
     "category": "sneaker",
-    "current_price": null,
-    "mrp": 15999,
+    "current_price": 17999.0,
+    "mrp": 17999.0,
     "known_street_price": 12999,
     "steal_price": 7500,
     "known_atl": 5999,
-    "our_lowest_seen": null,
+    "our_lowest_seen": 17999.0,
     "discount_percent": null,
     "available_sizes": [
-      "UK 6",
-      "UK 7",
-      "UK 8",
-      "UK 9",
-      "UK 10",
-      "UK 11"
+      "UK 8"
     ],
-    "platform": null,
-    "url": null,
-    "image_url": null,
-    "last_seen": null,
+    "platform": "myntra",
+    "url": "https://www.myntra.com/casual-shoes/new+balance/new-balance-unisex-9060-casual-shoes/36427611/buy",
+    "image_url": "http://assets.myntassets.com/assets/images/2026/APRIL/28/PMkP2Mb1_580e851697e442b9b7839926bf343e49.jpg",
+    "last_seen": "2026-10-10T16:14:49.164677+00:00",
     "deal_type": "tracking",
     "status": "TRACKING",
     "is_active": true,
-    "times_seen": 0,
+    "times_seen": 3,
     "last_alert_at": null,
     "last_alert_price": null,
-    "variant_prices": {},
-    "listing_price": null,
+    "variant_prices": {
+      "myntra_36427634": {
+        "price": 17999.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 9060 Colourblocked Suede Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:47.778890+00:00"
+      },
+      "myntra_36427611": {
+        "price": 17999.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 9060 Casual Shoes",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:49.164677+00:00"
+      },
+      "myntra_38760424": {
+        "price": 18999.0,
+        "net_effective_price": null,
+        "title": "New Balance Unisex 9060 Sneakers",
+        "platform": "myntra",
+        "last_seen": "2026-10-10T16:14:50.146519+00:00"
+      }
+    },
+    "listing_price": 17999.0,
     "coupon_discount": null,
     "coupon_code": null,
     "bank_discount": null,

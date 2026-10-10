@@ -53,14 +53,12 @@ class Tracker:
         if limit and limit > 0:
             products = products[:limit]
 
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(8)
 
-        async def _safe_check(p, delay: float = 0.0) -> bool:
-            if delay > 0:
-                await asyncio.sleep(delay)
+        async def _safe_check(p) -> bool:
             async with sem:
                 try:
-                    return await self.check_product(p)
+                    return await asyncio.wait_for(self.check_product(p), timeout=25.0)
                 except Exception as exc:
                     err_msg = str(exc).strip() or repr(exc)
                     logger.warning("Error checking product %s: %s", getattr(p, "id", "?"), err_msg)
@@ -71,7 +69,7 @@ class Tracker:
                         pass
                     return False
 
-        tasks = [_safe_check(p, idx * 0.25) for idx, p in enumerate(products)]
+        tasks = [_safe_check(p) for p in products]
         results = await asyncio.gather(*tasks, return_exceptions=False)
         return sum(1 for r in results if r)
 

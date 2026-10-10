@@ -685,9 +685,9 @@ class CasioScraper(BaseScraper):
 
         # Scan collection via official Shopify products.json endpoint (limit=250 covers entire collection in 1 request)
         page = 1
-        max_pages = 4
+        max_pages = 1
         try:
-            async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
                 while page <= max_pages:
                     json_url = f"https://casiostore.bhawar.com/collections/{collection_handle}/products.json?limit=250&page={page}"
 
@@ -710,10 +710,8 @@ class CasioScraper(BaseScraper):
                         product_url = f"https://casiostore.bhawar.com/products/{handle}"
                         if product_url in deals_map:
                             continue
-                        if any("silent" in str(t).lower() for t in tags):
-                            silent_candidates.append(p)
-                            continue
                         family, formatted_title = self._classify_casio_watch(title, tags, handle)
+                        has_variant_deal = False
                         for v in p.get("variants", []):
                             price = float(v.get("price", 0))
                             compare_at = float(v.get("compare_at_price") or price)
@@ -734,59 +732,65 @@ class CasioScraper(BaseScraper):
                                     "url": product_url,
                                     "family": family,
                                 }
+                                has_variant_deal = True
+                                break
 
+                        if not has_variant_deal and any("silent" in str(t).lower() for t in tags):
+                            silent_candidates.append(p)
+
+                    # Probe at most 3 silent candidates to maintain fast sub-second sweep performance
                     if silent_candidates:
-                        auth_client = await self._get_authenticated_client()
-                        sem = asyncio.Semaphore(2)
+                        top_candidates = silent_candidates[:3]
+                        try:
+                            auth_client = await asyncio.wait_for(self._get_authenticated_client(), timeout=5.0)
+                            sem = asyncio.Semaphore(2)
 
-                        async def _verify_cand(cand):
-                            h = cand.get("handle", "")
-                            p_url = f"https://casiostore.bhawar.com/products/{h}"
-                            f_fam, f_title = self._classify_casio_watch(
-                                cand.get("title", ""), cand.get("tags", []), h
-                            )
-                            async with sem:
-                                try:
-                                    await asyncio.sleep(0.2)
-                                    r_prod = await self._safe_get(auth_client, p_url)
-                                    if r_prod and r_prod.status_code == 200:
-                                        s_prod = BeautifulSoup(r_prod.text, "html.parser")
-                                        # Strict stock check: If the item is sold out, skip immediately
-                                        if not self._extract_stock(s_prod):
-                                            return None
-                                        s_el = s_prod.select_one(
-                                            ".price--silent-off .price-item--sale, .price--on-sale .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
-                                        )
-                                        r_el = s_prod.select_one(
-                                            ".price--silent-off .price-item--regular, .price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
-                                        )
-                                        s_price = self.clean_price(s_el.get_text()) if s_el else None
-                                        r_price = self.clean_price(r_el.get_text()) if r_el else None
-                                        if s_price and r_price and r_price > s_price:
-                                            disc_val = round(((r_price - s_price) / r_price * 100.0), 1)
-                                            if disc_val >= min_discount:
-                                                return {
-                                                    "title": f_title,
-                                                    "price": s_price,
-                                                    "mrp": r_price,
-                                                    "discount_percent": disc_val,
-                                                    "in_stock": True,
-                                                    "url": p_url,
-                                                    "family": f_fam,
-                                                    "is_silent_sale": True,
-                                                }
-                                except Exception as exc:
-                                    logger.debug("[casio] silent verify error for %s: %s", p_url, exc)
-                            return None
+                            async def _verify_cand(cand):
+                                h = cand.get("handle", "")
+                                p_url = f"https://casiostore.bhawar.com/products/{h}"
+                                f_fam, f_title = self._classify_casio_watch(
+                                    cand.get("title", ""), cand.get("tags", []), h
+                                )
+                                async with sem:
+                                    try:
+                                        r_prod = await asyncio.wait_for(self._safe_get(auth_client, p_url), timeout=4.0)
+                                        if r_prod and r_prod.status_code == 200:
+                                            s_prod = BeautifulSoup(r_prod.text, "html.parser")
+                                            if not self._extract_stock(s_prod):
+                                                return None
+                                            s_el = s_prod.select_one(
+                                                ".price--silent-off .price-item--sale, .price--on-sale .price-item--sale, .price__sale .price-item--sale, .price-item--sale"
+                                            )
+                                            r_el = s_prod.select_one(
+                                                ".price--silent-off .price-item--regular, .price__sale .price-item--regular, .price__regular .price-item--regular, s.price-item, .price-item--regular"
+                                            )
+                                            s_price = self.clean_price(s_el.get_text()) if s_el else None
+                                            r_price = self.clean_price(r_el.get_text()) if r_el else None
+                                            if s_price and r_price and r_price > s_price:
+                                                disc_val = round(((r_price - s_price) / r_price * 100.0), 1)
+                                                if disc_val >= min_discount:
+                                                    return {
+                                                        "title": f_title,
+                                                        "price": s_price,
+                                                        "mrp": r_price,
+                                                        "discount_percent": disc_val,
+                                                        "in_stock": True,
+                                                        "url": p_url,
+                                                        "family": f_fam,
+                                                        "is_silent_sale": True,
+                                                    }
+                                    except Exception as exc:
+                                        logger.debug("[casio] silent verify error for %s: %s", p_url, exc)
+                                return None
 
-                        v_deals = await asyncio.gather(*(_verify_cand(c) for c in silent_candidates))
-                        for vd in v_deals:
-                            if vd and vd["url"] not in deals_map:
-                                deals_map[vd["url"]] = vd
+                            v_deals = await asyncio.gather(*(_verify_cand(c) for c in top_candidates))
+                            for vd in v_deals:
+                                if vd and vd["url"] not in deals_map:
+                                    deals_map[vd["url"]] = vd
+                        except Exception as auth_exc:
+                            logger.debug("[casio] silent candidate auth probe skipped: %s", auth_exc)
 
                     page += 1
-                    if len(products) >= 250:
-                        await asyncio.sleep(random.uniform(0.8, 1.5))
         except Exception as exc:
             logger.warning("[casio] collection JSON scan failed: %s", exc)
 

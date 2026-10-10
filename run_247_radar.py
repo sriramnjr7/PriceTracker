@@ -154,6 +154,49 @@ async def supabase_log_shipper_loop(interval_seconds: int = 15):
             logger.debug("Supabase log shipper tick error: %s", exc)
 
 
+async def flush_daemon_logs_to_supabase():
+    """Perform a one-time flush of recent daemon logs directly to Supabase."""
+    supabase_url = getattr(settings, "supabase_url", None) or os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = getattr(settings, "supabase_key", None) or os.getenv("SUPABASE_KEY")
+    if not supabase_url or not supabase_key:
+        return
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+    }
+    log_path = "radar_daemon.log"
+    if not os.path.exists(log_path):
+        return
+    try:
+        with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = [l.strip() for l in f.readlines() if l.strip()]
+        if not lines:
+            return
+        pat_std = re.compile(
+            r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,\.]\d{3})\s+\[(?P<level>[A-Z]+)\]\s+(?P<logger>[^:]+):\s+(?P<message>.*)$"
+        )
+        batch = []
+        for l in lines[-35:]:
+            m1 = pat_std.match(l)
+            if m1:
+                d = m1.groupdict()
+                batch.append({
+                    "name": "DAEMON_LOG",
+                    "category": d["level"].upper(),
+                    "platforms": d["logger"].strip()[:50],
+                    "query": d["message"][:1000],
+                    "negative_keywords": l[:1500],
+                    "is_active": False,
+                })
+        if batch:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                await client.post(f"{supabase_url}/rest/v1/custom_radar_rules", headers=headers, json=batch)
+    except Exception as exc:
+        logger.debug("Final Supabase log flush error: %s", exc)
+
+
 VIP_WATCHES = [
     {
         "id": 58,
@@ -491,7 +534,7 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
         # In parallel: Perform catalog sweeps and deal checks
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            tracked_alerts = await asyncio.wait_for(tracker.run_once(), timeout=120.0)
+            tracked_alerts = await asyncio.wait_for(tracker.run_once(), timeout=240.0)
             total_alerts += tracked_alerts
             print(f"[{now_str}] ✅ Tracked products check completed: {tracked_alerts} alert(s) dispatched.")
         except Exception as e:
@@ -542,6 +585,11 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
         except asyncio.CancelledError:
             pass
         total_alerts += vip_alerts_total
+
+        try:
+            await flush_daemon_logs_to_supabase()
+        except Exception as flush_exc:
+            logger.debug("Runner exit flush error: %s", flush_exc)
 
         print(f"\n✅ [Cloud Runner] Surveillance window concluded. Total alerts dispatched: {total_alerts}")
         return total_alerts
