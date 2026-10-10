@@ -33,9 +33,10 @@ class Tracker:
         self.notifier = notifier
         self.config = config
 
-    async def run_once(self) -> int:
+    async def run_once(self, products: Optional[list[Product]] = None, limit: Optional[int] = None) -> int:
         """Check active products concurrently with rate-limiting (max 3 at a time)."""
-        products = await self.db.get_products(active_only=True)
+        if products is None:
+            products = await self.db.get_products(active_only=True)
         if not products:
             logger.info("No active products tracked.")
             return 0
@@ -49,6 +50,8 @@ class Tracker:
             return (is_vip, lc_str)
 
         products = sorted(products, key=_sweep_priority)
+        if limit and limit > 0:
+            products = products[:limit]
 
         sem = asyncio.Semaphore(3)
 

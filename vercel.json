@@ -6,6 +6,12 @@
       "regions": ["bom1"]
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
