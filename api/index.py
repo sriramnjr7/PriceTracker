@@ -132,13 +132,13 @@ async def api_auth_login(payload: LoginPayload):
 # CORE DASHBOARD & STATUS ROUTES
 # ==========================================
 
-@app.api_route("/", methods=["GET", "POST", "HEAD", "OPTIONS"])
-@app.api_route("/dashboard", methods=["GET", "POST", "HEAD", "OPTIONS"])
-@app.api_route("/api", methods=["GET", "POST", "HEAD", "OPTIONS"])
-@app.api_route("/api/", methods=["GET", "POST", "HEAD", "OPTIONS"])
-@app.api_route("/api/index", methods=["GET", "POST", "HEAD", "OPTIONS"])
-@app.api_route("/api/index.py", methods=["GET", "POST", "HEAD", "OPTIONS"])
-@app.api_route("/index.py", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/", methods=["GET", "POST", "PATCH", "DELETE", "PUT", "HEAD", "OPTIONS"])
+@app.api_route("/dashboard", methods=["GET", "POST", "PATCH", "DELETE", "PUT", "HEAD", "OPTIONS"])
+@app.api_route("/api", methods=["GET", "POST", "PATCH", "DELETE", "PUT", "HEAD", "OPTIONS"])
+@app.api_route("/api/", methods=["GET", "POST", "PATCH", "DELETE", "PUT", "HEAD", "OPTIONS"])
+@app.api_route("/api/index", methods=["GET", "POST", "PATCH", "DELETE", "PUT", "HEAD", "OPTIONS"])
+@app.api_route("/api/index.py", methods=["GET", "POST", "PATCH", "DELETE", "PUT", "HEAD", "OPTIONS"])
+@app.api_route("/index.py", methods=["GET", "POST", "PATCH", "DELETE", "PUT", "HEAD", "OPTIONS"])
 async def root(request: Request):
     """Serve Dashboard HTML to browsers or status JSON to API callers."""
     clean = extract_path(request)
