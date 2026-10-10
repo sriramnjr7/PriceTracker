@@ -40,8 +40,15 @@ class Tracker:
             logger.info("No active products tracked.")
             return 0
 
-        # Prioritize VIP targets (e.g. GBD-H2000 member clearance) to run first
-        products = sorted(products, key=lambda p: 0 if "gbd-h2000" in (getattr(p, "url", "") or "").lower() else 1)
+        # Prioritize VIP targets first, then sort by oldest/least-recently checked (fair round-robin)
+        def _sweep_priority(p):
+            url_l = (getattr(p, "url", "") or "").lower()
+            is_vip = 0 if ("gbd-h2000" in url_l or "gbd-300-9dr" in url_l) else 1
+            lc = getattr(p, "last_checked", None)
+            lc_str = str(lc) if lc else ""
+            return (is_vip, lc_str)
+
+        products = sorted(products, key=_sweep_priority)
 
         sem = asyncio.Semaphore(3)
 
