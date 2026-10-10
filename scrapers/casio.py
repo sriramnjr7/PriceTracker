@@ -51,10 +51,23 @@ class CasioScraper(BaseScraper):
         "unavailable",
     )
 
+    def _get_product_container(self, soup: BeautifulSoup) -> Any:
+        """Find the main product container to avoid capturing related/recommended products."""
+        return (
+            soup.select_one("product-info")
+            or soup.select_one(".product__info-container")
+            or soup.select_one(".product__info-wrapper")
+            or soup.select_one(".product-single__meta")
+            or soup.select_one("form[action*='/cart/add']")
+            or soup
+        )
+
     def _extract_stock(self, soup: BeautifulSoup) -> bool:
         """Check primary product purchase button state for accurate stock detection."""
+        container = self._get_product_container(soup)
+
         # 1. Product Form Submit Button
-        btn = soup.select_one('button[name="add"], .product-form__submit, button.product__submit, .sticky-add-btn')
+        btn = container.select_one('button[name="add"], .product-form__submit, button.product__submit, .sticky-add-btn')
         if btn:
             if btn.has_attr("disabled"):
                 return False
@@ -64,11 +77,10 @@ class CasioScraper(BaseScraper):
             return True
 
         # 2. Check for explicit Sold Out badge inside product info container
-        prod_info = soup.select_one('.product__info-container, .product-single__meta, form[action*="/cart/add"]')
-        if prod_info:
-            info_text = prod_info.get_text(" ", strip=True).lower()
-            if "sold out" in info_text or "out of stock" in info_text:
-                return False
+        prod_info = container.select_one('.product__info-container, .product-single__meta, form[action*="/cart/add"]') or container
+        info_text = prod_info.get_text(" ", strip=True).lower()
+        if "sold out" in info_text or "out of stock" in info_text:
+            return False
 
         # 3. Fallback to schema JSON-LD or meta tags
         for script in soup.find_all("script", type=lambda t: t and ("ld+json" in t or "json" in t)):
@@ -81,13 +93,37 @@ class CasioScraper(BaseScraper):
         return True
 
     def _extract_price(self, soup: BeautifulSoup) -> Optional[float]:
-        """Extract selling price, prioritizing member silent sale discounts."""
+        """Extract selling price, prioritizing member silent sale discounts and modern Shopify theme."""
+        container = self._get_product_container(soup)
+
+        # 1. Check if the primary product price box indicates an active sale
+        price_box = container.select_one(".price")
+        if price_box and "price--on-sale" in price_box.get("class", []):
+            sale_el = price_box.select_one(".price-item--sale, .price-item--last")
+            if sale_el:
+                val = self.clean_price(sale_el.get_text(" ", strip=True))
+                if val is not None and val > 0:
+                    return val
+
+        # 2. If not on sale, extract regular price from the main product price container
+        if price_box:
+            reg_el = price_box.select_one(".price__regular .price-item--regular, .price-item--regular")
+            if reg_el:
+                val = self.clean_price(reg_el.get_text(" ", strip=True))
+                if val is not None and val > 0:
+                    return val
+
+        # 3. Fallback through price_selectors scoped to container
         for selector in self.price_selectors:
-            for node in soup.select(selector):
+            for node in container.select(selector):
+                # Avoid strike-through MRP elements when on-sale
+                if node.name == "s" or node.find_parent("s"):
+                    continue
                 val = self.clean_price(node.get_text(" ", strip=True))
                 if val is not None and val > 0:
                     return val
-        return super()._extract_price(soup)
+
+        return super()._extract_price(container)
 
     _auth_client: Optional[httpx.AsyncClient] = None
 
@@ -231,6 +267,15 @@ class CasioScraper(BaseScraper):
                                             handle,
                                         )
                                         result.in_stock = False
+                                    else:
+                                        if result.price is None or result.price <= 0:
+                                            avail_variants = [v for v in js_data.get("variants", []) if v.get("available")]
+                                            target_v = avail_variants[0] if avail_variants else (js_data.get("variants", [{}])[0] if js_data.get("variants") else {})
+                                            raw_p = target_v.get("price") or js_data.get("price")
+                                            if raw_p:
+                                                canonical_p = float(raw_p) / 100.0 if float(raw_p) > 10000 else float(raw_p)
+                                                if canonical_p > 0:
+                                                    result.price = canonical_p
                             except Exception as js_err:
                                 logger.debug("[casio] Shopify .js check error for %s: %s", handle, js_err)
 
@@ -511,6 +556,9 @@ class CasioScraper(BaseScraper):
                 "sale-products",
                 "promotional-watches",
                 "limited-sale",
+                "g-shock",
+                "edifice-watches",
+                "casio-vintage",
                 "silentoffer",
                 "g-shock-new-collection",
                 "casio",

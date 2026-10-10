@@ -224,3 +224,154 @@ async def test_flipkart_casio_deals_sponsored_filtering():
         assert deals[0]["scraped_brand"] == "Casio"
         assert "G-Shock" in deals[0]["title"]
         assert deals[0]["discount_percent"] == 60.0
+
+
+def test_casio_extract_price_bhawar_theme_not_on_sale(casio_scraper):
+    """Ensure regular price is extracted and recommendation carousel prices are ignored."""
+    from bs4 import BeautifulSoup
+    html = """
+    <html>
+      <body>
+        <div class="product__info-container">
+          <h1 class="product__title">GBD-H2000-1A9</h1>
+          <div class="price sw-card-price font-regular">
+            <div class="price__regular">
+              <span class="price-item price-item--regular">MRP ₹ 44,995</span>
+            </div>
+            <div class="price__sale">
+              <s class="price-item price-item--regular">MRP ₹ 44,995</s>
+              <span class="price-item price-item--sale price-item--last">₹ 44,995</span>
+              <span class="ci-card-off font-regular">(0% Off)</span>
+            </div>
+          </div>
+          <button type="submit" name="add" class="product-form__submit">Add to cart</button>
+        </div>
+        <div class="product-recommendations">
+          <!-- Related product with discount that shouldn't pollute main price -->
+          <div class="price price--on-sale">
+            <span class="price-item price-item--sale">₹ 14,995</span>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    price = casio_scraper._extract_price(soup)
+    assert price == 44995.0
+
+
+def test_casio_extract_price_bhawar_theme_on_sale(casio_scraper):
+    """Ensure sale price is extracted when product is actively on sale."""
+    from bs4 import BeautifulSoup
+    html = """
+    <html>
+      <body>
+        <div class="product__info-container">
+          <h1 class="product__title">GA-100-1A4</h1>
+          <div class="price sw-card-price font-regular price--on-sale">
+            <div class="price__sale">
+              <s class="price-item price-item--regular">MRP ₹ 9,495</s>
+              <span class="price-item price-item--sale price-item--last">₹ 7,596</span>
+              <span class="ci-card-off font-regular">(20% Off)</span>
+            </div>
+          </div>
+          <button type="submit" name="add" class="product-form__submit">Add to cart</button>
+        </div>
+      </body>
+    </html>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    price = casio_scraper._extract_price(soup)
+    assert price == 7596.0
+
+
+@pytest.mark.asyncio
+async def test_probe_vip_watches_suppresses_alert_when_price_above_target():
+    """Verify probe_vip_watches suppresses Telegram alerts when product is in stock but price > target."""
+    from unittest.mock import AsyncMock, patch, MagicMock
+    from run_247_radar import probe_vip_watches
+    from scrapers.base import ScrapeResult
+
+    mock_tracker = MagicMock()
+    mock_tracker.config = Settings()
+    mock_tracker.notifier = MagicMock()
+    mock_tracker.notifier.send_telegram = AsyncMock(return_value=True)
+    mock_tracker.db = MagicMock()
+    mock_tracker.db.get_products = AsyncMock(return_value=[])
+    mock_tracker.db.update_price = AsyncMock()
+    mock_tracker.db.log_deal_alert = AsyncMock()
+
+    mock_js_resp = MagicMock()
+    mock_js_resp.status_code = 200
+    # Available at MRP 44,995, but target is 14,000
+    mock_js_resp.json.return_value = {
+        "available": True,
+        "price": 4499500,
+        "variants": [{"id": 1, "price": 4499500, "available": True}],
+    }
+
+    mock_scraper = MagicMock()
+    mock_scraper.scrape = AsyncMock(return_value=ScrapeResult(
+        title="Casio G-Shock GBD-H2000",
+        price=44995.0,
+        in_stock=True,
+        platform="casio",
+        url="https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch",
+    ))
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get, \
+         patch("scrapers.get_scraper", return_value=mock_scraper), \
+         patch("run_247_radar.ship_vip_log_to_supabase", new_callable=AsyncMock):
+
+        mock_get.return_value = mock_js_resp
+
+        alerts_sent = await probe_vip_watches(mock_tracker)
+        assert alerts_sent == 0
+        mock_tracker.notifier.send_telegram.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_probe_vip_watches_fires_alert_when_target_met():
+    """Verify probe_vip_watches fires Telegram alerts when product is in stock AND price <= target."""
+    from unittest.mock import AsyncMock, patch, MagicMock
+    from run_247_radar import probe_vip_watches
+    from scrapers.base import ScrapeResult
+
+    mock_tracker = MagicMock()
+    mock_tracker.config = Settings()
+    mock_tracker.notifier = MagicMock()
+    mock_tracker.notifier.send_telegram = AsyncMock(return_value=True)
+    mock_tracker.db = MagicMock()
+    mock_tracker.db.get_products = AsyncMock(return_value=[])
+    mock_tracker.db.update_price = AsyncMock()
+    mock_tracker.db.log_deal_alert = AsyncMock()
+
+    mock_js_resp = MagicMock()
+    mock_js_resp.status_code = 200
+    # Available at deal price 13,499 <= target 14,000
+    mock_js_resp.json.return_value = {
+        "available": True,
+        "price": 1349900,
+        "variants": [{"id": 1, "price": 1349900, "available": True}],
+    }
+
+    mock_scraper = MagicMock()
+    mock_scraper.scrape = AsyncMock(return_value=ScrapeResult(
+        title="Casio G-Shock GBD-H2000",
+        price=13499.0,
+        in_stock=True,
+        platform="casio",
+        url="https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch",
+    ))
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get, \
+         patch("scrapers.get_scraper", return_value=mock_scraper), \
+         patch("run_247_radar.ship_vip_log_to_supabase", new_callable=AsyncMock):
+
+        mock_get.return_value = mock_js_resp
+
+        alerts_sent = await probe_vip_watches(mock_tracker)
+        # Should alert for GBD-H2000 (13,499 <= 14,000) and GBD-300 if also <= target
+        assert alerts_sent >= 1
+        mock_tracker.notifier.send_telegram.assert_called()
+

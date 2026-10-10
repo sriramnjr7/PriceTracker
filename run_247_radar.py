@@ -275,16 +275,7 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                 elif r.status_code == 429:
                     detail_msg = "Rate limited (HTTP 429) - retrying next window"
 
-            status_str = "IN_STOCK" if in_stock else "OUT_OF_STOCK"
-
-            if in_stock:
-                logger.info("🚨🚨 [VIP SNIPER] %s IS IN STOCK! Deal Price: ₹%s (Target: ₹%s)", watch["name"], deal_price, watch["target_price"])
-            else:
-                logger.info("[VIP SNIPER] %s -> OUT OF STOCK (Target: ₹%s | Price: ₹%s | HTTP %s)", watch["name"], watch["target_price"], deal_price, r_status)
-
-            # Ship VIP log to Supabase for instant real-time telemetry on both local & server runs
-            await ship_vip_log_to_supabase(watch, status_str, deal_price, r_status, detail_msg)
-
+            # Verify price via scraper if in stock
             if in_stock:
                 try:
                     scraper = get_scraper("casio", tracker.config)
@@ -294,6 +285,45 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                 except Exception:
                     pass
 
+            is_target_met = in_stock and (deal_price <= watch["target_price"])
+            status_str = "IN_STOCK (TARGET MET)" if is_target_met else ("IN_STOCK" if in_stock else "OUT_OF_STOCK")
+
+            if in_stock:
+                if is_target_met:
+                    logger.info("🚨🚨 [VIP SNIPER] %s TARGET MET! Deal: ₹%s <= Target: ₹%s (MRP: ₹%s)", watch["name"], deal_price, watch["target_price"], watch["mrp"])
+                else:
+                    logger.info("[VIP SNIPER] %s in stock at ₹%s, but above target ₹%s (Diff: +₹%s). Suppressing deal alert.", watch["name"], deal_price, watch["target_price"], deal_price - watch["target_price"])
+            else:
+                logger.info("[VIP SNIPER] %s -> OUT OF STOCK (Target: ₹%s | Price: ₹%s | HTTP %s)", watch["name"], watch["target_price"], deal_price, r_status)
+
+            # Ship VIP log to Supabase for instant real-time telemetry on both local & server runs
+            vip_detail = (
+                f"TARGET MET: ₹{deal_price:g} <= ₹{watch['target_price']:g}"
+                if is_target_met
+                else (
+                    f"In stock at MRP ₹{deal_price:g} (Waiting for deal <= ₹{watch['target_price']:g})"
+                    if in_stock
+                    else detail_msg
+                )
+            )
+            await ship_vip_log_to_supabase(watch, status_str, deal_price, r_status, vip_detail)
+
+            # Update DB with current verified price & accurate stock status
+            try:
+                products = await tracker.db.get_products()
+                vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
+                if vip_prod:
+                    if in_stock:
+                        status_title = f"{watch['name']} (TARGET MET: ₹{deal_price:g})" if is_target_met else f"{watch['name']} (IN STOCK: ₹{deal_price:g})"
+                        await tracker.db.update_price(vip_prod.id, deal_price, title=status_title)
+                    else:
+                        if vip_prod.current_price is not None:
+                            await tracker.db.update_price(vip_prod.id, None, title=f"{watch['name']} (OUT OF STOCK)")
+            except Exception as db_err:
+                logger.debug("[VIP Sniper] DB update error: %s", db_err)
+
+            # CRITICAL: ONLY dispatch Telegram alert when the TARGET PRICE is actually met!
+            if is_target_met:
                 alert_msg = (
                     "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
                     f"📦 *Watch:* {watch['name']}\n"
@@ -302,26 +332,22 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                     f"🎯 *Target:* ₹{watch['target_price']:g} (Target Met!)\n"
                     f"🛒 *ORDER INSTANTLY:* {target_url}\n"
                     "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
-                    "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock!*"
+                    "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock at target price!*"
                 )
                 await tracker.notifier.send_telegram(alert_msg)
                 alerts_sent += 1
 
                 try:
-                    products = await tracker.db.get_products()
-                    vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
-                    if vip_prod:
-                        await tracker.db.update_price(vip_prod.id, deal_price, title=f"{watch['name']} (IN STOCK!)")
                     await tracker.db.log_deal_alert(
                         product_url=target_url,
-                        title=f"{watch['name']} (VIP IN STOCK)",
+                        title=f"{watch['name']} (VIP DEAL MET)",
                         price=deal_price,
                         effective_price=deal_price,
                         discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
                         platform="casio",
                     )
                 except Exception as db_err:
-                    logger.debug("[VIP Sniper] DB update error: %s", db_err)
+                    logger.debug("[VIP Sniper] DB log deal error: %s", db_err)
 
         except Exception as exc:
             logger.debug("[VIP Sniper] %s error: %s", watch["name"], exc)

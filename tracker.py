@@ -185,9 +185,9 @@ class Tracker:
         if not should_notify:
             return False
 
-        # Urgent VIP Notification format for GBD-H2000 & GBD-300-9DR
+        # Urgent VIP Notification format for GBD-H2000 & GBD-300-9DR (only when target price is met)
         url_lower = (product.url or "").lower()
-        if "gbd-h2000" in url_lower or "gbd-300-9dr" in url_lower:
+        if ("gbd-h2000" in url_lower or "gbd-300-9dr" in url_lower) and product.target_price and result.price <= product.target_price:
             mrp_text = "₹44,995" if "gbd-h2000" in url_lower else "₹11,495"
             vip_msg = (
                 "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
@@ -197,7 +197,7 @@ class Tracker:
                 f"🎯 *Target:* ₹{product.target_price:g} (Target Met!)\n"
                 f"🛒 *ORDER INSTANTLY:* {product.url}\n"
                 "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
-                "⚠️ *Zero-dedupe mode: Alerting continuously while in stock!*"
+                "⚠️ *Zero-dedupe mode: Alerting continuously while in stock at target price!*"
             )
             if await self.notifier.send_telegram(vip_msg):
                 await self.db.set_last_notified(product.id, result.price)
