@@ -145,6 +145,21 @@ async def root(request: Request):
     method = request.method.upper()
 
     # Route based on rewritten target if applicable
+    # 0. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
+    if is_browser_request(request) and not clean.startswith("api/"):
+        return HTMLResponse(
+            content=get_dashboard_html(),
+            status_code=200,
+            headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
+        )
+
+    if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs"):
+        return HTMLResponse(
+            content=get_dashboard_html(),
+            status_code=200,
+            headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
+        )
+
     if "auth" in clean:
         if method == "POST":
             data = await request.json()
@@ -171,6 +186,12 @@ async def root(request: Request):
     elif clean == "api/status":
         return await get_status()
     elif "running-shoes" in clean or "running_shoes" in clean:
+        if clean in ("running-shoes", "running_shoes", "shoes") or (is_browser_request(request) and not clean.startswith("api/")):
+            return HTMLResponse(
+                content=get_dashboard_html(),
+                status_code=200,
+                headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
+            )
         if "toggle-shoe" in clean and method == "POST":
             return await api_toggle_single_shoe(request)
         elif "toggle-brand" in clean and method == "POST":
@@ -181,6 +202,12 @@ async def root(request: Request):
             return await api_sweep_running_shoes()
         return await api_get_running_shoes_status()
     elif "logs" in clean:
+        if clean == "logs" or (is_browser_request(request) and not clean.startswith("api/")):
+            return HTMLResponse(
+                content=get_dashboard_html(),
+                status_code=200,
+                headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
+            )
         if method == "DELETE" or "clear" in clean:
             return await api_clear_logs()
         limit = int(request.query_params.get("limit", 250))
@@ -241,7 +268,7 @@ async def root(request: Request):
         return await get_dashboard_data()
 
     # If requested by a browser or accessing root/dashboard/my-collection, return HTML with CDN caching
-    if is_browser_request(request) or not clean or clean in ("dashboard", "index", "index.py", "api", "api/index", "api/index.py", "my-collection", "collection", "my_collection"):
+    if is_browser_request(request) or not clean or clean in ("dashboard", "index", "index.py", "api", "api/index", "api/index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs"):
         return HTMLResponse(
             content=get_dashboard_html(),
             status_code=200,
@@ -2089,6 +2116,13 @@ async def catch_all(request: Request, full_path: str):
     clean = extract_path(request, full_path)
     method = request.method.upper()
 
+    # 0. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
+    if is_browser_request(request) and not clean.startswith("api/"):
+        return HTMLResponse(content=get_dashboard_html(), status_code=200)
+
+    if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs"):
+        return HTMLResponse(content=get_dashboard_html(), status_code=200)
+
     # 0. Auth Login
     if "auth" in clean:
         if method == "POST":
@@ -2199,7 +2233,7 @@ async def catch_all(request: Request, full_path: str):
         return await api_get_collection()
 
     # 8. Root or Dashboard HTML fallback
-    if method == "GET" and (is_browser_request(request) or clean in ("", "dashboard", "index", "index.py", "api", "api/index", "api/index.py", "my-collection", "collection", "my_collection")):
+    if method == "GET" and (is_browser_request(request) or clean in ("", "dashboard", "index", "index.py", "api", "api/index", "api/index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs")):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)
 
     return JSONResponse(

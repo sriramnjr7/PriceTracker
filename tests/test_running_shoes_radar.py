@@ -186,3 +186,45 @@ def test_catalog_tracking_and_atl_detection():
     assert "model" in first_item
     assert "status" in first_item
     assert "available_sizes" in first_item
+
+
+def test_running_shoes_spa_browser_route():
+    from fastapi.testclient import TestClient
+    from api.index import app
+    client = TestClient(app)
+
+    # 1. Direct browser request to /running-shoes
+    res_direct = client.get("/running-shoes", headers={"accept": "text/html,application/xhtml+xml"})
+    assert res_direct.status_code == 200
+    assert "text/html" in res_direct.headers.get("content-type", "")
+    assert "<!DOCTYPE html>" in res_direct.text
+
+    # 2. Vercel rewritten request to /api/index.py?_vercel_path=running-shoes
+    res_vercel = client.get("/api/index.py?_vercel_path=running-shoes", headers={"accept": "text/html"})
+    assert res_vercel.status_code == 200
+    assert "text/html" in res_vercel.headers.get("content-type", "")
+    assert "<!DOCTYPE html>" in res_vercel.text
+
+
+def test_running_shoes_api_status_route():
+    from fastapi.testclient import TestClient
+    from api.index import app
+    client = TestClient(app)
+
+    # 1. Direct API call to /api/running-shoes/status
+    res_direct = client.get("/api/running-shoes/status")
+    assert res_direct.status_code == 200
+    assert "application/json" in res_direct.headers.get("content-type", "")
+    data = res_direct.json()
+    assert data.get("status") == "online"
+    assert "tracked_shoes" in data
+    assert "whitelist_brands" in data
+
+    # 2. Vercel rewritten request to /api/index.py?_vercel_path=api/running-shoes/status
+    res_vercel = client.get("/api/index.py?_vercel_path=api/running-shoes/status")
+    assert res_vercel.status_code == 200
+    assert "application/json" in res_vercel.headers.get("content-type", "")
+    data_v = res_vercel.json()
+    assert data_v.get("status") == "online"
+    assert "tracked_shoes" in data_v
+

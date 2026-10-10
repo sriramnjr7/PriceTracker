@@ -81,3 +81,17 @@ def test_vip_in_main_logs_response(client):
     body = res.json()
     assert "vip" in body
     assert len(body["vip"]["watches"]) == 2
+
+
+def test_logs_spa_browser_route(client):
+    # 1. Direct browser request to /logs
+    res_direct = client.get("/logs", headers={"accept": "text/html,application/xhtml+xml"})
+    assert res_direct.status_code == 200
+    assert "text/html" in res_direct.headers.get("content-type", "")
+    assert "<!DOCTYPE html>" in res_direct.text
+
+    # 2. Vercel rewritten request to /api/index.py?_vercel_path=logs
+    res_vercel = client.get("/api/index.py?_vercel_path=logs", headers={"accept": "text/html"})
+    assert res_vercel.status_code == 200
+    assert "text/html" in res_vercel.headers.get("content-type", "")
+    assert "<!DOCTYPE html>" in res_vercel.text
