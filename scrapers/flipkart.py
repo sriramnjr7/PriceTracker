@@ -139,6 +139,10 @@ class FlipkartScraper(BaseScraper):
                 # Modern Flipkart out-of-stock: primary action is NOTIFY_ME_V4 (Notify Me) and no BUY_NOW / CART_ADD
                 if '"NOTIFY_ME_V4"' in txt and '"BUY_NOW"' not in txt and '"CART_ADD"' not in txt:
                     return False
+                # Location unserviceable / non-deliverable check:
+                # Flipkart sets "isa": false in INITIAL_STATE when the listing is unserviceable to the location
+                if '"isa":false' in txt:
+                    return False
 
         # 3. Explicit UI Out of Stock Badges & Banners (Do NOT scan full body to avoid customer review false positives)
         stock_badge = soup.select_one(".z3htrc, ._16FRp0, ._3xgQrA, div._1V3wBu")
