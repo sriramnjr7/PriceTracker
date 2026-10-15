@@ -44,7 +44,7 @@ class Tracker:
         # Prioritize VIP targets first, then sort by oldest/least-recently checked (fair round-robin)
         def _sweep_priority(p):
             url_l = (getattr(p, "url", "") or "").lower()
-            is_vip = 0 if ("gbd-h2000" in url_l or "gbd-300-9dr" in url_l) else 1
+            is_vip = 0 if any(k in url_l for k in ("gbd-h2000", "gbd-300", "gbd-200", "rare-rabbit")) else 1
             lc = getattr(p, "last_checked", None)
             lc_str = str(lc) if lc else ""
             return (is_vip, lc_str)
@@ -183,19 +183,29 @@ class Tracker:
         if not should_notify:
             return False
 
-        # Urgent VIP Notification format for GBD-H2000 & GBD-300-9DR (only when target price is met)
+        # Urgent VIP Notification format for GBD series & Rare Rabbit (when in-stock at target threshold)
         url_lower = (product.url or "").lower()
-        if ("gbd-h2000" in url_lower or "gbd-300-9dr" in url_lower) and product.target_price and result.price <= product.target_price:
-            mrp_text = "₹44,995" if "gbd-h2000" in url_lower else "₹11,495"
+        is_vip_item = any(k in url_lower for k in ("gbd-h2000", "gbd-300", "gbd-200", "rare-rabbit"))
+        if is_vip_item and (product.target_price is None or result.price <= product.target_price):
+            if "gbd-h2000" in url_lower:
+                mrp_text = "₹44,995"
+            elif any(k in url_lower for k in ("gbd-300", "gbd-200")):
+                mrp_text = "₹12,995"
+            elif "rare-rabbit" in url_lower:
+                mrp_text = "₹2,999"
+            else:
+                mrp_text = f"₹{result.price:g}"
+
+            item_type = "Jeans" if "rare-rabbit" in url_lower else "Watch"
+            target_str = f"₹{product.target_price:g}" if product.target_price else "In-Stock Alert"
             vip_msg = (
-                "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
-                f"📦 *Watch:* {result.title or product.title}\n"
+                "🚨🚨 *URGENT VIP DEAL / RESTOCK ALERT!* 🚨🚨\n"
+                f"📦 *{item_type}:* {result.title or product.title}\n"
                 "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
                 f"💰 *Deal Price:* ₹{result.price:g} (MRP: {mrp_text})\n"
-                f"🎯 *Target:* ₹{product.target_price:g} (Target Met!)\n"
+                f"🎯 *Target:* {target_str} (Target Met!)\n"
                 f"🛒 *ORDER INSTANTLY:* {product.url}\n"
-                "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
-                "⚠️ *Zero-dedupe mode: Alerting continuously while in stock at target price!*"
+                "⚡ *Dispatched via Priority VIP Deal Sniper*"
             )
             if await self.notifier.send_telegram(vip_msg):
                 await self.db.set_last_notified(product.id, result.price)
@@ -205,7 +215,7 @@ class Tracker:
                     price=result.price,
                     effective_price=result.price,
                     discount_percent=drop_percent or 70.0,
-                    platform="casio",
+                    platform=product.platform,
                 )
                 logger.info("[VIP Sniper] Dispatched URGENT alert for %s at INR %s", product.title, result.price)
                 return True
@@ -675,7 +685,7 @@ class Tracker:
 
         # VIP items bypass anti-spam deduplication completely (alert repeatedly while in stock as requested):
         url_lower = (product.url or "").lower()
-        if "gbd-h2000" in url_lower or "gbd-300-9dr" in url_lower:
+        if any(k in url_lower for k in ("gbd-h2000", "gbd-300", "gbd-200", "rare-rabbit")):
             return True, drop_percent
 
         # 3. Anti-spam: don't re-alert at the same or a higher price within the same deal window.

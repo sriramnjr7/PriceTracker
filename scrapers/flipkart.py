@@ -136,12 +136,21 @@ class FlipkartScraper(BaseScraper):
             if "__INITIAL_STATE__" in txt:
                 if '"isAvailable":false' in txt or '"productAvailability":"OUT_OF_STOCK"' in txt:
                     return False
+                # Modern Flipkart out-of-stock: primary action is NOTIFY_ME_V4 (Notify Me) and no BUY_NOW / CART_ADD
+                if '"NOTIFY_ME_V4"' in txt and '"BUY_NOW"' not in txt and '"CART_ADD"' not in txt:
+                    return False
 
         # 3. Explicit UI Out of Stock Badges & Banners (Do NOT scan full body to avoid customer review false positives)
         stock_badge = soup.select_one(".z3htrc, ._16FRp0, ._3xgQrA, div._1V3wBu")
         if stock_badge:
             b_txt = stock_badge.get_text(" ", strip=True).lower()
             if any(bad in b_txt for bad in ("currently unavailable", "out of stock", "sold out", "temporarily unavailable")):
+                return False
+
+        # 3b. Visible non-deliverable badge / pincode unserviceable
+        for el in soup.find_all(string=re.compile(r"not deliverable (?:in|at) your location|currently out of stock for", re.I)):
+            if el.parent and el.parent.name not in ("script", "style"):
+                logger.info("[flipkart] Detected non-deliverable / pincode out-of-stock for %s", url)
                 return False
 
         # 4. Variant Capacity / Storage Consistency Check:
@@ -222,6 +231,7 @@ class FlipkartScraper(BaseScraper):
             return False
 
         # 1. Authoritative: Schema.org Product JSON-LD (Search all scripts for Product type)
+        base_price: Optional[float] = None
         for script in soup.find_all("script"):
             stype = script.get("type", "")
             sid = script.get("id", "")
@@ -239,52 +249,96 @@ class FlipkartScraper(BaseScraper):
                             if isinstance(offers, dict) and "price" in offers:
                                 val = float(offers["price"])
                                 if val > 0:
-                                    return val
+                                    base_price = val
+                                    break
                             elif isinstance(offers, list) and offers:
                                 for off in offers:
                                     if isinstance(off, dict) and "price" in off:
                                         val = float(off["price"])
                                         if val > 0:
-                                            return val
+                                            base_price = val
+                                            break
                 except Exception:
                     continue
+            if base_price is not None:
+                break
 
         # 2. Scoped Standard CSS Selectors (ignoring ads, cross-sells, and external product cards)
-        for sel in self.price_selectors:
-            for node in soup.select(sel):
-                if is_foreign_or_ad(node):
-                    continue
-                val = self.clean_price(node.get_text(" ", strip=True))
-                if val is not None and val > 0:
-                    return val
+        if base_price is None:
+            for sel in self.price_selectors:
+                for node in soup.select(sel):
+                    if is_foreign_or_ad(node):
+                        continue
+                    val = self.clean_price(node.get_text(" ", strip=True))
+                    if val is not None and val > 0:
+                        base_price = val
+                        break
+                if base_price is not None:
+                    break
 
         # 3. Strictly Scoped Fallback: Scan text nodes NOT inside foreign product links or ad containers
-        for el in soup.find_all(True):
-            if el.name in ("script", "style", "meta", "link", "noscript", "footer", "header", "nav", "aside"):
-                continue
-            txt = el.get_text(" ", strip=True)
-            if re.match(r"^₹\s*[0-9][0-9,]*(?:\.[0-9]+)?$", txt):
-                if is_foreign_or_ad(el):
+        if base_price is None:
+            for el in soup.find_all(True):
+                if el.name in ("script", "style", "meta", "link", "noscript", "footer", "header", "nav", "aside"):
                     continue
-                val = self.clean_price(txt)
-                if val is not None and val > 0:
-                    return val
-        return None
+                txt = el.get_text(" ", strip=True)
+                if re.match(r"^₹\s*[0-9][0-9,]*(?:\.[0-9]+)?$", txt):
+                    if is_foreign_or_ad(el):
+                        continue
+                    val = self.clean_price(txt)
+                    if val is not None and val > 0:
+                        base_price = val
+                        break
+
+        if base_price is None:
+            return None
+
+        # 4. Extract Effective Deal Price (factoring in Bank Offers / nepPrice / "Buy at ₹X" / "with Bank offer")
+        effective_price = base_price
+        for script in soup.find_all("script"):
+            txt = script.string or script.get_text() or ""
+            if "__INITIAL_STATE__" in txt:
+                # 4a. Check structured ppd dictionary for net effective price (nepPrice)
+                m_ppd = re.findall(r'"ppd":\s*\{[^}]*?"nepPrice":\s*([0-9]+)', txt)
+                for nep in m_ppd:
+                    try:
+                        num = float(nep)
+                        if 0.3 * base_price <= num < effective_price:
+                            effective_price = num
+                    except Exception:
+                        pass
+
+                # 4b. Check textual bank offer / special price callouts
+                m_eff = re.findall(r'(?:with Bank offer|Buy at|Special Price)\s*[:\s]*₹\s*([0-9,]+)', txt, re.I)
+                for val in m_eff:
+                    try:
+                        num = float(val.replace(",", ""))
+                        if 0.3 * base_price <= num < effective_price:
+                            effective_price = num
+                    except Exception:
+                        pass
+                break
+
+        return effective_price
 
     async def _static_fetch(self, url: str) -> Optional[str]:
         """Fetch Flipkart page using mobile Android SSR impersonation (curated to guarantee full JSON-LD & buy-box)."""
         from curl_cffi.requests import AsyncSession
+        pincode = getattr(self.config, "backup_pincode", "635109") or getattr(self.config, "default_pincode", "560103") or "635109"
+        cookie_header = f"pincode={pincode}; location={pincode};"
         mobile_headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-IN,en;q=0.9",
             "Sec-Ch-Ua-Mobile": "?1",
             "Sec-Ch-Ua-Platform": '"Android"',
+            "Cookie": cookie_header,
         }
         desktop_headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-IN,en;q=0.9",
+            "Cookie": cookie_header,
         }
 
         # 1. Try Mobile User Agent with curl_cffi Chrome impersonation (Guaranteed SSR on Flipkart)
