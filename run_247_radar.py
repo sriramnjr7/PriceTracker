@@ -199,6 +199,16 @@ async def flush_daemon_logs_to_supabase():
 
 VIP_WATCHES = [
     {
+        "id": 111,
+        "name": "CASIO G-SHOCK GBD-300-1DR",
+        "url": "https://www.flipkart.com/casio-gbd-300-1dr-g-shock-digital-watch-men/p/itmd46dfdac5b669?pid=WATH6HSUVHVMZVPW",
+        "target_price": 13000.0,
+        "default_price": 11725.0,
+        "mrp": 12995,
+        "tag": "gbd-300-1dr",
+        "platform": "flipkart",
+    },
+    {
         "id": 58,
         "name": "CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD",
         "url": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch",
@@ -206,6 +216,7 @@ VIP_WATCHES = [
         "default_price": 13499.0,
         "mrp": 44995,
         "tag": "gbd-h2000",
+        "platform": "casio",
     },
     {
         "id": 5,
@@ -215,6 +226,7 @@ VIP_WATCHES = [
         "default_price": 3495.0,
         "mrp": 11495,
         "tag": "gbd-300-9dr",
+        "platform": "casio",
     },
 ]
 
@@ -275,60 +287,70 @@ async def probe_vip_watches(tracker: Tracker) -> int:
             await asyncio.sleep(1.2)
 
         target_url = watch["url"]
-        js_url = f"{target_url}.js"
+        platform = watch.get("platform") or ("flipkart" if "flipkart.com" in target_url else "casio")
         in_stock = False
         deal_price = watch["default_price"]
         r_status = 0
         detail_msg = ""
-        ua = random.choice(USER_AGENTS) if USER_AGENTS else "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        headers = {
-            "User-Agent": ua,
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Accept-Language": "en-IN,en;q=0.9",
-        }
 
         try:
-            async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
-                r = await client.get(js_url, headers=headers)
-                r_status = r.status_code
-                if r.status_code == 200:
-                    try:
-                        data = r.json()
-                        is_avail = bool(data.get("available", False))
-                        variants = data.get("variants", [])
-                        if is_avail or any(bool(v.get("available", False)) for v in variants):
+            if platform == "flipkart":
+                scraper = get_scraper("flipkart", tracker.config)
+                res = await scraper.scrape(target_url)
+                in_stock = bool(res.in_stock)
+                if res.price and res.price > 0:
+                    deal_price = res.price
+                r_status = 200 if res.price else 0
+                detail_msg = f"Flipkart in_stock={in_stock} (₹{deal_price:g})"
+            else:
+                js_url = f"{target_url}.js"
+                ua = random.choice(USER_AGENTS) if USER_AGENTS else "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                headers = {
+                    "User-Agent": ua,
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                    "Accept-Language": "en-IN,en;q=0.9",
+                }
+                async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+                    r = await client.get(js_url, headers=headers)
+                    r_status = r.status_code
+                    if r.status_code == 200:
+                        try:
+                            data = r.json()
+                            is_avail = bool(data.get("available", False))
+                            variants = data.get("variants", [])
+                            if is_avail or any(bool(v.get("available", False)) for v in variants):
+                                in_stock = True
+                                for v in variants:
+                                    if v.get("price"):
+                                        p_val = float(v["price"]) / 100.0 if float(v["price"]) > 100000 else float(v["price"])
+                                        if p_val > 0:
+                                            deal_price = p_val
+                                            break
+                            detail_msg = f"Available: {is_avail}"
+                        except Exception as parse_e:
+                            detail_msg = f"JSON parse note: {parse_e}"
+                    elif r.status_code == 404:
+                        r_html = await client.get(target_url, headers=headers)
+                        r_status = r_html.status_code
+                        if r_html.status_code == 200 and "404" not in r_html.text[:300].lower():
                             in_stock = True
-                            for v in variants:
-                                if v.get("price"):
-                                    p_val = float(v["price"]) / 100.0 if float(v["price"]) > 100000 else float(v["price"])
-                                    if p_val > 0:
-                                        deal_price = p_val
-                                        break
-                        detail_msg = f"Available: {is_avail}"
-                    except Exception as parse_e:
-                        detail_msg = f"JSON parse note: {parse_e}"
-                elif r.status_code == 404:
-                    r_html = await client.get(target_url, headers=headers)
-                    r_status = r_html.status_code
-                    if r_html.status_code == 200 and "404" not in r_html.text[:300].lower():
-                        in_stock = True
-                        detail_msg = "Product un-redirected HTML 200"
-                    else:
-                        detail_msg = "Unlisted / Awaiting restock drop"
-                elif r.status_code == 429:
-                    detail_msg = "Rate limited (HTTP 429) - retrying next window"
+                            detail_msg = "Product un-redirected HTML 200"
+                        else:
+                            detail_msg = "Unlisted / Awaiting restock drop"
+                    elif r.status_code == 429:
+                        detail_msg = "Rate limited (HTTP 429) - retrying next window"
 
-            # Verify price via scraper if in stock
-            if in_stock:
-                try:
-                    scraper = get_scraper("casio", tracker.config)
-                    res = await scraper.scrape(target_url)
-                    if res.price and res.price > 0:
-                        deal_price = res.price
-                except Exception:
-                    pass
+                # Verify price via scraper if in stock
+                if in_stock:
+                    try:
+                        scraper = get_scraper("casio", tracker.config)
+                        res = await scraper.scrape(target_url)
+                        if res.price and res.price > 0:
+                            deal_price = res.price
+                    except Exception:
+                        pass
 
-            is_target_met = in_stock and (deal_price <= watch["target_price"])
+            is_target_met = in_stock and (watch["target_price"] is None or deal_price <= watch["target_price"])
             status_str = "IN_STOCK (TARGET MET)" if is_target_met else ("IN_STOCK" if in_stock else "OUT_OF_STOCK")
 
             if in_stock:
@@ -387,7 +409,7 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                         price=deal_price,
                         effective_price=deal_price,
                         discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
-                        platform="casio",
+                        platform=platform,
                     )
                 except Exception as db_err:
                     logger.debug("[VIP Sniper] DB log deal error: %s", db_err)
@@ -406,7 +428,7 @@ async def vip_casio_sniper_loop(tracker: Tracker, interval_seconds: int = 60):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         await probe_vip_watches(tracker)
         if cycle % 10 == 1 or cycle <= 3:
-            print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] GBD-H2000 & GBD-300-9DR probed. Both 1-min priority guards live.")
+            print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] GBD-300-1DR (Flipkart), GBD-H2000 & GBD-300-9DR probed. All 1-min priority guards live.")
         await asyncio.sleep(interval_seconds)
 
 
@@ -516,7 +538,7 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
             while not stop_event.is_set():
                 pass_num += 1
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                print(f"[{now_str}] 🎯 [Cloud Runner VIP Sniper Pass #{pass_num}] Probing GBD-H2000 & GBD-300-9DR...")
+                print(f"[{now_str}] 🎯 [Cloud Runner VIP Sniper Pass #{pass_num}] Probing GBD-300-1DR (Flipkart), GBD-H2000 & GBD-300-9DR...")
                 try:
                     v_alerts = await probe_vip_watches(tracker)
                     vip_alerts_total += v_alerts

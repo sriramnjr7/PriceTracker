@@ -663,9 +663,12 @@ class Tracker:
             drop_percent = (old_price - new_price) / old_price * 100.0
 
         triggered = False
-        if product.target_price is not None and new_price <= product.target_price:
+        if product.target_price is None and product.percentage_drop_target is None:
+            # If no price threshold is configured, any in-stock observation is an alert trigger
             triggered = True
-        if (
+        elif product.target_price is not None and new_price <= product.target_price:
+            triggered = True
+        elif (
             product.percentage_drop_target is not None
             and drop_percent >= product.percentage_drop_target
         ):
