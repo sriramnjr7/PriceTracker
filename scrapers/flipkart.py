@@ -59,13 +59,72 @@ class FlipkartScraper(BaseScraper):
 
     def parse(self, html: str, url: str) -> ScrapeResult:
         soup = BeautifulSoup(html, "html.parser")
+        price = self._extract_price(soup, url=url)
+        eff_price, offers = self._extract_offers_and_effective_price(soup, price, html=html)
         return ScrapeResult(
             title=self._extract_title(soup),
-            price=self._extract_price(soup, url=url),
+            price=price,
             in_stock=self._extract_stock(soup, url=url),
             platform=self.platform,
             url=url,
+            effective_price=eff_price,
+            offers=offers,
         )
+
+    def _extract_offers_and_effective_price(
+        self, soup: BeautifulSoup, base_price: Optional[float], html: str = ""
+    ) -> tuple[Optional[float], list[str]]:
+        """Extract bank and card offers from Flipkart HTML and compute best net effective price."""
+        if not base_price or base_price <= 0:
+            return None, []
+
+        if isinstance(soup, str):
+            html = soup
+            soup = BeautifulSoup(soup, "html.parser")
+        elif not html:
+            html = str(soup)
+
+        offers: list[str] = []
+        max_discount = 0.0
+
+        # 1. Parse window.__INITIAL_STATE__ for bank offers and promo discounts
+        for script in soup.find_all("script"):
+            txt = script.string or script.get_text() or ""
+            if "INITIAL_STATE" in txt or "contentValue" in txt:
+                for m in re.finditer(r'"contentValue"\s*:\s*"([^"]+)"', txt):
+                    val = m.group(1).replace(r"\u20b9", "₹").replace(r"\u002f", "/")
+                    if any(k in val.lower() for k in ("off", "bank", "credit card", "debit card", "cashback")):
+                        if val not in offers and len(val) < 120:
+                            offers.append(val)
+
+                        # Match fixed discount: e.g. "₹750 off" or "₹1,000 off"
+                        m_fixed = re.search(r"(?:₹|rs\.?)\s*([0-9,]+)\s+off", val, re.I)
+                        if m_fixed:
+                            d = float(m_fixed.group(1).replace(",", ""))
+                            if d < base_price:
+                                max_discount = max(max_discount, d)
+
+                        # Match percentage discount: e.g. "10% off ... max ₹1,500"
+                        m_pct = re.search(r"(\d+)%\s+off", val, re.I)
+                        if m_pct:
+                            pct = float(m_pct.group(1))
+                            calc = base_price * (pct / 100.0)
+                            m_cap = re.search(r"(?:up\s+to|max)\s*(?:₹|rs\.?)\s*([0-9,]+)", val, re.I)
+                            if m_cap:
+                                cap = float(m_cap.group(1).replace(",", ""))
+                                calc = min(calc, cap)
+                            if calc < base_price:
+                                max_discount = max(max_discount, calc)
+
+        # 2. Match direct effective price callouts e.g. "₹11,725 with Bank offer" or "₹6,881 with Bank offer"
+        for m in re.finditer(r"₹\s*([0-9,]+(?:\.[0-9]+)?)\s+with\s+(?:bank\s+offer|offer)", html, re.I):
+            eff = float(m.group(1).replace(",", ""))
+            if 0 < eff < base_price:
+                diff = base_price - eff
+                max_discount = max(max_discount, diff)
+
+        effective_price = round(base_price - max_discount, 2) if max_discount > 0 else None
+        return effective_price, offers
 
     def _extract_title(self, soup: BeautifulSoup) -> str:
         """Extract clean product title from Schema.org JSON-LD or primary heading."""

@@ -175,8 +175,11 @@ class Tracker:
             except Exception as recheck_exc:
                 logger.warning("Re-probe exception for %s: %s", product.id, recheck_exc)
 
+        eff_price = getattr(result, "effective_price", None)
+        offers = getattr(result, "offers", []) or []
+
         should_notify, drop_percent = self._should_notify(
-            product, product.current_price, result.price
+            product, product.current_price, result.price, effective_price=eff_price
         )
         await self.db.update_price(product.id, result.price, title=result.title or None)
 
@@ -186,7 +189,19 @@ class Tracker:
         # Urgent VIP Notification format for GBD series & Rare Rabbit (when in-stock at target threshold)
         url_lower = (product.url or "").lower()
         is_vip_item = any(k in url_lower for k in ("gbd-h2000", "gbd-300", "gbd-200", "rare-rabbit"))
-        if is_vip_item and (product.target_price is None or result.price <= product.target_price):
+        is_gbd200lm = "watgugjrfgggekgr" in url_lower or "gbd-200lm" in url_lower
+
+        is_target_hit = False
+        if is_vip_item:
+            if is_gbd200lm:
+                is_target_hit = (
+                    (product.target_price is None or result.price <= product.target_price)
+                    or (eff_price is not None and eff_price <= 7000.0)
+                )
+            else:
+                is_target_hit = (product.target_price is None or result.price <= product.target_price)
+
+        if is_vip_item and is_target_hit:
             if "gbd-h2000" in url_lower:
                 mrp_text = "₹44,995"
             elif any(k in url_lower for k in ("gbd-300", "gbd-200")):
@@ -196,13 +211,21 @@ class Tracker:
             else:
                 mrp_text = f"₹{result.price:g}"
 
+            offer_text = ""
+            if eff_price and eff_price < result.price:
+                offer_tag = f" ({', '.join(offers[:2])})" if offers else ""
+                offer_text = f"\n💳 *Effective Offer Price:* ₹{eff_price:g}{offer_tag}"
+
             item_type = "Jeans" if "rare-rabbit" in url_lower else "Watch"
             target_str = f"₹{product.target_price:g}" if product.target_price else "In-Stock Alert"
+            if is_gbd200lm:
+                target_str = "₹7,500 (or < ₹7,000 with offers)"
+
             vip_msg = (
                 "🚨🚨 *URGENT VIP DEAL / RESTOCK ALERT!* 🚨🚨\n"
                 f"📦 *{item_type}:* {result.title or product.title}\n"
                 "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
-                f"💰 *Deal Price:* ₹{result.price:g} (MRP: {mrp_text})\n"
+                f"💰 *Deal Price:* ₹{result.price:g} (MRP: {mrp_text}){offer_text}\n"
                 f"🎯 *Target:* {target_str} (Target Met!)\n"
                 f"🛒 *ORDER INSTANTLY:* {product.url}\n"
                 "⚡ *Dispatched via Priority VIP Deal Sniper*"
@@ -221,11 +244,11 @@ class Tracker:
                     product_url=product.url,
                     title=result.title or product.title,
                     price=result.price,
-                    effective_price=result.price,
-                    discount_percent=drop_percent or 70.0,
+                    effective_price=eff_price or result.price,
+                    discount_percent=drop_percent or round((1 - (eff_price or result.price) / 12995) * 100, 1),
                     platform=product.platform,
                 )
-                logger.info("[VIP Sniper] Dispatched URGENT alert for %s at INR %s", product.title, result.price)
+                logger.info("[VIP Sniper] Dispatched URGENT alert for %s at INR %s (eff: %s)", product.title, result.price, eff_price)
                 return True
 
         is_restock = product.current_price is None
@@ -664,17 +687,25 @@ class Tracker:
         return "\u2014"
 
     @staticmethod
-    def _should_notify(product, old_price: Optional[float], new_price: float):
+    def _should_notify(product, old_price: Optional[float], new_price: float, effective_price: Optional[float] = None):
         """Return (should_alert, drop_percent)."""
         drop_percent = 0.0
         if old_price and old_price > 0:
             drop_percent = (old_price - new_price) / old_price * 100.0
 
         triggered = False
-        if product.target_price is None and product.percentage_drop_target is None:
+        url_lower = (product.url or "").lower()
+
+        # Check special offer target for Flipkart GBD-200LM or watches with offer thresholds
+        if "gbd-200lm" in url_lower or "watgugjrfgggekgr" in url_lower:
+            if effective_price is not None and effective_price <= 7000.0:
+                triggered = True
+            elif new_price <= (product.target_price or 7500.0):
+                triggered = True
+        elif product.target_price is None and product.percentage_drop_target is None:
             # If no price threshold is configured, any in-stock observation is an alert trigger
             triggered = True
-        elif product.target_price is not None and new_price <= product.target_price:
+        elif product.target_price is not None and (new_price <= product.target_price or (effective_price is not None and effective_price <= product.target_price)):
             triggered = True
         elif (
             product.percentage_drop_target is not None

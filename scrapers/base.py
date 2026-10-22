@@ -61,6 +61,8 @@ class ScrapeResult:
     in_stock: bool
     platform: str
     url: str
+    effective_price: Optional[float] = None
+    offers: Optional[list[str]] = None
 
 
 def _priceish_class(value) -> bool:

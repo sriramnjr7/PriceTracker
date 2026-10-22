@@ -210,6 +210,18 @@ VIP_WATCHES = [
         "is_active": False,
     },
     {
+        "id": 117,
+        "name": "CASIO GBD-200LM-1DR G-SHOCK Luminescent Camouflage",
+        "url": "https://www.flipkart.com/casio-gbd-200lm-1dr-g-shock-dial-luminescent-camouflage-resin-strap-digital-watch-men/p/itme88c68d4590ae?pid=WATGUGJRFGGGEKGR",
+        "target_price": 7500.0,
+        "offer_target_price": 7000.0,
+        "default_price": 8208.0,
+        "mrp": 12995,
+        "tag": "watgugjrfgggekgr",
+        "platform": "flipkart",
+        "is_active": True,
+    },
+    {
         "id": 58,
         "name": "CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD",
         "url": "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch",
@@ -312,14 +324,19 @@ async def probe_vip_watches(tracker: Tracker) -> int:
         detail_msg = ""
 
         try:
+            eff_price = None
+            offers = []
             if platform == "flipkart":
                 scraper = get_scraper("flipkart", tracker.config)
                 res = await scraper.scrape(target_url)
                 in_stock = bool(res.in_stock)
                 if res.price and res.price > 0:
                     deal_price = res.price
+                eff_price = getattr(res, "effective_price", None)
+                offers = getattr(res, "offers", []) or []
                 r_status = 200 if res.price else 0
-                detail_msg = f"Flipkart in_stock={in_stock} (₹{deal_price:g})"
+                eff_str = f" (Eff: ₹{eff_price:g})" if eff_price and eff_price < deal_price else ""
+                detail_msg = f"Flipkart in_stock={in_stock} (₹{deal_price:g}{eff_str})"
             else:
                 js_url = f"{target_url}.js"
                 ua = random.choice(USER_AGENTS) if USER_AGENTS else "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -368,23 +385,32 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                     except Exception:
                         pass
 
-            is_target_met = in_stock and (watch["target_price"] is None or deal_price <= watch["target_price"])
+            base_target = watch["target_price"]
+            offer_target = watch.get("offer_target_price")
+            base_met = (base_target is None or deal_price <= base_target)
+            offer_met = bool(offer_target and eff_price is not None and eff_price <= offer_target)
+
+            is_target_met = in_stock and (base_met or offer_met)
             status_str = "IN_STOCK (TARGET MET)" if is_target_met else ("IN_STOCK" if in_stock else "OUT_OF_STOCK")
 
             if in_stock:
                 if is_target_met:
-                    logger.info("🚨🚨 [VIP SNIPER] %s TARGET MET! Deal: ₹%s <= Target: ₹%s (MRP: ₹%s)", watch["name"], deal_price, watch["target_price"], watch["mrp"])
+                    logger.info("🚨🚨 [VIP SNIPER] %s TARGET MET! Deal: ₹%s (Eff: %s) <= Target: ₹%s (MRP: ₹%s)", watch["name"], deal_price, eff_price, watch["target_price"], watch["mrp"])
                 else:
                     logger.info("[VIP SNIPER] %s in stock at ₹%s, but above target ₹%s (Diff: +₹%s). Suppressing deal alert.", watch["name"], deal_price, watch["target_price"], deal_price - watch["target_price"])
             else:
                 logger.info("[VIP SNIPER] %s -> OUT OF STOCK (Target: ₹%s | Price: ₹%s | HTTP %s)", watch["name"], watch["target_price"], deal_price, r_status)
 
             # Ship VIP log to Supabase for instant real-time telemetry on both local & server runs
+            target_disp = f"₹{watch['target_price']:g}"
+            if offer_target:
+                target_disp += f" (Offers < ₹{offer_target:g})"
+
             vip_detail = (
-                f"TARGET MET: ₹{deal_price:g} <= ₹{watch['target_price']:g}"
+                f"TARGET MET: Deal ₹{deal_price:g}" + (f" (Offer: ₹{eff_price:g})" if eff_price and eff_price < deal_price else "")
                 if is_target_met
                 else (
-                    f"In stock at MRP ₹{deal_price:g} (Waiting for deal <= ₹{watch['target_price']:g})"
+                    f"In stock at MRP ₹{deal_price:g} (Waiting for deal <= {target_disp})"
                     if in_stock
                     else detail_msg
                 )
@@ -397,7 +423,8 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                 vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
                 if vip_prod:
                     if in_stock:
-                        status_title = f"{watch['name']} (TARGET MET: ₹{deal_price:g})" if is_target_met else f"{watch['name']} (IN STOCK: ₹{deal_price:g})"
+                        eff_label = f" [Offer: ₹{eff_price:g}]" if eff_price and eff_price < deal_price else ""
+                        status_title = f"{watch['name']} (TARGET MET: ₹{deal_price:g}{eff_label})" if is_target_met else f"{watch['name']} (IN STOCK: ₹{deal_price:g}{eff_label})"
                         await tracker.db.update_price(vip_prod.id, deal_price, title=status_title)
                     else:
                         if vip_prod.current_price is not None:
@@ -407,12 +434,21 @@ async def probe_vip_watches(tracker: Tracker) -> int:
 
             # CRITICAL: ONLY dispatch Telegram alert when the TARGET PRICE is actually met!
             if is_target_met:
+                offer_line = ""
+                if eff_price and eff_price < deal_price:
+                    applied = f" ({', '.join(offers[:2])})" if offers else ""
+                    offer_line = f"\n💳 *Effective Offer Price:* ₹{eff_price:g}{applied}"
+
+                target_str = f"₹{watch['target_price']:g}"
+                if offer_target:
+                    target_str += f" (or < ₹{offer_target:g} with offers)"
+
                 alert_msg = (
                     "🚨🚨 *URGENT VIP DEAL RESTOCK!* 🚨🚨\n"
                     f"📦 *Watch:* {watch['name']}\n"
                     "🔥 *STATUS: IN STOCK RIGHT NOW!*\n"
-                    f"💰 *Deal Price:* ₹{deal_price:g} (MRP: ₹{watch['mrp']:,})\n"
-                    f"🎯 *Target:* ₹{watch['target_price']:g} (Target Met!)\n"
+                    f"💰 *Deal Price:* ₹{deal_price:g} (MRP: ₹{watch['mrp']:,}){offer_line}\n"
+                    f"🎯 *Target:* {target_str} (Target Met!)\n"
                     f"🛒 *ORDER INSTANTLY:* {target_url}\n"
                     "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
                     "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock at target price!*"
@@ -433,8 +469,8 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                         product_url=target_url,
                         title=f"{watch['name']} (VIP DEAL MET)",
                         price=deal_price,
-                        effective_price=deal_price,
-                        discount_percent=round((1 - deal_price / watch["mrp"]) * 100, 1),
+                        effective_price=eff_price or deal_price,
+                        discount_percent=round((1 - (eff_price or deal_price) / watch["mrp"]) * 100, 1),
                         platform=platform,
                     )
                 except Exception as db_err:

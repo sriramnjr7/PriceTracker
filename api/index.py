@@ -482,7 +482,7 @@ async def check_single_product(product_id: int):
         tracker = Tracker(db, notifier, settings)
         if result.price is not None:
             should_notify, drop_percent = tracker._should_notify(
-                product, product.current_price, result.price
+                product, product.current_price, result.price, effective_price=getattr(result, "effective_price", None)
             )
             if should_notify:
                 target_text = tracker._target_text(product)

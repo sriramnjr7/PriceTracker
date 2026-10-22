@@ -401,7 +401,21 @@ async def test_probe_vip_watches_respects_db_is_active():
     mock_tracker.db.update_price = AsyncMock()
     mock_tracker.db.log_deal_alert = AsyncMock()
 
-    with patch("run_247_radar.ship_vip_log_to_supabase", new_callable=AsyncMock):
+    dummy_vip = [
+        {
+            "id": 111,
+            "name": "CASIO G-SHOCK GBD-300-1DR",
+            "url": "https://www.flipkart.com/casio-gbd-300-1dr-g-shock-digital-watch-men/p/itmd46dfdac5b669?pid=WATH6HSUVHVMZVPW",
+            "target_price": 13000.0,
+            "default_price": 11725.0,
+            "mrp": 12995,
+            "tag": "gbd-300-1dr",
+            "platform": "flipkart",
+            "is_active": False,
+        }
+    ]
+    with patch("run_247_radar.ship_vip_log_to_supabase", new_callable=AsyncMock), \
+         patch("run_247_radar.VIP_WATCHES", dummy_vip):
         # Even if VIP_WATCHES watch would have been probed, probe_vip_watches skips paused DB items
         sent = await probe_vip_watches(mock_tracker)
         # Should not alert for paused watch
