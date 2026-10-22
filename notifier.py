@@ -67,7 +67,7 @@ class Notifier:
             logger.warning("URL shortening failed, using original link: %s", exc)
         return url
 
-    async def send_telegram(self, text: str) -> bool:
+    async def send_telegram(self, text: str, reply_markup: Optional[dict] = None) -> bool:
         """Dispatch instant alert via Telegram Bot API with plain text fallback."""
         token = self.config.telegram_bot_token
         chat_id = self.config.telegram_chat_id
@@ -81,6 +81,8 @@ class Notifier:
             "parse_mode": "Markdown",
             "disable_web_page_preview": False,
         }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 resp = await client.post(url, json=payload)
@@ -121,9 +123,9 @@ class Notifier:
             logger.error("CallMeBot unreachable: %s", exc)
         return False
 
-    async def send_message(self, text: str) -> bool:
+    async def send_message(self, text: str, reply_markup: Optional[dict] = None) -> bool:
         """Multi-channel message dispatch. Sends to Telegram, WhatsApp, or logs to terminal."""
-        sent_tg = await self.send_telegram(text)
+        sent_tg = await self.send_telegram(text, reply_markup=reply_markup)
         sent_wa = await self.send_whatsapp(text)
         return sent_tg or sent_wa
 
@@ -151,4 +153,12 @@ class Notifier:
             buy_url=buy_url,
             is_restock=is_restock,
         )
-        return await self.send_message(message)
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {"text": "⏸️ Pause Alert", "callback_data": f"pause:{product.id}"},
+                    {"text": "🛒 Buy Now", "url": buy_url},
+                ]
+            ]
+        }
+        return await self.send_message(message, reply_markup=reply_markup)

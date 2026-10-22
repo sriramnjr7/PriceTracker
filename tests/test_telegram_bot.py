@@ -16,6 +16,7 @@ def mock_db():
     db.get_products = AsyncMock(return_value=[])
     db.get_product_by_url = AsyncMock(return_value=None)
     db.remove_product = AsyncMock()
+    db.set_active = AsyncMock()
     db.add_custom_rule = AsyncMock(return_value=99)
     return db
 
@@ -273,5 +274,138 @@ def test_telegram_webhook_deduplication():
     assert _record_and_check_duplicate(1001) is False
     assert _record_and_check_duplicate(1001) is True
     assert _record_and_check_duplicate(1002) is False
+
+
+@pytest.mark.asyncio
+async def test_handle_message_pause_and_unpause_by_id(bot, mock_db):
+    """Verify /pause <id> and /unpause <id> toggle product active state in DB."""
+    mock_db.get_products.return_value = [
+        Product(
+            id=111,
+            url="https://flipkart.com/casio-gbd-300-1dr",
+            platform="flipkart",
+            title="CASIO G-SHOCK GBD-300-1DR",
+            initial_price=11725.0,
+            current_price=11725.0,
+            target_price=13000.0,
+            percentage_drop_target=None,
+            last_checked=None,
+            is_active=True,
+            last_notified_price=None,
+        )
+    ]
+
+    # 1. /pause 111
+    await bot.handle_message({"chat": {"id": 123}, "text": "/pause 111"})
+    mock_db.set_active.assert_called_with(111, False)
+    assert any("Paused" in call[0][1] for call in bot.send_reply.call_args_list)
+
+    # 2. /unpause 111
+    await bot.handle_message({"chat": {"id": 123}, "text": "/unpause 111"})
+    mock_db.set_active.assert_called_with(111, True)
+    assert any("Resumed" in call[0][1] for call in bot.send_reply.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_handle_message_pause_by_query_string(bot, mock_db):
+    """Verify /pause <query> matches by product title or URL substring."""
+    mock_db.get_products.return_value = [
+        Product(
+            id=111,
+            url="https://flipkart.com/casio-gbd-300-1dr",
+            platform="flipkart",
+            title="CASIO G-SHOCK GBD-300-1DR",
+            initial_price=11725.0,
+            current_price=11725.0,
+            target_price=13000.0,
+            percentage_drop_target=None,
+            last_checked=None,
+            is_active=True,
+            last_notified_price=None,
+        )
+    ]
+    await bot.handle_message({"chat": {"id": 123}, "text": "/pause gbd-300"})
+    mock_db.set_active.assert_called_with(111, False)
+
+
+@pytest.mark.asyncio
+async def test_handle_callback_query_pause_unpause(bot, mock_db):
+    """Verify inline button callback query toggles product active status and edits markup."""
+    bot.answer_callback_query = AsyncMock(return_value=True)
+    bot.edit_message_reply_markup = AsyncMock(return_value=True)
+    mock_db.get_products.return_value = [
+        Product(
+            id=111,
+            url="https://flipkart.com/casio-gbd-300-1dr",
+            platform="flipkart",
+            title="CASIO G-SHOCK GBD-300-1DR",
+            initial_price=11725.0,
+            current_price=11725.0,
+            target_price=13000.0,
+            percentage_drop_target=None,
+            last_checked=None,
+            is_active=True,
+            last_notified_price=None,
+        )
+    ]
+
+    # User clicks [⏸️ Pause Alerts]
+    cb_pause = {
+        "id": "cb_123",
+        "data": "pause:111",
+        "message": {"message_id": 999, "chat": {"id": 123}},
+    }
+    await bot.handle_callback_query(cb_pause)
+    mock_db.set_active.assert_called_with(111, False)
+    bot.answer_callback_query.assert_called_with("cb_123", "⏸️ Paused alerts for #111!")
+    bot.edit_message_reply_markup.assert_called()
+
+    # User clicks [▶️ Resume Alerts]
+    cb_resume = {
+        "id": "cb_456",
+        "data": "unpause:111",
+        "message": {"message_id": 999, "chat": {"id": 123}},
+    }
+    await bot.handle_callback_query(cb_resume)
+    mock_db.set_active.assert_called_with(111, True)
+    bot.answer_callback_query.assert_called_with("cb_456", "▶️ Resumed alerts for #111!")
+
+
+@pytest.mark.asyncio
+async def test_probe_vip_watches_respects_db_is_active():
+    """Verify probe_vip_watches suppresses alerts when product is paused in DB."""
+    from run_247_radar import probe_vip_watches
+
+    mock_tracker = MagicMock()
+    mock_tracker.config = Settings()
+    mock_tracker.notifier = MagicMock()
+    mock_tracker.notifier.send_telegram = AsyncMock(return_value=True)
+    mock_tracker.db = MagicMock()
+
+    # Product 111 is PAUSED in DB
+    mock_tracker.db.get_products = AsyncMock(return_value=[
+        Product(
+            id=111,
+            url="https://www.flipkart.com/casio-gbd-300-1dr-g-shock-digital-watch-men/p/itmd46dfdac5b669?pid=WATH6HSUVHVMZVPW",
+            platform="flipkart",
+            title="CASIO G-SHOCK GBD-300-1DR",
+            initial_price=11725.0,
+            current_price=11725.0,
+            target_price=13000.0,
+            percentage_drop_target=None,
+            last_checked=None,
+            is_active=False,
+            last_notified_price=None,
+        )
+    ])
+    mock_tracker.db.update_price = AsyncMock()
+    mock_tracker.db.log_deal_alert = AsyncMock()
+
+    with patch("run_247_radar.ship_vip_log_to_supabase", new_callable=AsyncMock):
+        # Even if VIP_WATCHES watch would have been probed, probe_vip_watches skips paused DB items
+        sent = await probe_vip_watches(mock_tracker)
+        # Should not alert for paused watch
+        assert sent == 0
+
 
 

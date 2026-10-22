@@ -72,6 +72,42 @@ class TelegramAssistant:
             logger.error("Error sending Telegram reply: %s", e)
             return False
 
+    async def answer_callback_query(self, callback_query_id: str, text: str, show_alert: bool = False) -> bool:
+        """Acknowledge a Telegram callback query with toast or alert pop-up."""
+        if not self.token or not callback_query_id:
+            return False
+        url = f"https://api.telegram.org/bot{self.token}/answerCallbackQuery"
+        payload = {
+            "callback_query_id": callback_query_id,
+            "text": text,
+            "show_alert": show_alert,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(url, json=payload)
+            return r.status_code == 200
+        except Exception as e:
+            logger.debug("Error answering callback query: %s", e)
+            return False
+
+    async def edit_message_reply_markup(self, chat_id: str | int, message_id: int, reply_markup: dict) -> bool:
+        """Update inline keyboard buttons on an existing message."""
+        if not self.token or not chat_id or not message_id:
+            return False
+        url = f"https://api.telegram.org/bot{self.token}/editMessageReplyMarkup"
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reply_markup": reply_markup,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(url, json=payload)
+            return r.status_code == 200
+        except Exception as e:
+            logger.debug("Error editing message reply markup: %s", e)
+            return False
+
     async def handle_url_tracking(self, chat_id: str | int, url: str, target_price: Optional[float]) -> None:
         """Handle direct product URL tracking with canonical normalization."""
         platform, resolved_url = await resolve_platform_and_url(url)
@@ -315,20 +351,23 @@ class TelegramAssistant:
         )
 
     async def handle_command_list(self, chat_id: str | int) -> None:
-        """List all active tracked products."""
-        prods = await self.db.get_products(active_only=True)
+        """List tracked products with active/paused status."""
+        prods = await self.db.get_products(active_only=False)
         if not prods:
             await self.send_reply(chat_id, "📭 No custom products currently tracked.\n\nSend a link or type e.g. `track if iphone 15 comes under 50k` to start tracking!")
             return
 
-        lines = ["📋 *Currently Tracked Products:*\n"]
+        lines = ["📋 *Tracked Products & Radar Status:*\n"]
         for p in prods:
+            status_tag = "🟢 Active" if p.is_active else "⏸️ Paused"
+            price_val = f"₹{p.current_price:g}" if p.current_price is not None else "Out of Stock"
+            target_val = f"₹{p.target_price:g}" if p.target_price else "Restock"
             lines.append(
-                f"• *[#{p.id}]* {p.title[:35]}\n"
-                f"  💰 Current: ₹{p.current_price:g} ➡️ Target: *₹{p.target_price:g}*\n"
+                f"• *[#{p.id}]* ({status_tag}) {p.title[:35]}\n"
+                f"  💰 Current: {price_val} ➡️ Target: *{target_val}*\n"
                 f"  🔗 [Open on {p.platform.title()}]({p.url})\n"
             )
-        lines.append("\n_To remove any item, send /remove <ID> (e.g. /remove 1)_")
+        lines.append("\n_Commands:_ `/pause <ID>` | `/unpause <ID>` | `/remove <ID>`")
         await self.send_reply(chat_id, "\n".join(lines))
 
     async def handle_command_remove(self, chat_id: str | int, text: str) -> None:
@@ -340,6 +379,105 @@ class TelegramAssistant:
         pid = int(match.group(1))
         await self.db.remove_product(pid)
         await self.send_reply(chat_id, f"🗑️ Tracked product #{pid} has been removed.")
+
+    async def handle_command_toggle_active(self, chat_id: str | int, query_or_id: str, active: bool) -> None:
+        """Pause or unpause tracking for a product by ID or keyword."""
+        products = await self.db.get_products(active_only=False)
+        target_prod = None
+
+        # 1. Match by numeric ID
+        if query_or_id.isdigit():
+            pid = int(query_or_id)
+            target_prod = next((p for p in products if p.id == pid), None)
+
+        # 2. Match by substring in URL or Title
+        if not target_prod:
+            q_lower = query_or_id.lower()
+            target_prod = next(
+                (p for p in products if q_lower in (p.title or "").lower() or q_lower in (p.url or "").lower()),
+                None,
+            )
+
+        if not target_prod:
+            await self.send_reply(
+                chat_id,
+                f"⚠️ Could not find a product matching `{query_or_id}`.\n\nSend `/list` to view all product IDs.",
+            )
+            return
+
+        await self.db.set_active(target_prod.id, active)
+        act_verb = "resumed" if active else "paused"
+        act_icon = "▶️" if active else "⏸️"
+        hint = (
+            f"Send `/unpause {target_prod.id}` anytime to reactivate."
+            if not active
+            else "Radar is actively monitoring this item 24/7."
+        )
+        await self.send_reply(
+            chat_id,
+            f"{act_icon} *Tracking {act_verb.title()}!*\n\n"
+            f"🆔 *ID:* #{target_prod.id}\n"
+            f"📦 *Product:* {target_prod.title}\n"
+            f"🏪 *Platform:* {target_prod.platform.title()}\n\n"
+            f"{hint}",
+        )
+
+    async def handle_callback_query(self, callback_query: dict[str, Any]) -> None:
+        """Handle inline keyboard button clicks (e.g. pause/resume tracking)."""
+        cb_id = callback_query.get("id")
+        data = callback_query.get("data", "")
+        message = callback_query.get("message", {})
+        chat_id = message.get("chat", {}).get("id") or self.chat_id
+        message_id = message.get("message_id")
+
+        if not data:
+            if cb_id:
+                await self.answer_callback_query(cb_id, "No action.")
+            return
+
+        if data.startswith("pause:") or data.startswith("unpause:"):
+            action, pid_str = data.split(":", 1)
+            try:
+                pid = int(pid_str)
+            except ValueError:
+                if cb_id:
+                    await self.answer_callback_query(cb_id, "Invalid product ID")
+                return
+
+            is_active = (action == "unpause")
+            await self.db.set_active(pid, is_active)
+
+            # Query product info for rich feedback
+            product = None
+            try:
+                products = await self.db.get_products(active_only=False)
+                product = next((p for p in products if p.id == pid), None)
+            except Exception:
+                pass
+
+            title = product.title[:35] if (product and product.title) else f"Product #{pid}"
+            toast_text = f"▶️ Resumed alerts for #{pid}!" if is_active else f"⏸️ Paused alerts for #{pid}!"
+            if cb_id:
+                await self.answer_callback_query(cb_id, toast_text)
+
+            # Switch button between Pause and Resume
+            if chat_id and message_id:
+                new_action = "pause" if is_active else "unpause"
+                new_btn_text = "⏸️ Pause Alerts" if is_active else "▶️ Resume Alerts"
+                buy_url = product.url if (product and product.url) else None
+                row = [{"text": new_btn_text, "callback_data": f"{new_action}:{pid}"}]
+                if buy_url:
+                    row.append({"text": "🛒 Open Store", "url": buy_url})
+                new_markup = {"inline_keyboard": [row]}
+                await self.edit_message_reply_markup(chat_id, message_id, new_markup)
+
+                # Send brief confirmation message
+                status_desc = (
+                    f"▶️ *Alerts Resumed for [#{pid}] {title}*\nRadar is actively monitoring this product."
+                    if is_active
+                    else f"⏸️ *Alerts Paused for [#{pid}] {title}*\nYou will not receive notifications for this item. Use `/unpause {pid}` or click *Resume Alerts* anytime to re-enable."
+                )
+                await self.send_reply(chat_id, status_desc)
 
     async def handle_message(self, message: dict[str, Any]) -> None:
         """Dispatch incoming Telegram message to appropriate handler."""
@@ -363,7 +501,9 @@ class TelegramAssistant:
                 "   • `alert me when Sony XM5 headphones drop below 20000`\n"
                 "   • `track Samsung S24 Ultra under 90k`\n\n"
                 "⚡ *Commands:*\n"
-                "• `/list` : View all tracked products\n"
+                "• `/list` : View all tracked products & active/paused status\n"
+                "• `/pause <id>` : Pause alerts for a product (e.g. `/pause 111` or `/pause casio`)\n"
+                "• `/unpause <id>` : Resume alerts for a product\n"
                 "• `/remove <id>` : Stop tracking a product\n"
                 "• `/status` : Check 24/7 radar health\n"
             )
@@ -374,12 +514,30 @@ class TelegramAssistant:
             await self.handle_command_list(chat_id)
             return
 
-        # 3. /remove
+        # 3. /pause
+        if text.startswith("/pause"):
+            arg = re.sub(r"^/pause\s*", "", text, flags=re.I).strip()
+            if not arg:
+                await self.send_reply(chat_id, "⚠️ Usage: `/pause <id or query>` (e.g. `/pause 111` or `/pause casio`)")
+                return
+            await self.handle_command_toggle_active(chat_id, arg, active=False)
+            return
+
+        # 4. /unpause or /resume
+        if text.startswith(("/unpause", "/resume")):
+            arg = re.sub(r"^/(?:unpause|resume)\s*", "", text, flags=re.I).strip()
+            if not arg:
+                await self.send_reply(chat_id, "⚠️ Usage: `/unpause <id or query>` (e.g. `/unpause 111` or `/unpause casio`)")
+                return
+            await self.handle_command_toggle_active(chat_id, arg, active=True)
+            return
+
+        # 5. /remove
         if text.startswith("/remove"):
             await self.handle_command_remove(chat_id, text)
             return
 
-        # 4. /status, /ping, /heartbeat
+        # 6. /status, /ping, /heartbeat
         if text.startswith(("/status", "/ping", "/heartbeat")):
             prods = await self.db.get_products(active_only=True)
             from heartbeat import build_heartbeat_message
@@ -389,7 +547,7 @@ class TelegramAssistant:
             return
 
 
-        # 5. Direct URL check
+        # 7. Direct URL check
         url_match = re.search(r"(https?://[^\s]+)", text)
         if url_match:
             raw_url = url_match.group(1).rstrip("),.]\"'")
@@ -411,7 +569,7 @@ class TelegramAssistant:
             await self.handle_url_tracking(chat_id, raw_url, target_price)
             return
 
-        # 6. Natural language tracking request
+        # 8. Natural language tracking request
         await self.handle_natural_language_tracking(chat_id, text)
 
     async def listen_loop(self) -> None:
@@ -434,7 +592,15 @@ class TelegramAssistant:
                         updates = data.get("result", [])
                         for update in updates:
                             self.offset = update["update_id"] + 1
-                            if "message" in update:
+                            if "callback_query" in update:
+                                async def _safe_dispatch_cb(cb):
+                                    try:
+                                        await self.handle_callback_query(cb)
+                                    except Exception as e:
+                                        logger.error("Error processing Telegram callback query: %s", e)
+
+                                asyncio.create_task(_safe_dispatch_cb(update["callback_query"]))
+                            elif "message" in update:
                                 async def _safe_dispatch(msg):
                                     try:
                                         await self.handle_message(msg)

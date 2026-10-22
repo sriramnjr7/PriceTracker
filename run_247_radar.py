@@ -229,7 +229,7 @@ VIP_WATCHES = [
         "mrp": 11495,
         "tag": "gbd-300-9dr",
         "platform": "casio",
-        "is_active": False,
+        "is_active": True,
     },
 ]
 
@@ -285,8 +285,21 @@ async def probe_vip_watches(tracker: Tracker) -> int:
 
     alerts_sent = 0
 
+    # Fetch DB product states for dynamic runtime pause/unpause toggles
+    db_products = []
+    try:
+        db_products = await tracker.db.get_products(active_only=False)
+    except Exception as exc:
+        logger.debug("[VIP Sniper] DB get_products error: %s", exc)
+
     for idx, watch in enumerate(VIP_WATCHES):
-        if not watch.get("is_active", True):
+        # Dynamically check DB is_active state so user pause/unpause toggles take effect immediately!
+        db_prod = next(
+            (p for p in db_products if p.id == watch.get("id") or watch.get("tag") in (p.url or "").lower()),
+            None,
+        )
+        is_active = db_prod.is_active if db_prod is not None else watch.get("is_active", True)
+        if not is_active:
             continue
         if idx > 0:
             await asyncio.sleep(1.2)
@@ -404,7 +417,15 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                     "⚡ *Caught via 60-Second Priority VIP Sniper*\n"
                     "⚠️ *Zero-dedupe mode: Alerting every 60s while in stock at target price!*"
                 )
-                await tracker.notifier.send_telegram(alert_msg)
+                reply_markup = {
+                    "inline_keyboard": [
+                        [
+                            {"text": "⏸️ Pause Alerts", "callback_data": f"pause:{watch.get('id', 111)}"},
+                            {"text": "🛒 ORDER INSTANTLY", "url": target_url},
+                        ]
+                    ]
+                }
+                await tracker.notifier.send_telegram(alert_msg, reply_markup=reply_markup)
                 alerts_sent += 1
 
                 try:

@@ -1079,9 +1079,23 @@ async def telegram_webhook(request: Request):
         logger.info("Ignoring duplicate Telegram update_id %s", update_id)
         return {"ok": True, "note": "duplicate update skipped"}
 
+    callback_query = update.get("callback_query")
+    if callback_query:
+        logger.info("Received Telegram callback_query (update_id=%s): %s", update_id, callback_query.get("data"))
+        db = get_database(settings)
+        await db.initialize()
+        assistant = TelegramAssistant(settings, db=db)
+        try:
+            await asyncio.wait_for(assistant.handle_callback_query(callback_query), timeout=12.0)
+        except asyncio.TimeoutError:
+            logger.warning("Telegram webhook callback_query timed out after 12.0s for update_id %s", update_id)
+        except Exception as exc:
+            logger.error("Error processing Telegram callback_query: %s", exc)
+        return {"ok": True, "note": "callback_query processed"}
+
     message = update.get("message")
     if not message:
-        return {"ok": True, "note": "No message field in update"}
+        return {"ok": True, "note": "No message or callback_query field in update"}
 
     logger.info("Received Telegram message (update_id=%s): %s", update_id, message.get("text", "")[:40])
 

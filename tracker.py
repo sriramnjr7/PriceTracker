@@ -207,7 +207,15 @@ class Tracker:
                 f"🛒 *ORDER INSTANTLY:* {product.url}\n"
                 "⚡ *Dispatched via Priority VIP Deal Sniper*"
             )
-            if await self.notifier.send_telegram(vip_msg):
+            reply_markup = {
+                "inline_keyboard": [
+                    [
+                        {"text": "⏸️ Pause Alerts", "callback_data": f"pause:{product.id}"},
+                        {"text": "🛒 ORDER INSTANTLY", "url": product.url},
+                    ]
+                ]
+            }
+            if await self.notifier.send_telegram(vip_msg, reply_markup=reply_markup):
                 await self.db.set_last_notified(product.id, result.price)
                 await self.db.log_deal_alert(
                     product_url=product.url,
