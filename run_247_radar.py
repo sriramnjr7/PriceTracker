@@ -207,6 +207,7 @@ VIP_WATCHES = [
         "mrp": 12995,
         "tag": "gbd-300-1dr",
         "platform": "flipkart",
+        "is_active": False,
     },
     {
         "id": 58,
@@ -217,6 +218,7 @@ VIP_WATCHES = [
         "mrp": 44995,
         "tag": "gbd-h2000",
         "platform": "casio",
+        "is_active": True,
     },
     {
         "id": 5,
@@ -227,6 +229,7 @@ VIP_WATCHES = [
         "mrp": 11495,
         "tag": "gbd-300-9dr",
         "platform": "casio",
+        "is_active": False,
     },
 ]
 
@@ -283,6 +286,8 @@ async def probe_vip_watches(tracker: Tracker) -> int:
     alerts_sent = 0
 
     for idx, watch in enumerate(VIP_WATCHES):
+        if not watch.get("is_active", True):
+            continue
         if idx > 0:
             await asyncio.sleep(1.2)
 
@@ -428,7 +433,8 @@ async def vip_casio_sniper_loop(tracker: Tracker, interval_seconds: int = 60):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         await probe_vip_watches(tracker)
         if cycle % 10 == 1 or cycle <= 3:
-            print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] GBD-300-1DR (Flipkart), GBD-H2000 & GBD-300-9DR probed. All 1-min priority guards live.")
+            active_vip_names = [w["name"] for w in VIP_WATCHES if w.get("is_active", True)]
+            print(f"[{now_str}] 🎯 [VIP Sniper #{cycle}] Probing active VIP guards: {', '.join(active_vip_names) if active_vip_names else 'None'}.")
         await asyncio.sleep(interval_seconds)
 
 
@@ -538,7 +544,8 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
             while not stop_event.is_set():
                 pass_num += 1
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                print(f"[{now_str}] 🎯 [Cloud Runner VIP Sniper Pass #{pass_num}] Probing GBD-300-1DR (Flipkart), GBD-H2000 & GBD-300-9DR...")
+                active_vip_names = [w["name"] for w in VIP_WATCHES if w.get("is_active", True)]
+                print(f"[{now_str}] 🎯 [Cloud Runner VIP Sniper Pass #{pass_num}] Probing active VIP guards: {', '.join(active_vip_names) if active_vip_names else 'None'}...")
                 try:
                     v_alerts = await probe_vip_watches(tracker)
                     vip_alerts_total += v_alerts
