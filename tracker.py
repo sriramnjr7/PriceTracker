@@ -705,7 +705,7 @@ class Tracker:
         elif product.target_price is None and product.percentage_drop_target is None:
             # If no price threshold is configured, any in-stock observation is an alert trigger
             triggered = True
-        elif product.target_price is not None and (new_price <= product.target_price or (effective_price is not None and effective_price <= product.target_price)):
+        elif product.target_price is not None and new_price <= product.target_price:
             triggered = True
         elif (
             product.percentage_drop_target is not None
@@ -722,7 +722,7 @@ class Tracker:
 
         # 2. Recovery from non-deal price: If price was previously above target (regular price),
         # this is a fresh drop back into target range, not a bounce within the deal.
-        if product.target_price is not None and old_price > product.target_price:
+        if product.target_price is not None and old_price > product.target_price and new_price < old_price:
             return True, drop_percent
 
         # VIP items bypass anti-spam deduplication completely (alert repeatedly while in stock as requested):
@@ -730,7 +730,11 @@ class Tracker:
         if any(k in url_lower for k in ("gbd-h2000", "gbd-300", "gbd-200", "rare-rabbit")):
             return True, drop_percent
 
-        # 3. Anti-spam: don't re-alert at the same or a higher price within the same deal window.
+        # 3. For regular items, a price drop alert requires an actual price decrease
+        if old_price is not None and new_price >= old_price:
+            return False, drop_percent
+
+        # 4. Anti-spam: don't re-alert at the same or a higher price within the same deal window.
         last_notified = product.last_notified_price
         if last_notified is not None and new_price >= last_notified:
             return False, drop_percent

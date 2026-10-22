@@ -35,10 +35,13 @@ def build_message(
         header = "🚨 *BACK IN STOCK / STEAL DEAL ALERT!* 🚨"
         old_part = f" (Previous: {_fmt_price(old_price)})" if old_price else ""
         price_line = f"💰 *In-Stock Deal Price:* {_fmt_price(new_price)}{old_part}\n"
-    else:
+    elif old_price is not None and new_price is not None and new_price < old_price:
         header = "🚨 *PRICE DROP ALERT!* 🚨"
         drop_line = f"({drop_percent:.0f}% OFF!)" if drop_percent else ""
         price_line = f"📉 *Old Price:* {_fmt_price(old_price)} ➡️ *New Price:* {_fmt_price(new_price)} {drop_line}\n"
+    else:
+        header = "🎯 *TARGET PRICE REACHED!* 🎯"
+        price_line = f"💰 *Current Deal Price:* {_fmt_price(new_price)}\n"
 
     return (
         f"{header}\n"

@@ -86,6 +86,7 @@ class FlipkartScraper(BaseScraper):
 
         offers: list[str] = []
         max_discount = 0.0
+        max_allowed_discount = min(base_price * 0.35, 3000.0)
 
         # 1. Parse window.__INITIAL_STATE__ for bank offers and promo discounts
         for script in soup.find_all("script"):
@@ -101,7 +102,7 @@ class FlipkartScraper(BaseScraper):
                         m_fixed = re.search(r"(?:₹|rs\.?)\s*([0-9,]+)\s+off", val, re.I)
                         if m_fixed:
                             d = float(m_fixed.group(1).replace(",", ""))
-                            if d < base_price:
+                            if d <= max_allowed_discount:
                                 max_discount = max(max_discount, d)
 
                         # Match percentage discount: e.g. "10% off ... max ₹1,500"
@@ -113,17 +114,33 @@ class FlipkartScraper(BaseScraper):
                             if m_cap:
                                 cap = float(m_cap.group(1).replace(",", ""))
                                 calc = min(calc, cap)
-                            if calc < base_price:
+                            if calc <= max_allowed_discount:
                                 max_discount = max(max_discount, calc)
 
-        # 2. Match direct effective price callouts e.g. "₹11,725 with Bank offer" or "₹6,881 with Bank offer"
-        for m in re.finditer(r"₹\s*([0-9,]+(?:\.[0-9]+)?)\s+with\s+(?:bank\s+offer|offer)", html, re.I):
-            eff = float(m.group(1).replace(",", ""))
-            if 0 < eff < base_price:
-                diff = base_price - eff
-                max_discount = max(max_discount, diff)
+        # 2. Match direct effective price callouts ONLY within primary buybox / price container
+        # (Must never scan full page HTML to prevent matching carousel / recommendation products)
+        primary_box = (
+            soup.find("div", class_=re.compile(r"hl05eU|Nx9bqj|x-offer-summary|_16Jk6d"))
+            or soup.find("h1")
+        )
+        if primary_box:
+            parent = primary_box.parent or primary_box
+            search_scope = parent.get_text()[:1500]
+        elif len(html) < 2000:
+            search_scope = html
+        else:
+            search_scope = ""
 
-        effective_price = round(base_price - max_discount, 2) if max_discount > 0 else None
+        if search_scope:
+            for m in re.finditer(r"₹\s*([0-9,]+(?:\.[0-9]+)?)\s+with\s+(?:bank\s+offer|offer)", search_scope, re.I):
+                eff = float(m.group(1).replace(",", ""))
+                if 0 < eff < base_price:
+                    diff = base_price - eff
+                    if diff <= max_allowed_discount:
+                        max_discount = max(max_discount, diff)
+
+        # Final sanity guard: effective price must never be anomalous
+        effective_price = round(base_price - max_discount, 2) if 0 < max_discount <= max_allowed_discount else None
         return effective_price, offers
 
     def _extract_title(self, soup: BeautifulSoup) -> str:

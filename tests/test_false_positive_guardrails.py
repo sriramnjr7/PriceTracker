@@ -180,3 +180,78 @@ async def test_tracker_anomaly_drop_confirmation_gate():
     # Should NOT have alerted because re-probe corrected the price back to 1599.0
     assert notified is False
     mock_notifier.notify.assert_not_called()
+
+
+def test_puma_palermo_carousel_offer_rejected():
+    """Verify carousel items e.g. '₹1,975 with Bank offer' at bottom of page are rejected."""
+    html = """
+    <html>
+      <body>
+        <div class="hl05eU">
+          <div class="Nx9bqj CxhGGd">₹6,299</div>
+        </div>
+        <!-- Carousel with another shoe -->
+        <div class="carousel-container">
+          <div>Similar Products</div>
+          <div>₹1,975 with Bank offer</div>
+        </div>
+      </body>
+    </html>
+    """
+    scraper = FlipkartScraper()
+    eff_price, offers = scraper._extract_offers_and_effective_price(html, base_price=6299.0)
+    # Carousel item ₹1,975 with Bank offer must be rejected (sanity cap max 35%/3000 off)
+    assert eff_price is None or eff_price > 2000.0
+
+
+def test_zero_drop_suppression_for_in_stock_products():
+    """When old_price == new_price for in-stock products above target, alert must NOT be sent."""
+    p_puma = Product(
+        id=95,
+        url="https://www.flipkart.com/puma-palermo/p/123",
+        platform="flipkart",
+        title="PUMA Palermo Lth Res Sneakers For Men",
+        initial_price=6999.0,
+        current_price=6299.0,
+        target_price=2000.0,
+        percentage_drop_target=None,
+        last_checked=None,
+        is_active=True,
+        last_notified_price=None,
+    )
+    should, _ = Tracker._should_notify(p_puma, old_price=6299.0, new_price=6299.0, effective_price=5599.0)
+    assert should is False
+
+    p_jbl = Product(
+        id=70,
+        url="https://www.flipkart.com/jbl-tune-770nc/p/123",
+        platform="flipkart",
+        title="JBL Tune 770NC Active Noise Cancelling",
+        initial_price=5999.0,
+        current_price=4949.0,
+        target_price=4000.0,
+        percentage_drop_target=None,
+        last_checked=None,
+        is_active=True,
+        last_notified_price=None,
+    )
+    should_jbl, _ = Tracker._should_notify(p_jbl, old_price=4949.0, new_price=4949.0, effective_price=4399.0)
+    assert should_jbl is False
+
+
+def test_notifier_does_not_format_zero_drop_as_price_drop_alert():
+    """build_message must not say 'PRICE DROP ALERT' or 'Old Price: X ➡️ New Price: X' when prices are identical."""
+    from notifier import build_message
+    msg = build_message(
+        title="PUMA Palermo",
+        old_price=6299.0,
+        new_price=6299.0,
+        drop_percent=0.0,
+        target_text="₹2,000",
+        buy_url="https://flipkart.com/puma",
+        is_restock=False,
+    )
+    assert "PRICE DROP ALERT" not in msg
+    assert "Old Price: ₹6299 ➡️ New Price: ₹6299" not in msg
+    assert "TARGET PRICE REACHED" in msg
+
