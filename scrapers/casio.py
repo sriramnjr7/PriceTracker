@@ -449,7 +449,7 @@ class CasioScraper(BaseScraper):
         async with httpx.AsyncClient(timeout=20) as client:
             # 1. Sweep dedicated discount and clearance hubs first
             auth_client = await self._get_authenticated_client()
-            sem = asyncio.Semaphore(4)
+            sem = asyncio.Semaphore(2)
 
             # Dedicated silent-sale hubs where discounts require customer session verification
             silent_hubs = [
@@ -491,10 +491,18 @@ class CasioScraper(BaseScraper):
                                 "is_silent_sale": False,
                             }
 
-                # 2. Verify against authenticated storefront for member/silent sale pricing
+                # 2. Only probe authenticated storefront HTML if product explicitly has silent-sale/member tags
+                tags_str = " ".join(str(t).lower() for t in tags)
+                is_silent_candidate = (
+                    any(k in tags_str for k in ("silent", "cobr", "secret", "member"))
+                    or "silent" in p.get("title", "").lower()
+                )
+                if not is_silent_candidate:
+                    return None
+
                 async with sem:
                     try:
-                        await asyncio.sleep(0.15)
+                        await asyncio.sleep(0.5)
                         resp = await self._safe_get(auth_client, product_url)
                         if resp and resp.status_code == 200:
                             soup = BeautifulSoup(resp.text, "html.parser")
@@ -579,9 +587,11 @@ class CasioScraper(BaseScraper):
                             if product_url in deals_map:
                                 continue
                             tags = p.get("tags", [])
-                            # If tagged for silent sale or promotional member discounts, queue for storefront check
-                            if any(any(k in str(t).lower() for k in ("silent", "cobr", "special", "clearance", "promo", "discount")) for t in tags):
-                                silent_candidates.append(p)
+                            # If tagged specifically for silent/secret sale, queue up to 3 for storefront check
+                            tags_str = " ".join(str(t).lower() for t in tags)
+                            if any(k in tags_str for k in ("silent", "cobr", "secret", "member")):
+                                if len(silent_candidates) < 3:
+                                    silent_candidates.append(p)
                                 continue
 
                             fam, title = self._classify_casio_watch(p.get("title", ""), tags, handle)
@@ -633,8 +643,10 @@ class CasioScraper(BaseScraper):
                         if product_url in deals_map:
                             continue
                         tags = p.get("tags", [])
-                        if any(any(k in str(t).lower() for k in ("silent", "cobr", "special", "clearance", "promo", "discount")) for t in tags):
-                            silent_candidates.append(p)
+                        tags_str = " ".join(str(t).lower() for t in tags)
+                        if any(k in tags_str for k in ("silent", "cobr", "secret", "member")):
+                            if len(silent_candidates) < 3:
+                                silent_candidates.append(p)
                             continue
 
                         family, formatted_title = self._classify_casio_watch(

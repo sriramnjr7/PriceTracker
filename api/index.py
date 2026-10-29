@@ -1681,7 +1681,7 @@ async def probe_vip_watches_live() -> dict[str, Any]:
                         },
                         {
                             "name": "DAEMON_LOG",
-                            "category": "CRITICAL" if in_stock else "INFO",
+                            "category": "CRITICAL" if (in_stock and deal_price <= w.get("target_price", 0)) else "INFO",
                             "platforms": "vip.sniper",
                             "query": f"[VIP WATCH] {w['name']} -> {status_str} (Target: ₹{w['target_price']:g})",
                             "negative_keywords": f"{now_str} [INFO] vip.sniper: {w['name']} -> {status_str} (Price: ₹{deal_price:g}, Target: ₹{w['target_price']:g}, HTTP {r_status})",

@@ -341,8 +341,11 @@ async def test_probe_vip_watches_fires_alert_when_target_met():
     mock_tracker.config = Settings()
     mock_tracker.notifier = MagicMock()
     mock_tracker.notifier.send_telegram = AsyncMock(return_value=True)
-    mock_tracker.db = MagicMock()
-    mock_tracker.db.get_products = AsyncMock(return_value=[])
+    mock_prod = MagicMock()
+    mock_prod.id = 58
+    mock_prod.url = "https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch"
+    mock_prod.is_active = True
+    mock_tracker.db.get_products = AsyncMock(return_value=[mock_prod])
     mock_tracker.db.update_price = AsyncMock()
     mock_tracker.db.log_deal_alert = AsyncMock()
 

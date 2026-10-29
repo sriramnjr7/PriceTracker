@@ -219,7 +219,7 @@ VIP_WATCHES = [
         "mrp": 12995,
         "tag": "watgugjrfgggekgr",
         "platform": "flipkart",
-        "is_active": True,
+        "is_active": False,
     },
     {
         "id": 58,
@@ -230,7 +230,7 @@ VIP_WATCHES = [
         "mrp": 44995,
         "tag": "gbd-h2000",
         "platform": "casio",
-        "is_active": True,
+        "is_active": False,
     },
     {
         "id": 5,
@@ -241,7 +241,7 @@ VIP_WATCHES = [
         "mrp": 11495,
         "tag": "gbd-300-9dr",
         "platform": "casio",
-        "is_active": True,
+        "is_active": False,
     },
 ]
 
@@ -253,6 +253,10 @@ async def ship_vip_log_to_supabase(watch: dict, status_str: str, price: float, h
     if not supabase_url or not supabase_key:
         return
     now_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    is_deal = status_str == "IN_STOCK" and (
+        price <= watch.get("target_price", 0)
+        or (watch.get("offer_target_price") and price <= watch["offer_target_price"])
+    )
     payload = [
         {
             "name": "VIP_LOG",
@@ -264,7 +268,7 @@ async def ship_vip_log_to_supabase(watch: dict, status_str: str, price: float, h
         },
         {
             "name": "DAEMON_LOG",
-            "category": "CRITICAL" if status_str == "IN_STOCK" else "INFO",
+            "category": "CRITICAL" if is_deal else "INFO",
             "platforms": "vip.sniper",
             "query": f"[VIP WATCH] {watch['name']} -> {status_str} (Target: ₹{watch['target_price']:g})",
             "negative_keywords": f"{now_stamp} [INFO] vip.sniper: {watch['name']} -> {status_str} (Price: ₹{price:g}, Target: ₹{watch['target_price']:g}, HTTP {http_code})",
@@ -629,10 +633,12 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
         try:
             casio_alerts = await asyncio.wait_for(
                 radar.scan_all(only_platforms=["casio", "flipkart", "myntra"]),
-                timeout=90.0,
+                timeout=120.0,
             )
             total_alerts += casio_alerts
             print(f"[{now_str}] ✅ Deal Radar scan completed: {casio_alerts} alert(s) dispatched.")
+        except asyncio.TimeoutError:
+            logger.warning("Cloud sweep radar warning: scan timed out after 120s (will resume next cycle)")
         except Exception as e:
             logger.error("Cloud sweep radar error: %s", e)
 
