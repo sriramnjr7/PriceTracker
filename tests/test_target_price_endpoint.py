@@ -1,3 +1,4 @@
+from unittest.mock import patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 from api.index import app
@@ -17,22 +18,24 @@ async def test_update_target_price_endpoint(tmp_path):
         initial_price=2500.0,
     )
     assert prod_id is not None
+
+    with patch("api.index.get_database", return_value=db):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Update target price via PATCH /api/products/{id}
+            res = await client.patch(f"/api/products/{prod_id}", json={"target_price": 1800.0})
+            assert res.status_code == 200, res.text
+            data = res.json()
+            assert data["status"] == "success"
+            assert data["target_price"] == 1800.0
+
+            # 2. Reject <= 0 target price
+            res_bad = await client.patch(f"/api/products/{prod_id}", json={"target_price": 0})
+            assert res_bad.status_code == 400
+
+            # 3. Post route alias
+            res_post = await client.post(f"/api/products/{prod_id}/target-price", json={"target_price": 1600.0})
+            assert res_post.status_code == 200
+            assert res_post.json()["target_price"] == 1600.0
+
     await db.close()
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # 1. Update target price via PATCH /api/products/{id}
-        res = await client.patch(f"/api/products/{prod_id}", json={"target_price": 1800.0})
-        assert res.status_code == 200, res.text
-        data = res.json()
-        assert data["status"] == "success"
-        assert data["target_price"] == 1800.0
-
-        # 2. Reject <= 0 target price
-        res_bad = await client.patch(f"/api/products/{prod_id}", json={"target_price": 0})
-        assert res_bad.status_code == 400
-
-        # 3. Post route alias
-        res_post = await client.post(f"/api/products/{prod_id}/target-price", json={"target_price": 1600.0})
-        assert res_post.status_code == 200
-        assert res_post.json()["target_price"] == 1600.0

@@ -113,9 +113,16 @@ def test_collection_api_endpoints():
 
 def test_dashboard_cache_control_header():
     """Verify that /api/dashboard/data returns no-cache headers to fix UI pause toggle caching."""
-    res = client.get("/api/dashboard/data")
-    assert res.status_code == 200
-    cache_control = res.headers.get("cache-control", "")
-    assert "no-cache" in cache_control
-    assert "no-store" in cache_control
-    assert "max-age=0" in cache_control
+    from unittest.mock import AsyncMock, MagicMock, patch
+    mock_db = MagicMock()
+    mock_db.initialize = AsyncMock()
+    mock_db.close = AsyncMock()
+    mock_db.get_products = AsyncMock(return_value=[])
+    mock_db.get_recent_deal_alerts = AsyncMock(return_value=[])
+    with patch("api.index.get_database", return_value=mock_db):
+        res = client.get("/api/dashboard/data")
+        assert res.status_code == 200
+        cache_control = res.headers.get("cache-control", "")
+        assert "no-cache" in cache_control
+        assert "no-store" in cache_control
+        assert "max-age=0" in cache_control
