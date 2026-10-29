@@ -205,7 +205,7 @@ class Database:
         query = "SELECT * FROM products"
         if active_only:
             query += " WHERE is_active = 1"
-        query += " ORDER BY id"
+        query += " ORDER BY is_active DESC, id ASC"
         cursor = await self.conn.execute(query)
         return [_row_to_product(row) for row in await cursor.fetchall()]
 

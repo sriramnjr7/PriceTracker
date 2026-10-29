@@ -324,6 +324,8 @@ async def get_dashboard_data():
     await db.initialize()
     try:
         products = await db.get_products(active_only=False)
+        # Ensure sorting: Active items at the start, followed by paused items, ordered oldest to recent
+        products.sort(key=lambda p: (0 if p.is_active else 1, p.id if p.id else 0))
         recent_deals = await db.get_recent_deal_alerts(limit=25)
         active_count = sum(1 for p in products if p.is_active)
         daemon_info = get_daemon_quick_status()

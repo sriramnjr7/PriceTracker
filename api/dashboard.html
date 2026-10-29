@@ -7097,6 +7097,16 @@
         return (p.platform || "").toLowerCase().includes(currentFilter);
       });
 
+      // Sort: Active items at the start, followed by paused items, ordered oldest to recent
+      filtered.sort((a, b) => {
+        const aActive = a.is_active !== false ? 1 : 0;
+        const bActive = b.is_active !== false ? 1 : 0;
+        if (aActive !== bActive) return bActive - aActive; // Active first, paused second
+        const aDate = a.created_at ? new Date(a.created_at).getTime() : (Number(a.id) || 0);
+        const bDate = b.created_at ? new Date(b.created_at).getTime() : (Number(b.id) || 0);
+        return aDate - bDate; // Oldest to recent
+      });
+
       renderProductCards(filtered);
     }
 

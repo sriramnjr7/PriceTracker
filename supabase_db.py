@@ -154,7 +154,7 @@ class SupabaseDatabase:
         return None
 
     async def get_products(self, active_only: bool = False) -> List[Product]:
-        url = "/products?select=*&order=id.asc"
+        url = "/products?select=*&order=is_active.desc,id.asc"
         if active_only:
             url += "&is_active=eq.true"
 

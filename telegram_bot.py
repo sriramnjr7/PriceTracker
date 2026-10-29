@@ -353,6 +353,7 @@ class TelegramAssistant:
     async def handle_command_list(self, chat_id: str | int) -> None:
         """List tracked products with active/paused status."""
         prods = await self.db.get_products(active_only=False)
+        prods.sort(key=lambda p: (0 if p.is_active else 1, p.id if p.id else 0))
         if not prods:
             await self.send_reply(chat_id, "📭 No custom products currently tracked.\n\nSend a link or type e.g. `track if iphone 15 comes under 50k` to start tracking!")
             return

@@ -207,7 +207,7 @@ VIP_WATCHES = [
         "mrp": 12995,
         "tag": "gbd-300-1dr",
         "platform": "flipkart",
-        "is_active": False,
+        "is_active": True,
     },
     {
         "id": 117,
