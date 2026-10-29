@@ -2872,7 +2872,7 @@
     }
     .vip-cards-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: var(--space-4);
     }
     @media (max-width: 860px) {
@@ -4844,7 +4844,12 @@
                     </div>
                   </div>
                   <div class="vip-watch-footer">
-                    <span>Last probed: <strong id="vip-time-h2000" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-h2000" style="color:#64748B;">(HTTP 200)</span></span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <button id="vip-btn-toggle-h2000" class="btn-ui btn-ui-secondary btn-sm" onclick="toggleVipWatch('gbdh2000', 58)" style="font-size:11px; padding: 3px 8px; border-radius: 6px; cursor:pointer;" aria-label="Toggle GBD-H2000 alerts">
+                        <span id="vip-btn-icon-h2000">⏸️</span> <span id="vip-btn-text-h2000">Pause</span>
+                      </button>
+                      <span>Probed: <strong id="vip-time-h2000" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-h2000" style="color:#64748B;">(HTTP 200)</span></span>
+                    </div>
                     <a href="https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Store &rarr;</a>
                   </div>
                 </div>
@@ -4854,7 +4859,7 @@
                   <div class="vip-watch-top">
                     <div>
                       <div class="vip-watch-name">CASIO G-SHOCK GBD-300-9DR VIBRANT YELLOW</div>
-                      <span class="vip-watch-tag">TAG: gbd-300-9dr • ID #5</span>
+                      <span class="vip-watch-tag">TAG: gbd-300-9dr • CASIO BHAWAR</span>
                     </div>
                     <span class="vip-status-pill out-of-stock" id="vip-badge-300">
                       <span class="status-pulse-dot"></span>
@@ -4880,8 +4885,54 @@
                     </div>
                   </div>
                   <div class="vip-watch-footer">
-                    <span>Last probed: <strong id="vip-time-300" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-300" style="color:#64748B;">(HTTP 404)</span></span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <button id="vip-btn-toggle-300" class="btn-ui btn-ui-secondary btn-sm" onclick="toggleVipWatch('gbd300_bhawar', 5)" style="font-size:11px; padding: 3px 8px; border-radius: 6px; cursor:pointer;" aria-label="Toggle GBD-300 Bhawar alerts">
+                        <span id="vip-btn-icon-300">⏸️</span> <span id="vip-btn-text-300">Pause</span>
+                      </button>
+                      <span>Probed: <strong id="vip-time-300" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-300" style="color:#64748B;">(HTTP 404)</span></span>
+                    </div>
                     <a href="https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-9dr-watch" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Store &rarr;</a>
+                  </div>
+                </div>
+
+                <!-- Watch 3: GBD-300-1DR Flipkart VIP Restock Sniper -->
+                <div class="vip-watch-card" id="vip-card-gbd300fk">
+                  <div class="vip-watch-top">
+                    <div>
+                      <div class="vip-watch-name">CASIO G-SHOCK GBD-300-1DR (BLACK)</div>
+                      <span class="vip-watch-tag">TAG: gbd-300-1dr • FLIPKART VIP SNIPER</span>
+                    </div>
+                    <span class="vip-status-pill out-of-stock" id="vip-badge-gbd300fk">
+                      <span class="status-pulse-dot"></span>
+                      <span id="vip-status-text-gbd300fk">OUT OF STOCK</span>
+                    </span>
+                  </div>
+                  <div class="vip-metrics-row">
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Target Floor</span>
+                      <span class="vip-metric-val" style="color: var(--accent-emerald);">₹13,000</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Retail MRP</span>
+                      <span class="vip-metric-val" style="color: var(--text-muted); text-decoration: line-through;">₹12,995</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Deal Price</span>
+                      <span class="vip-metric-val" style="color: var(--accent-cyan);" id="vip-price-gbd300fk">₹11,725</span>
+                    </div>
+                    <div class="vip-metric-item">
+                      <span class="vip-metric-label">Sniper Probe</span>
+                      <span class="vip-metric-val" style="color: var(--accent-amber);">Every 60s</span>
+                    </div>
+                  </div>
+                  <div class="vip-watch-footer">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <button id="vip-btn-toggle-gbd300fk" class="btn-ui btn-ui-secondary btn-sm" onclick="toggleVipWatch('flipkart_gbd300', 111)" style="font-size:11px; padding: 3px 8px; border-radius: 6px; cursor:pointer;" aria-label="Toggle Flipkart GBD-300 alerts">
+                        <span id="vip-btn-icon-gbd300fk">⏸️</span> <span id="vip-btn-text-gbd300fk">Pause Alerts</span>
+                      </button>
+                      <span>Probed: <strong id="vip-time-gbd300fk" style="color:#CBD5E1;">Every 60s</strong> <span id="vip-http-gbd300fk" style="color:#64748B;">(Flipkart VIP)</span></span>
+                    </div>
+                    <a href="https://www.flipkart.com/casio-gbd-300-1dr-g-shock-digital-watch-men/p/itmd46dfdac5b669?pid=WATH6HSUVHVMZVPW" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Flipkart &rarr;</a>
                   </div>
                 </div>
               </div>
@@ -6978,6 +7029,7 @@
         const data = await res.json();
 
         rawProductsList = data.products || [];
+        syncVipCardToggles();
 
         // Update Overview KPIs
         const activeCountEl = document.getElementById("kpi-active-count");
@@ -7278,6 +7330,7 @@
       prod.is_active = !previousState;
       updateCounts();
       applyFilters();
+      syncVipCardToggles();
       const activeOnly = rawProductsList.filter(p => p.is_active !== false).length;
       const activeCountEl = document.getElementById("kpi-active-count");
       if (activeCountEl) activeCountEl.textContent = `${activeOnly} / ${rawProductsList.length}`;
@@ -7295,7 +7348,96 @@
         prod.is_active = previousState;
         updateCounts();
         applyFilters();
+        syncVipCardToggles();
         showToast("⚠️ " + err.message);
+      }
+    }
+
+    function syncVipCardToggles() {
+      if (typeof rawProductsList === "undefined" || !Array.isArray(rawProductsList)) return;
+
+      const vipConfigs = [
+        {
+          key: "gbdh2000",
+          matcher: p => (p.url || "").includes("gbd-h2000") || Number(p.id) === 58,
+          btnId: "vip-btn-toggle-h2000",
+          iconId: "vip-btn-icon-h2000",
+          textId: "vip-btn-text-h2000",
+          badgeId: "vip-badge-h2000",
+          statusTextId: "vip-status-text-h2000"
+        },
+        {
+          key: "gbd300_bhawar",
+          matcher: p => (p.url || "").includes("gbd-300-9dr") || Number(p.id) === 5,
+          btnId: "vip-btn-toggle-300",
+          iconId: "vip-btn-icon-300",
+          textId: "vip-btn-text-300",
+          badgeId: "vip-badge-300",
+          statusTextId: "vip-status-text-300"
+        },
+        {
+          key: "flipkart_gbd300",
+          matcher: p => (p.url || "").includes("WATH6HSUVHVMZVPW") || Number(p.id) === 111 || Number(p.id) === 21,
+          btnId: "vip-btn-toggle-gbd300fk",
+          iconId: "vip-btn-icon-gbd300fk",
+          textId: "vip-btn-text-gbd300fk",
+          badgeId: "vip-badge-gbd300fk",
+          statusTextId: "vip-status-text-gbd300fk"
+        }
+      ];
+
+      vipConfigs.forEach(cfg => {
+        const prod = rawProductsList.find(cfg.matcher);
+        const btn = document.getElementById(cfg.btnId);
+        const icon = document.getElementById(cfg.iconId);
+        const text = document.getElementById(cfg.textId);
+        const badge = document.getElementById(cfg.badgeId);
+        const statusText = document.getElementById(cfg.statusTextId);
+
+        if (prod) {
+          const isActive = prod.is_active !== false;
+          if (btn) {
+            btn.className = isActive ? "btn-ui btn-ui-secondary btn-sm" : "btn-ui btn-ui-primary btn-sm";
+            btn.setAttribute("title", isActive ? "Pause 60s Sniper & Alerts" : "Resume 60s Sniper & Alerts");
+            btn.setAttribute("aria-label", isActive ? "Pause Alerts" : "Resume Alerts");
+          }
+          if (icon) icon.textContent = isActive ? "⏸️" : "▶️";
+          if (text) text.textContent = isActive ? "Pause Alerts" : "Resume Alerts";
+
+          if (!isActive && badge && statusText) {
+            badge.className = "vip-status-pill out-of-stock";
+            statusText.textContent = "PAUSED";
+          }
+        }
+      });
+    }
+
+    async function toggleVipWatch(watchKey, prodId) {
+      if (typeof rawProductsList === "undefined" || !Array.isArray(rawProductsList)) return;
+
+      let prod = rawProductsList.find(p => Number(p.id) === Number(prodId));
+      if (!prod) {
+        if (watchKey === 'flipkart_gbd300') {
+          prod = rawProductsList.find(p => (p.url || '').includes('WATH6HSUVHVMZVPW') || Number(p.id) === 111 || Number(p.id) === 21);
+        } else if (watchKey === 'gbdh2000') {
+          prod = rawProductsList.find(p => (p.url || '').includes('gbd-h2000') || Number(p.id) === 58);
+        } else if (watchKey === 'gbd300_bhawar') {
+          prod = rawProductsList.find(p => (p.url || '').includes('gbd-300-9dr') || Number(p.id) === 5);
+        }
+      }
+
+      if (prod) {
+        await toggleProduct(prod.id);
+        syncVipCardToggles();
+      } else {
+        try {
+          const res = await fetch(`/api/products/${prodId}/toggle`, { method: "POST" });
+          if (!res.ok) throw new Error("Toggle request failed");
+          showToast(`Toggled VIP Watch #${prodId}`);
+          fetchDashboardData(true);
+        } catch (err) {
+          showToast("⚠️ Could not toggle VIP watch: " + err.message);
+        }
       }
     }
 
@@ -7761,6 +7903,35 @@
           httpEl.textContent = `(HTTP ${w300.http_status})`;
         }
       }
+
+      // Watch 3: GBD-300-1DR Flipkart Priority Sniper
+      const prod300fk = (typeof rawProductsList !== 'undefined' && Array.isArray(rawProductsList))
+        ? rawProductsList.find(p => (p.url || '').includes('WATH6HSUVHVMZVPW') || Number(p.id) === 111 || Number(p.id) === 21)
+        : null;
+      if (prod300fk) {
+        const badgeFk = document.getElementById("vip-badge-gbd300fk");
+        const statusTextFk = document.getElementById("vip-status-text-gbd300fk");
+        const priceElFk = document.getElementById("vip-price-gbd300fk");
+        const timeElFk = document.getElementById("vip-time-gbd300fk");
+
+        if (badgeFk && statusTextFk) {
+          if (!prod300fk.is_active) {
+            badgeFk.className = "vip-status-pill out-of-stock";
+            statusTextFk.textContent = "PAUSED";
+          } else {
+            const inStock = prod300fk.current_price !== null && prod300fk.current_price !== undefined && Number(prod300fk.current_price) > 0;
+            badgeFk.className = `vip-status-pill ${inStock ? "in-stock" : "out-of-stock"}`;
+            statusTextFk.textContent = inStock ? "🚨 IN STOCK NOW!" : "OUT OF STOCK";
+          }
+        }
+        if (priceElFk && prod300fk.current_price) {
+          priceElFk.textContent = `₹${Number(prod300fk.current_price).toLocaleString('en-IN')}`;
+        }
+        if (timeElFk && prod300fk.last_checked) {
+          timeElFk.textContent = timeAgo(prod300fk.last_checked);
+        }
+      }
+      syncVipCardToggles();
 
       // Sidebar Logs Badge
       const navLogsBadge = document.getElementById("nav-logs-badge");
