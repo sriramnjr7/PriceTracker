@@ -52,36 +52,49 @@ class SupabaseDatabase:
             "Content-Type": "application/json",
             "Prefer": "return=representation",
         }
+        self._client: Optional[httpx.AsyncClient] = None
 
     @property
     def is_configured(self) -> bool:
         return bool(self.url and self.key)
 
+    def _get_client(self, timeout: float = 6.0) -> httpx.AsyncClient:
+        """Get or initialize pooled HTTP client with keep-alive connections."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=timeout,
+                limits=httpx.Limits(max_keepalive_connections=20, max_connections=40, keepalive_expiry=30.0),
+            )
+        return self._client
+
     async def _request(
         self,
         method: str,
         path_or_url: str,
-        max_retries: int = 3,
+        max_retries: int = 2,
         **kwargs,
     ) -> httpx.Response:
-        """Resilient HTTP request to Supabase PostgREST with exponential retry on transport errors."""
+        """Fast, pooled HTTP request to Supabase PostgREST with connection keep-alive."""
         url = path_or_url if path_or_url.startswith("http") else f"{self.base_rest}/{path_or_url.lstrip('/')}"
         headers = kwargs.pop("headers", self._headers)
-        timeout = kwargs.pop("timeout", 15.0)
+        timeout = kwargs.pop("timeout", 6.0)
 
         last_exc = None
         for attempt in range(max_retries):
             try:
-                async with httpx.AsyncClient(
-                    timeout=timeout,
-                    limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
-                ) as client:
-                    resp = await client.request(method, url, headers=headers, timeout=timeout, **kwargs)
-                    return resp
+                client = self._get_client(timeout=timeout)
+                resp = await client.request(method, url, headers=headers, timeout=timeout, **kwargs)
+                return resp
             except (httpx.TransportError, httpx.RemoteProtocolError, ConnectionResetError, Exception) as exc:
                 last_exc = exc
+                if self._client and not self._client.is_closed:
+                    try:
+                        await self._client.aclose()
+                    except Exception:
+                        pass
+                    self._client = None
                 if attempt < max_retries - 1:
-                    await asyncio.sleep(0.4 * (attempt + 1))
+                    await asyncio.sleep(0.2 * (attempt + 1))
                 else:
                     logger.warning("Supabase %s %s failed after %s attempts: %s", method, url, max_retries, exc)
         if last_exc:
@@ -89,21 +102,17 @@ class SupabaseDatabase:
         raise RuntimeError(f"Request failed: {method} {url}")
 
     async def initialize(self) -> None:
-        """Verify connectivity to Supabase."""
+        """Verify configuration readiness without wasteful blocking network roundtrips."""
         if not self.is_configured:
             logger.warning("Supabase URL or Key not configured; client uninitialized.")
-            return
-        try:
-            r = await self._request("GET", "/products?select=id&limit=1", timeout=10.0)
-            if r.status_code in (200, 206):
-                logger.info("Connected to Supabase PostgreSQL successfully.")
-            else:
-                logger.warning("Supabase test query returned HTTP %s: %s", r.status_code, r.text)
-        except Exception as exc:
-            logger.warning("Supabase connection check error: %s", exc)
 
     async def close(self) -> None:
         pass
+
+    async def aclose(self) -> None:
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
 
     # ---------------------------------------------------------------- products
     async def add_product(

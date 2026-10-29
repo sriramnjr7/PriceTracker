@@ -7012,11 +7012,47 @@
       document.getElementById("add-product-modal").classList.remove("is-open");
     }
 
+    // Fast hydration from localStorage on initial load to prevent blank or 0-target flashes
+    function hydrateDashboardFromStorage() {
+      try {
+        const cachedStr = localStorage.getItem("sritrack_cached_dashboard");
+        if (cachedStr) {
+          const cached = JSON.parse(cachedStr);
+          if (cached && Array.isArray(cached.products) && cached.products.length > 0 && rawProductsList.length === 0) {
+            rawProductsList = cached.products;
+            syncVipCardToggles();
+            const activeOnly = rawProductsList.filter(p => p.is_active !== false).length;
+            const activeCountEl = document.getElementById("kpi-active-count");
+            const navBadgeEl = document.getElementById("nav-count-badge");
+            if (activeCountEl) activeCountEl.textContent = `${activeOnly} / ${rawProductsList.length}`;
+            if (navBadgeEl) navBadgeEl.textContent = rawProductsList.length;
+            updateCounts();
+            applyFilters();
+            if (cached.recent_deals) renderDeals(cached.recent_deals);
+            const statusIndicator = document.getElementById("catalog-status-indicator");
+            if (statusIndicator) {
+              statusIndicator.innerHTML = `<span class="indicator-pulse" style="background: var(--accent-emerald);"></span><span>${activeOnly} Active (${rawProductsList.length} Total)</span>`;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Storage hydration error:", e);
+      }
+    }
+
     // Dashboard Data Fetcher
-    async function fetchDashboardData(bypassCache = false) {
+    async function fetchDashboardData(bypassCache = false, isRetry = false) {
+      if (rawProductsList.length === 0) {
+        hydrateDashboardFromStorage();
+      }
+
       const statusIndicator = document.getElementById("catalog-status-indicator");
       if (statusIndicator) {
-        statusIndicator.innerHTML = '<span class="indicator-pulse"></span><span>Syncing telemetry...</span>';
+        if (isRetry) {
+          statusIndicator.innerHTML = '<span class="indicator-pulse" style="background: var(--accent-amber);"></span><span>Reconnecting telemetry...</span>';
+        } else if (rawProductsList.length === 0) {
+          statusIndicator.innerHTML = '<span class="indicator-pulse"></span><span>Syncing telemetry...</span>';
+        }
       }
 
       try {
@@ -7027,6 +7063,11 @@
         });
         if (!res.ok) throw new Error("API status " + res.status);
         const data = await res.json();
+
+        // Cache successful payload in localStorage
+        try {
+          localStorage.setItem("sritrack_cached_dashboard", JSON.stringify(data));
+        } catch (e) {}
 
         rawProductsList = data.products || [];
         syncVipCardToggles();
@@ -7092,10 +7133,25 @@
         }
       } catch (err) {
         console.error("Data error:", err);
-        if (statusIndicator) {
-          statusIndicator.innerHTML = '<span class="indicator-pulse" style="background: var(--accent-rose);"></span><span>Offline / Sync error</span>';
+        // Automatic single retry for transient 504 / network spikes
+        if (!isRetry) {
+          setTimeout(() => fetchDashboardData(bypassCache, true), 1200);
+          return;
         }
-        showToast("⚠️ Could not refresh dashboard: " + err.message);
+
+        // If products are already populated in memory from localStorage or earlier fetch, preserve them!
+        if (rawProductsList && rawProductsList.length > 0) {
+          const activeOnly = rawProductsList.filter(p => p.is_active !== false).length;
+          if (statusIndicator) {
+            statusIndicator.innerHTML = `<span class="indicator-pulse" style="background: var(--accent-amber);"></span><span>Cached (${activeOnly} Active / ${rawProductsList.length} Total)</span>`;
+          }
+          showToast("⚡ Telemetry sync delayed — displaying cached targets.");
+        } else {
+          if (statusIndicator) {
+            statusIndicator.innerHTML = '<span class="indicator-pulse" style="background: var(--accent-rose);"></span><span>Offline / Sync error</span>';
+          }
+          showToast("⚠️ Could not refresh dashboard: " + err.message);
+        }
       }
     }
 

@@ -317,18 +317,59 @@ def _format_datetime(dt: Any) -> Optional[str]:
     return str(dt)
 
 
-@app.get("/api/dashboard/data")
-async def get_dashboard_data():
+# In-memory serverless cache to eliminate 504 Gateway Timeouts under rapid refresh
+_DASHBOARD_CACHE: dict[str, Any] = {
+    "timestamp": 0.0,
+    "payload": None,
+}
+
+
+def invalidate_dashboard_cache() -> None:
+    """Invalidate in-memory serverless dashboard cache upon mutations."""
+    _DASHBOARD_CACHE["timestamp"] = 0.0
+    _DASHBOARD_CACHE["payload"] = None
+
+
+@app.get("/api/dashboard/data", response_model=None)
+async def get_dashboard_data(bypass: bool = False):
     """Aggregate dashboard telemetry, tracked products list, and recent deals."""
+    now_ts = time.time()
+    if not bypass and _DASHBOARD_CACHE["payload"] is not None and (now_ts - _DASHBOARD_CACHE["timestamp"]) < 5.0:
+        return JSONResponse(
+            content=_DASHBOARD_CACHE["payload"],
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                "X-Dashboard-Cache": "HIT",
+            },
+        )
+
     db = get_database(settings)
     await db.initialize()
     try:
-        products = await db.get_products(active_only=False)
+        try:
+            products, recent_deals = await asyncio.wait_for(
+                asyncio.gather(
+                    db.get_products(active_only=False),
+                    db.get_recent_deal_alerts(limit=25),
+                ),
+                timeout=5.5,
+            )
+        except Exception as exc:
+            logger.warning("Parallel fetch in get_dashboard_data timed out or failed: %s", exc)
+            if _DASHBOARD_CACHE["payload"] is not None:
+                return JSONResponse(
+                    content=_DASHBOARD_CACHE["payload"],
+                    headers={
+                        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                        "X-Dashboard-Cache": "STALE-FALLBACK",
+                    },
+                )
+            products = []
+            recent_deals = []
+
         # Ensure sorting: Active items at the start, followed by paused items, ordered oldest to recent
         products.sort(key=lambda p: (0 if p.is_active else 1, p.id if p.id else 0))
-        recent_deals = await db.get_recent_deal_alerts(limit=25)
         active_count = sum(1 for p in products if p.is_active)
-        daemon_info = get_daemon_quick_status()
 
         last_sweep = None
         for p in products:
@@ -339,6 +380,8 @@ async def get_dashboard_data():
             n_at = d.get("notified_at")
             if n_at and (last_sweep is None or str(n_at) > str(last_sweep)):
                 last_sweep = n_at
+
+        daemon_info = get_daemon_quick_status(known_last_activity=last_sweep)
 
         if daemon_info.get("seconds_since_activity") is not None:
             sec = daemon_info["seconds_since_activity"]
@@ -379,14 +422,19 @@ async def get_dashboard_data():
             for p in products
         ]
 
+        payload = {
+            "status": "success",
+            "stats": stats,
+            "products": prods_data,
+            "recent_deals": recent_deals,
+        }
+
+        _DASHBOARD_CACHE["timestamp"] = time.time()
+        _DASHBOARD_CACHE["payload"] = payload
+
         return JSONResponse(
-            content={
-                "status": "success",
-                "stats": stats,
-                "products": prods_data,
-                "recent_deals": recent_deals,
-            },
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+            content=payload,
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0", "X-Dashboard-Cache": "MISS"},
         )
     finally:
         await db.close()
@@ -436,6 +484,7 @@ async def api_add_product(payload: AddProductPayload):
             initial_price=current_price,
             title=title,
         )
+        invalidate_dashboard_cache()
 
         return {
             "status": "success",
@@ -460,10 +509,10 @@ async def check_single_product(product_id: int):
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # 1. Scrape live product URL directly
+        # 1. Scrape live product URL directly with 7.0s timeout to avoid Vercel 504
         scraper = get_scraper(product.platform, settings)
         try:
-            result = await scraper.scrape(product.url)
+            result = await asyncio.wait_for(scraper.scrape(product.url), timeout=7.0)
         except Exception as exc:
             logger.error("Live scrape failed for %s (id=%s): %s", product.url, product_id, exc)
             raise HTTPException(
@@ -492,6 +541,7 @@ async def check_single_product(product_id: int):
                 if await notifier.notify(product, old_p, result.price, drop_percent, target_text):
                     await db.set_last_notified(product.id, result.price)
 
+        invalidate_dashboard_cache()
         updated = await db.get_product(product_id)
         price_disp = f"₹{updated.current_price:g}" if (updated and updated.current_price) else "Out of Stock"
         title_disp = (updated.title or product.title or f"Product #{product_id}")[:40]
@@ -518,6 +568,7 @@ async def toggle_single_product(product_id: int):
 
         new_status = not product.is_active
         await db.set_active(product_id, new_status)
+        invalidate_dashboard_cache()
         return {"status": "success", "id": product_id, "is_active": new_status}
     finally:
         await db.close()
@@ -530,6 +581,7 @@ async def delete_single_product(product_id: int):
     await db.initialize()
     try:
         success = await db.remove_product(product_id)
+        invalidate_dashboard_cache()
         return {"status": "success", "id": product_id, "deleted": success}
     finally:
         await db.close()
@@ -555,6 +607,7 @@ async def api_update_product_target_price(product_id: int, payload: UpdateTarget
         if not ok:
             raise HTTPException(status_code=500, detail="Failed to update target price")
 
+        invalidate_dashboard_cache()
         updated = await db.get_product(product_id)
         return {
             "status": "success",
@@ -805,6 +858,7 @@ async def manual_deal_sweep():
 
         await radar.close()
         total_dispatched = casio_alerts + manual_alerts
+        invalidate_dashboard_cache()
         await aemit_daemon_log(
             "INFO",
             "deal.sweep",
@@ -1349,7 +1403,7 @@ async def set_telegram_webhook(request: Request, url: Optional[str] = None):
 # SYSTEM LOGS & TELEMETRY CONTROLLER
 # ==========================================
 
-def get_daemon_quick_status() -> dict[str, Any]:
+def get_daemon_quick_status(known_last_activity: Any = None) -> dict[str, Any]:
     """Lightweight check of radar daemon heartbeat and file update activity."""
     candidates = [
         os.path.join(root_dir, "radar_daemon.log"),
@@ -1377,13 +1431,38 @@ def get_daemon_quick_status() -> dict[str, Any]:
         except Exception:
             pass
 
-    # Cloud / Supabase check (e.g. GitHub Actions cloud runner activity)
+    # 1. Zero-latency path: use caller-supplied last activity (avoids redundant network calls)
+    if known_last_activity is not None:
+        try:
+            if hasattr(known_last_activity, "isoformat"):
+                dt = known_last_activity if getattr(known_last_activity, "tzinfo", None) else known_last_activity.replace(tzinfo=timezone.utc)
+            else:
+                dt = datetime.fromisoformat(str(known_last_activity).replace("Z", "+00:00"))
+                if not dt.tzinfo:
+                    dt = dt.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            sec_ago = max(0, int((now - dt).total_seconds()))
+            is_run = sec_ago <= 360  # e.g. 5-min runner
+            cloud_info = {
+                "is_running": is_run,
+                "status_text": "ACTIVE" if is_run else ("IDLE" if sec_ago <= 600 else "STOPPED"),
+                "seconds_since_activity": sec_ago,
+                "has_log_file": False,
+                "size_mb": 0.0,
+                "last_activity_time": dt.isoformat(),
+            }
+            if is_run or local_info is None or sec_ago < local_info.get("seconds_since_activity", 999999):
+                return cloud_info
+        except Exception:
+            pass
+
+    # 2. Standalone Cloud / Supabase check (only when caller did not pass activity and local is absent)
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
     supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     if supabase_url and supabase_key:
         try:
             headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
-            with httpx.Client(timeout=3.5) as client:
+            with httpx.Client(timeout=1.0) as client:
                 p_ts = None
                 try:
                     r1 = client.get(
