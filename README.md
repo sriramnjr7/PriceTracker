@@ -28,7 +28,8 @@
 7. [Testing & Quality Assurance (188 Tests)](#-testing--quality-assurance-188-tests)
 8. [Deployment & Operations Guide](#-deployment--operations-guide)
 9. [Configuration & Environment Variables](#-configuration--environment-variables)
-10. [Hard-Earned Gotchas & Lessons Learned](#-hard-earned-gotchas--lessons-learned)
+10. [Scaling & Affiliate Monetization Architecture](#-scaling--affiliate-monetization-architecture)
+11. [Hard-Earned Gotchas & Lessons Learned](#-hard-earned-gotchas--lessons-learned)
 
 ---
 
@@ -328,6 +329,30 @@ Create a `.env` file in the project root:
 | `CLOUDFLARE_API_TOKEN` | Optional | Cloudflare API Token for Workers AI | `Bearer token...` |
 | `CRON_SECRET` | Optional | Secret token protecting `/api/cron` | `custom_secure_token` |
 | `DASHBOARD_PASSWORD` | Optional | Password protecting web console actions | `8910` |
+| `TELEGRAM_BROADCAST_CHANNEL_ID` | Optional | Telegram Channel username/ID for friend deal syndication | `@SriStealDeals` |
+| `AMAZON_AFFILIATE_TAG` | Optional | Amazon Associates affiliate tag for outbound links | `sritrack-21` |
+| `EARNKARO_AFFILIATE_ID` | Optional | EarnKaro affiliate ID for Flipkart/Myntra/Ajio auto-conversion | `ek_aff_id` |
+
+---
+
+## 🚀 Scaling & Affiliate Monetization Architecture
+
+For a complete breakdown of multi-user syndication and passive affiliate monetization, see the standalone strategy guide:  
+👉 **[SCALING_AND_AFFILIATES.md](file:///c:/Users/srira/Downloads/Antigravity/PriceTracker/SCALING_AND_AFFILIATES.md)**
+
+### Architecture Options at a Glance:
+
+| Option | Architecture | Friction | Security & Isolation | Best Use Case |
+|---|---|---|---|---|
+| **1. Telegram Broadcast Channel** *(Recommended)* | Bot posts to a read-only Telegram Channel (`@SriStealDeals`) | **Zero** (1-tap join) | **100% Isolated** (Subscribers cannot run commands) | Best for sharing with friends & community |
+| **2. Supergroup with Forum Topics** | Bot routes deals into categorized topics (`#watches`, `#shoes`) | **Low** (Join group, mute unneeded topics) | **100% Isolated** (Bot controls announcements) | Best if friends want separate notification feeds |
+| **3. Secondary Subscriber Bot** | Second bot with `/start` command saving `chat_id`s to DB | **Medium** (Users message bot) | **Isolated** (Commands disabled) | Best for private 1-on-1 DM alerts |
+| **4. Discord / WhatsApp Webhook** | Outbound HTTP POST to Discord `#deals` or WhatsApp Group | **Medium** (App dependent) | **100% Isolated** (Webhook push only) | Best if friends live on Discord |
+
+### Affiliate Engine Integration:
+- **EarnKaro / CueLinks**: Re-routes Flipkart, Myntra, Tata CLiQ, and Ajio URLs through affiliate redirection without risk of account suspension on social channels.
+- **Amazon Associates**: Automatically appends `?tag=YOUR_TAG-21` to all outbound Amazon India links.
+- **Admin Isolation**: Admin Telegram Bot (`TELEGRAM_CHAT_ID`) retains exclusive control over product addition, pause/unpause toggles, and server telemetry. Public channels receive clean, curated deal cards stripped of internal debug info.
 
 ---
 
