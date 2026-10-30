@@ -258,3 +258,4 @@ When you decide to proceed:
 1. Create a private Telegram Channel and invite your friends.
 2. Promote `@PriceTrackerBot` to administrator in that channel.
 3. Add `TELEGRAM_BROADCAST_CHANNEL_ID` to your Oracle VM `.env` and let SriTrack automatically syndicate deals!
+
