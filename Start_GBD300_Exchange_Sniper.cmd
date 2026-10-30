@@ -6,11 +6,12 @@ echo ======================================================================
 echo    FLIPKART CASIO G-SHOCK GBD-300-1DR (BLACK) EXCHANGE SNIPER
 echo ======================================================================
 echo.
-echo Polling Flipkart for Black 1DR restock...
+echo Polling Flipkart for Black 1DR restock every 20s...
+echo Audit Log: All check entries written to gbd300_exchange_sniper.log
 echo When in-stock:
-echo   - PC Audio Alarm will ring
+echo   - Windows Native Desktop Notification banner
 echo   - Your Order Details exchange page will auto-open in your browser
-echo   - Telegram emergency notification will be sent
+echo   - Telegram emergency notification will be dispatched
 echo.
 py -3 gbd300_exchange_sniper.py
 pause
