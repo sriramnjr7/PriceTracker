@@ -14,46 +14,48 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* ==========================================================================
-       DESIGN SYSTEM TOKENS (Graphite & Quiet Chrome — Unslopped Design System)
+       DESIGN SYSTEM TOKENS (OpenDesign Trading Terminal + Linear System)
        ========================================================================== */
     :root {
-      /* Backgrounds (Graphite Ramp) */
-      --bg-canvas: #0c0d10;
-      --bg-sidebar: #0f1217;
-      --bg-card: #14181f;
-      --bg-card-hover: #1a202a;
-      --bg-card-elevated: #1e2530;
-      --bg-input: #14181f;
-      --bg-overlay: rgba(10, 12, 16, 0.85);
+      /* Backgrounds (Trading Terminal Deep Obsidian Ramp) */
+      --bg-canvas: #090a0f;
+      --bg-sidebar: #0c0e14;
+      --bg-card: #11141c;
+      --bg-card-hover: #161a24;
+      --bg-card-elevated: #1a1f2c;
+      --bg-input: #0e1118;
+      --bg-overlay: rgba(7, 9, 13, 0.88);
 
-      /* Hairline Borders (6-10% opacity) */
+      /* Hairline Micro-Borders */
       --border-subtle: rgba(255, 255, 255, 0.07);
       --border-medium: rgba(255, 255, 255, 0.12);
-      --border-hover: rgba(255, 255, 255, 0.20);
-      --border-focus: #10b981;
+      --border-hover: rgba(255, 255, 255, 0.22);
+      --border-focus: #00D4AA;
 
-      /* Typography & Text Roles (3 distinct roles) */
+      /* Typography & Text Roles (OpenDesign Hierarchy) */
       --text-primary: #ededed;
       --text-secondary: #9ca3af;
       --text-muted: #6b7280;
       --text-dim: #4b5563;
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
       --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-      /* Restrained Semantic Accents (No neon glow) */
-      --accent-primary: #10b981;
-      --accent-primary-hover: #059669;
+      /* High-Precision Semantic Signals (Trading Terminal Palette) */
+      --accent-primary: #00D4AA;
+      --accent-primary-hover: #00b894;
       --accent-cyan: #38bdf8;
-      --accent-emerald: #10b981;
-      --accent-emerald-subtle: rgba(16, 185, 129, 0.10);
+      --accent-emerald: #00D4AA;
+      --accent-emerald-subtle: rgba(0, 212, 170, 0.10);
       --accent-amber: #f59e0b;
       --accent-amber-subtle: rgba(245, 158, 11, 0.10);
       --accent-orange: #ea580c;
       --accent-orange-subtle: rgba(234, 88, 12, 0.10);
-      --accent-rose: #f43f5e;
-      --accent-rose-subtle: rgba(244, 63, 94, 0.10);
+      --accent-rose: #ff4d4d;
+      --accent-rose-subtle: rgba(255, 77, 77, 0.10);
       --accent-blue-subtle: rgba(56, 189, 248, 0.10);
+      --accent-indigo: #6366f1;
+      --accent-indigo-subtle: rgba(99, 102, 241, 0.10);
 
       /* Spacing Scale */
       --space-1: 4px;
@@ -579,10 +581,26 @@
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
-      padding: 0 8px 0 28px;
+      padding: 0 28px 0 28px;
       color: var(--text-primary);
       font-size: 12px;
       transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .topbar-search-kbd {
+      position: absolute;
+      right: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      padding: 1px 5px;
+      line-height: 1.2;
+      pointer-events: none;
     }
 
     .topbar-search-input:focus {
@@ -665,14 +683,14 @@
     }
 
     /* ==========================================================================
-       DASHBOARD HEADER & METRIC STRIP (Unslopped Graphite Design System)
+       OPEN-DESIGN TRADING TERMINAL & RADAR HUD SYSTEM
        ========================================================================== */
     .dashboard-header-strip {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px 0 16px;
-      margin-bottom: 16px;
+      padding: 4px 0 14px;
+      margin-bottom: 12px;
       border-bottom: 1px solid var(--border-subtle);
       flex-wrap: wrap;
       gap: 12px;
@@ -685,16 +703,34 @@
     }
 
     .header-main-title {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 600;
       color: var(--text-primary);
       letter-spacing: -0.02em;
       margin: 0;
       line-height: 1.25;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-status-pill {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--accent-emerald);
+      background: var(--accent-emerald-subtle);
+      border: 1px solid rgba(0, 212, 170, 0.25);
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      letter-spacing: 0.04em;
     }
 
     .header-subtitle {
-      font-size: 13px;
+      font-size: 12.5px;
       color: var(--text-secondary);
       margin: 0;
       line-height: 1.4;
@@ -712,9 +748,9 @@
       gap: 7px;
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
-      padding: 5px 12px;
+      padding: 4px 10px;
       border-radius: var(--radius-sm);
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--text-secondary);
       font-family: var(--font-mono);
     }
@@ -728,14 +764,117 @@
       flex-shrink: 0;
     }
 
-    /* 4-Stat Metric Summary Bar (Graphite Neutral Ramp) */
+    /* OpenDesign Live Radar Ticker Tape */
+    .radar-ticker-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(17, 20, 28, 0.7);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+
+    .ticker-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0, 212, 170, 0.08);
+      border: 1px solid rgba(0, 212, 170, 0.25);
+      color: var(--accent-primary);
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+
+    .ticker-beacon {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      display: inline-block;
+    }
+
+    .ticker-track {
+      flex: 1;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none;
+    }
+    .ticker-track::-webkit-scrollbar { display: none; }
+
+    .ticker-items-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-secondary);
+    }
+
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ticker-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      letter-spacing: 0.03em;
+    }
+
+    .ticker-tag.tag-casio {
+      background: rgba(234, 179, 8, 0.12);
+      color: #facc15;
+      border: 1px solid rgba(234, 179, 8, 0.25);
+    }
+
+    .ticker-tag.tag-flipkart {
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .ticker-tag.tag-amazon {
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .ticker-tag.tag-shoes {
+      background: rgba(129, 140, 248, 0.12);
+      color: #818cf8;
+      border: 1px solid rgba(129, 140, 248, 0.25);
+    }
+
+    .ticker-tag.tag-drops {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+
+    .ticker-sep {
+      color: var(--text-dim);
+      font-size: 10px;
+    }
+
+    /* 4-Stat Bento Telemetry Bar */
     .cyber-stats-bar {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       overflow: hidden;
     }
 
@@ -743,8 +882,13 @@
       padding: 12px 16px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
       border-right: 1px solid var(--border-subtle);
+      transition: background-color var(--transition-fast);
+    }
+
+    .cyber-stat-col:hover {
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .cyber-stat-col:last-child {
@@ -758,6 +902,7 @@
       color: var(--text-primary);
       line-height: 1.15;
       letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
     }
 
     .cyber-stat-num.highlight-emerald {
@@ -773,12 +918,18 @@
     }
 
     .cyber-stat-label {
-      font-size: 11px;
+      font-size: 10.5px;
       color: var(--text-muted);
       font-family: var(--font-sans);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      font-weight: 500;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .cyber-stat-sub {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
     }
 
     /* Topbar Status Pill (Restrained Graphite) */
@@ -787,7 +938,7 @@
       align-items: center;
       gap: 6px;
       background: var(--accent-emerald-subtle);
-      border: 1px solid rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(0, 212, 170, 0.25);
       color: var(--accent-emerald);
       font-family: var(--font-mono);
       font-size: 11px;
@@ -906,9 +1057,9 @@
     }
 
     .filter-btn.active {
-      color: #090a0f;
-      background: #ffffff;
-      border-color: #ffffff;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(255, 255, 255, 0.22);
       font-weight: 600;
     }
 
@@ -916,7 +1067,7 @@
     .products-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
+      gap: 10px;
     }
 
     @media (min-width: 1600px) {
@@ -925,23 +1076,24 @@
       }
     }
 
-    /* Monitor Card: Compact 180-210px Height */
+    /* Monitor Card: OpenDesign Precision Trading Card */
     .product-card {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
-      padding: 9px 11px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      min-height: 180px;
-      max-height: 215px;
-      transition: border-color var(--transition-fast), background-color var(--transition-fast);
+      min-height: 184px;
+      max-height: 220px;
+      transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
     }
 
     .product-card:hover {
       border-color: var(--border-hover);
       background: var(--bg-card-hover);
+      box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.5);
     }
 
     .product-meta-header {
@@ -955,29 +1107,29 @@
     .platform-badge {
       font-size: 9.5px;
       font-family: var(--font-mono);
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
-      padding: 1.5px 5px;
+      padding: 2px 6px;
       border-radius: 3px;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
     }
 
     .badge-casio {
-      background: var(--accent-blue-subtle);
-      color: #60a5fa;
-      border: 1px solid rgba(96, 165, 250, 0.25);
+      background: rgba(234, 179, 8, 0.12);
+      color: #facc15;
+      border: 1px solid rgba(234, 179, 8, 0.25);
     }
 
     .badge-flipkart {
-      background: var(--accent-amber-subtle);
-      color: #fbbf24;
-      border: 1px solid rgba(251, 191, 36, 0.25);
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
     }
 
     .badge-amazon {
-      background: var(--accent-emerald-subtle);
-      color: #34d399;
-      border: 1px solid rgba(52, 211, 153, 0.25);
+      background: rgba(0, 212, 170, 0.12);
+      color: #00D4AA;
+      border: 1px solid rgba(0, 212, 170, 0.25);
     }
 
     .status-badge-inline {
@@ -999,7 +1151,6 @@
       height: 4.5px;
       border-radius: var(--radius-full);
       background: var(--accent-emerald);
-      box-shadow: 0 0 5px rgba(16, 185, 129, 0.4);
     }
 
     .status-badge-inline:not(.is-active)::before {
@@ -1033,12 +1184,12 @@
       color: var(--accent-primary);
     }
 
-    /* Price Section: Compact Two-Column Box */
+    /* Price Section: High-Contrast Monospace Box */
     .price-data-box {
-      background: rgba(9, 10, 15, 0.5);
+      background: rgba(0, 0, 0, 0.35);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: var(--radius-sm);
-      padding: 4px 8px;
+      padding: 5px 9px;
       display: flex;
       justify-content: space-between;
       align-items: baseline;
@@ -1052,9 +1203,9 @@
 
     .price-box-label {
       font-size: 9px;
-      font-weight: 500;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
       color: var(--text-muted);
       margin-bottom: 1px;
     }
@@ -1065,6 +1216,7 @@
       font-weight: 600;
       color: var(--text-primary);
       line-height: 1.1;
+      font-variant-numeric: tabular-nums;
     }
 
     .price-box-val-current.target-reached {
@@ -1077,6 +1229,8 @@
       font-weight: 500;
       color: var(--text-secondary);
       line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
     }
 
     /* Target Progress Bar */
@@ -3904,6 +4058,7 @@
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
                 <input type="text" id="catalog-search" class="topbar-search-input" placeholder="Search tracked items, store, or model code..." oninput="applyFilters()">
+                <kbd class="topbar-search-kbd" title="Press / to focus">/</kbd>
               </div>
             </div>
 
@@ -3932,11 +4087,14 @@
             <!-- TAB 1: MAIN DASHBOARD VIEW -->
             <div id="tab-content-dashboard" class="workspace-tab-page">
 
-              <!-- Dashboard Header Strip (Unslopped & Quiet Chrome) -->
+              <!-- Dashboard Header Strip (OpenDesign Quiet Chrome) -->
               <div class="dashboard-header-strip">
                 <div class="header-titles">
-                  <h1 class="header-main-title">Price Radar</h1>
-                  <p class="header-subtitle">Autonomous price drop radar across Amazon, Flipkart, Myntra, and Casio</p>
+                  <h1 class="header-main-title">
+                    <span>Price Radar</span>
+                    <span class="live-status-pill"><span class="status-dot-live"></span>ACTIVE</span>
+                  </h1>
+                  <p class="header-subtitle">Autonomous deal radar &amp; restock surveillance across Amazon, Flipkart, Myntra, and Casio</p>
                 </div>
                 <div class="header-actions">
                   <div class="live-sync-indicator" id="catalog-status-indicator">
@@ -3946,23 +4104,48 @@
                 </div>
               </div>
 
-              <!-- Metric Summary Bar (4-Stat Metric Summary) -->
+              <!-- OpenDesign Live Radar Ticker Tape -->
+              <div class="radar-ticker-strip">
+                <div class="ticker-badge">
+                  <span class="ticker-beacon"></span>
+                  <span>RADAR TAPE</span>
+                </div>
+                <div class="ticker-track">
+                  <div class="ticker-items-row">
+                    <span class="ticker-item"><span class="ticker-tag tag-casio">CASIO</span> GBD-300-9DR: 404 Restock Radar Active (60s probe)</span>
+                    <span class="ticker-sep">•</span>
+                    <span class="ticker-item"><span class="ticker-tag tag-flipkart">FLIPKART</span> BuyBox Isolated (RetailNet verified)</span>
+                    <span class="ticker-sep">•</span>
+                    <span class="ticker-item"><span class="ticker-tag tag-amazon">AMAZON</span> Stealth Engine: TLS Impersonation armed</span>
+                    <span class="ticker-sep">•</span>
+                    <span class="ticker-item"><span class="ticker-tag tag-shoes">SHOES</span> Nike · Saucony · Asics Harvester live</span>
+                    <span class="ticker-sep">•</span>
+                    <span class="ticker-item"><span class="ticker-tag tag-drops">INTEL</span> 17 Verified 70%+ clearance deals tracked</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metric Summary Bar (4-Stat Bento Telemetry) -->
               <section class="cyber-stats-bar" aria-label="System Metrics">
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num" id="kpi-active-count">0</div>
                   <div class="cyber-stat-label">Monitored Targets</div>
+                  <div class="cyber-stat-sub">Amazon · Flipkart · Casio</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-emerald" id="kpi-verified-drops">17</div>
                   <div class="cyber-stat-label">Verified 70%+ Drops</div>
+                  <div class="cyber-stat-sub">Clearance Floor Alert</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-cyan">100%</div>
                   <div class="cyber-stat-label">BuyBox Isolation</div>
+                  <div class="cyber-stat-sub">RetailNet / Appario Only</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-amber" id="kpi-last-sweep">Live</div>
                   <div class="cyber-stat-label">Background Radar</div>
+                  <div class="cyber-stat-sub">Autonomous Sweeper</div>
                 </div>
               </section>
 
@@ -7655,9 +7838,11 @@
       });
     }
 
-    // Keyboard shortcut (Cmd/Ctrl + K to focus search)
+    // Keyboard shortcut (Cmd/Ctrl + K or "/" to focus search)
     window.addEventListener("keydown", (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+      const isInput = activeTag === "input" || activeTag === "textarea" || activeTag === "select";
+      if (((e.metaKey || e.ctrlKey) && e.key === "k") || (e.key === "/" && !isInput)) {
         e.preventDefault();
         const searchInput = document.getElementById("catalog-search");
         if (searchInput) {
