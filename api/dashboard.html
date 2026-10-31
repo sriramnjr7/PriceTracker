@@ -14,46 +14,46 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* ==========================================================================
-       DESIGN SYSTEM TOKENS (Cyber Obsidian & Neon Mint Aesthetic - INDEX 0_ Inspired)
+       DESIGN SYSTEM TOKENS (Graphite & Quiet Chrome — Unslopped Design System)
        ========================================================================== */
     :root {
-      /* Backgrounds (Cyber Obsidian / Deep Space) */
-      --bg-canvas: #07090E;
-      --bg-sidebar: #0A0D15;
-      --bg-card: #0D111A;
-      --bg-card-hover: #121824;
-      --bg-card-elevated: #161E2D;
-      --bg-input: rgba(13, 17, 26, 0.95);
-      --bg-overlay: rgba(4, 6, 10, 0.88);
+      /* Backgrounds (Graphite Ramp) */
+      --bg-canvas: #0c0d10;
+      --bg-sidebar: #0f1217;
+      --bg-card: #14181f;
+      --bg-card-hover: #1a202a;
+      --bg-card-elevated: #1e2530;
+      --bg-input: #14181f;
+      --bg-overlay: rgba(10, 12, 16, 0.85);
 
-      /* Borders */
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-medium: rgba(255, 255, 255, 0.14);
-      --border-hover: rgba(0, 255, 163, 0.38);
-      --border-focus: #00FFA3;
+      /* Hairline Borders (6-10% opacity) */
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-medium: rgba(255, 255, 255, 0.12);
+      --border-hover: rgba(255, 255, 255, 0.20);
+      --border-focus: #10b981;
 
-      /* Typography & Text */
-      --text-primary: #F8FAFC;
-      --text-secondary: #94A3B8;
-      --text-muted: #64748B;
-      --text-dim: #475569;
+      /* Typography & Text Roles (3 distinct roles) */
+      --text-primary: #ededed;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --text-dim: #4b5563;
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
-      --font-display: 'Space Grotesk', -apple-system, sans-serif;
+      --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-      /* Semantic Accents - Cyber Mint & Electric Highlights */
-      --accent-primary: #00FFA3;
-      --accent-primary-hover: #00E592;
-      --accent-cyan: #00F0FF;
-      --accent-emerald: #00FFA3;
-      --accent-emerald-subtle: rgba(0, 255, 163, 0.12);
-      --accent-amber: #FFB800;
-      --accent-amber-subtle: rgba(255, 184, 0, 0.12);
-      --accent-orange: #FF7A00;
-      --accent-orange-subtle: rgba(255, 122, 0, 0.12);
-      --accent-rose: #FF3366;
-      --accent-rose-subtle: rgba(255, 51, 102, 0.12);
-      --accent-blue-subtle: rgba(0, 240, 255, 0.12);
+      /* Restrained Semantic Accents (No neon glow) */
+      --accent-primary: #10b981;
+      --accent-primary-hover: #059669;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-emerald-subtle: rgba(16, 185, 129, 0.10);
+      --accent-amber: #f59e0b;
+      --accent-amber-subtle: rgba(245, 158, 11, 0.10);
+      --accent-orange: #ea580c;
+      --accent-orange-subtle: rgba(234, 88, 12, 0.10);
+      --accent-rose: #f43f5e;
+      --accent-rose-subtle: rgba(244, 63, 94, 0.10);
+      --accent-blue-subtle: rgba(56, 189, 248, 0.10);
 
       /* Spacing Scale */
       --space-1: 4px;
@@ -665,179 +665,86 @@
     }
 
     /* ==========================================================================
-       CYBER TERMINAL DESIGN SYSTEM (Inspired by INDEX 0_ Aesthetics)
+       DASHBOARD HEADER & METRIC STRIP (Unslopped Graphite Design System)
        ========================================================================== */
-    .cyber-hero-banner {
-      text-align: center;
-      padding: 22px 16px 26px;
-      margin-bottom: 22px;
-      position: relative;
-    }
-
-    .cyber-brand-title {
-      font-family: var(--font-mono);
-      font-size: 32px;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      color: #ffffff;
-      line-height: 1.2;
-      display: inline-block;
-    }
-
-    .cyber-title-main {
-      color: #ffffff;
-    }
-
-    .cyber-title-accent {
-      color: #00FFA3;
-      text-shadow: 0 0 14px rgba(0, 255, 163, 0.5);
-    }
-
-    .cyber-brand-slogan {
-      font-size: 14px;
-      color: var(--text-secondary);
-      margin-top: 6px;
-      font-weight: 400;
-      letter-spacing: -0.01em;
-    }
-
-    .cyber-brand-quote {
-      font-size: 11.5px;
-      font-style: italic;
-      color: var(--text-muted);
-      margin-top: 4px;
-      font-family: var(--font-sans);
-    }
-
-    /* Welcome / Status Strip */
-    .cyber-welcome-row {
+    .dashboard-header-strip {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
+      align-items: center;
+      padding: 4px 0 16px;
       margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-subtle);
       flex-wrap: wrap;
       gap: 12px;
     }
 
-    .cyber-welcome-badge {
-      font-size: 10px;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: #00FFA3;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 4px;
+    .header-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
     }
 
-    .cyber-welcome-heading {
-      font-size: 22px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.03em;
-      font-family: var(--font-sans);
+    .header-main-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      margin: 0;
+      line-height: 1.25;
     }
 
-    .cyber-cursor {
-      color: #00FFA3;
-      animation: cursorBlink 1s step-end infinite;
+    .header-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0;
+      line-height: 1.4;
     }
 
-    @keyframes cursorBlink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .cyber-welcome-sub {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 2px;
-      font-family: var(--font-mono);
-    }
-
-    .cyber-streak-badge {
+    .live-sync-indicator {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(255, 122, 0, 0.1);
-      border: 1px solid rgba(255, 122, 0, 0.3);
-      padding: 6px 14px;
-      border-radius: var(--radius-full);
+      gap: 7px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
       font-size: 11.5px;
-      font-weight: 600;
-      color: #FF9900;
-      font-family: var(--font-mono);
-      box-shadow: 0 0 14px rgba(255, 122, 0, 0.15);
-    }
-
-    /* Insight Box (Matches ZERO REMEMBERS from Screenshot 2) */
-    .cyber-insight-box {
-      background: #0C1018;
-      border: 1px solid rgba(0, 255, 163, 0.2);
-      border-radius: 12px;
-      padding: 12px 16px;
-      margin-bottom: 18px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      box-shadow: 0 4px 20px -5px rgba(0, 255, 163, 0.06);
-    }
-
-    .cyber-insight-fox {
-      font-size: 24px;
-      flex-shrink: 0;
-      filter: drop-shadow(0 0 6px rgba(255, 122, 0, 0.4));
-    }
-
-    .cyber-insight-body {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .cyber-insight-headline {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 3px;
-      font-family: var(--font-mono);
-      font-size: 10.5px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-
-    .cyber-insight-title {
-      color: #00FFA3;
-    }
-
-    .cyber-insight-sep {
-      color: var(--text-dim);
-    }
-
-    .cyber-insight-subtitle {
-      color: var(--text-muted);
-    }
-
-    .cyber-insight-text {
-      font-size: 12px;
       color: var(--text-secondary);
-      line-height: 1.45;
+      font-family: var(--font-mono);
     }
 
-    /* 4 Stat Counter Bar (Matches Screenshot 2's 4-stat bar) */
+    .indicator-pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* 4-Stat Metric Summary Bar (Graphite Neutral Ramp) */
     .cyber-stats-bar {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      background: #0C1018;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
       margin-bottom: 20px;
       overflow: hidden;
     }
 
     .cyber-stat-col {
-      padding: 14px 18px;
+      padding: 12px 16px;
       display: flex;
       flex-direction: column;
-      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      gap: 4px;
+      border-right: 1px solid var(--border-subtle);
     }
 
     .cyber-stat-col:last-child {
@@ -846,82 +753,72 @@
 
     .cyber-stat-num {
       font-family: var(--font-mono);
-      font-size: 22px;
-      font-weight: 700;
-      color: #ffffff;
-      line-height: 1.1;
-      margin-bottom: 4px;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.15;
       letter-spacing: -0.02em;
     }
 
     .cyber-stat-num.highlight-emerald {
-      color: #00FFA3;
-      text-shadow: 0 0 10px rgba(0, 255, 163, 0.3);
+      color: var(--accent-emerald);
     }
 
     .cyber-stat-num.highlight-cyan {
-      color: #00F0FF;
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+      color: var(--accent-cyan);
     }
 
     .cyber-stat-num.highlight-amber {
-      color: #FFB800;
+      color: var(--accent-amber);
     }
 
     .cyber-stat-label {
       font-size: 11px;
       color: var(--text-muted);
-      font-family: var(--font-mono);
-      text-transform: lowercase;
+      font-family: var(--font-sans);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 500;
     }
 
-    /* Topbar Glowing Pill */
+    /* Topbar Status Pill (Restrained Graphite) */
     .topbar-status-glow {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(0, 255, 163, 0.08);
-      border: 1px solid rgba(0, 255, 163, 0.28);
-      color: #00FFA3;
+      background: var(--accent-emerald-subtle);
+      border: 1px solid rgba(16, 185, 129, 0.22);
+      color: var(--accent-emerald);
       font-family: var(--font-mono);
       font-size: 11px;
-      font-weight: 600;
-      padding: 4px 11px;
-      border-radius: var(--radius-full);
-      box-shadow: 0 0 12px rgba(0, 255, 163, 0.15);
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
     }
 
     .glow-dot {
       width: 6px;
       height: 6px;
-      border-radius: var(--radius-full);
-      background: #00FFA3;
-      box-shadow: 0 0 6px #00FFA3;
-      animation: pulseGlow 1.8s infinite;
+      border-radius: 50%;
+      background: var(--accent-emerald);
     }
 
-    @keyframes pulseGlow {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-    }
-
-    /* Cyber Meta Chips */
+    /* Meta Chips & Backward-Compatible Utility */
     .cyber-meta-chips {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 14px;
     }
 
     .cyber-chip {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--border-subtle);
-      padding: 4px 10px;
-      border-radius: var(--radius-full);
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
       font-size: 11px;
       color: var(--text-secondary);
       font-family: var(--font-mono);
@@ -936,10 +833,10 @@
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: #00FFA3;
-      color: #07090E;
-      border: none;
-      box-shadow: 0 4px 20px rgba(0, 255, 163, 0.45);
+      background: var(--accent-primary);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
       cursor: pointer;
       z-index: 90;
       align-items: center;
@@ -1757,20 +1654,11 @@
       .metrics-grid {
         grid-template-columns: repeat(2, 1fr);
       }
-      .cyber-hero-banner {
-        padding: 16px 8px 18px;
-        margin-bottom: 14px;
-      }
-      .cyber-brand-title {
-        font-size: 24px;
-      }
-      .cyber-welcome-heading {
-        font-size: 18px;
-      }
-      .cyber-welcome-row {
+      .dashboard-header-strip {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
+        padding-bottom: 12px;
       }
       .cyber-stats-bar {
         grid-template-columns: repeat(2, 1fr);
@@ -1780,11 +1668,6 @@
       }
       .cyber-stat-col:nth-child(1), .cyber-stat-col:nth-child(2) {
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      }
-      .cyber-insight-box {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
       }
       .topbar-status-glow {
         display: none;
@@ -2935,10 +2818,9 @@
       color: #94A3B8;
     }
     .vip-status-pill.in-stock {
-      background: rgba(0, 255, 163, 0.2);
-      border: 1px solid rgba(0, 255, 163, 0.5);
-      color: #00FFA3;
-      box-shadow: 0 0 12px rgba(0, 255, 163, 0.25);
+      background: var(--accent-emerald-subtle);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: var(--accent-emerald);
     }
     .vip-metrics-row {
       display: flex;
@@ -4050,70 +3932,37 @@
             <!-- TAB 1: MAIN DASHBOARD VIEW -->
             <div id="tab-content-dashboard" class="workspace-tab-page">
 
-              <!-- Cyber Hero Banner (INDEX 0_ Aesthetic) -->
-              <div class="cyber-hero-banner">
-                <div class="cyber-brand-title">
-                  <span class="cyber-title-main">PRICETRACKER </span><span class="cyber-title-accent">0_</span>
+              <!-- Dashboard Header Strip (Unslopped & Quiet Chrome) -->
+              <div class="dashboard-header-strip">
+                <div class="header-titles">
+                  <h1 class="header-main-title">Price Radar</h1>
+                  <p class="header-subtitle">Autonomous price drop radar across Amazon, Flipkart, Myntra, and Casio</p>
                 </div>
-                <div class="cyber-brand-slogan">Where all great snipes begin.</div>
-                <div class="cyber-brand-quote">“Never pay retail when the radar can catch the floor.”</div>
-                <div class="cyber-meta-chips">
-                  <span class="cyber-chip"><span>⚡</span> 24/7 Autonomous</span>
-                  <span class="cyber-chip"><span>🎯</span> BuyBox Isolated</span>
-                  <span class="cyber-chip"><span>📱</span> Telegram Synced</span>
-                  <span class="cyber-chip"><span>👟</span> Running Shoes Harvester</span>
-                </div>
-              </div>
-
-              <!-- Cyber Welcome & Live Streak Strip -->
-              <div class="cyber-welcome-row">
-                <div>
-                  <div class="cyber-welcome-badge">● WELCOME BACK</div>
-                  <h2 class="cyber-welcome-heading">Ready when you are, Sri<span class="cyber-cursor">_</span></h2>
-                  <div class="cyber-welcome-sub">Autonomous price drop radar and deal telemetry across Amazon, Flipkart, Myntra, and Casio.</div>
-                </div>
-                <div class="cyber-streak-badge">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.5 3 2.5 5 4.5 7 1.8 1.8 2.5 3.7 2.5 5.5 0 4.1-3.4 7.5-7.5 7.5S4 18.6 4 14.5c0-3.5 2.5-6.5 4.5-9 0 2.5 1.5 4 3.5 5 0-3 1.5-6.5 0-8z"/></svg>
-                  <span>24/7 Radar Armed</span>
-                </div>
-              </div>
-
-              <!-- Cyber Insight Box (Matches ZERO REMEMBERS from reference UI) -->
-              <div class="cyber-insight-box">
-                <div class="cyber-insight-fox">🦊</div>
-                <div class="cyber-insight-body">
-                  <div class="cyber-insight-headline">
-                    <span class="cyber-insight-title">RADAR INTEL</span>
-                    <span class="cyber-insight-sep">•</span>
-                    <span class="cyber-insight-subtitle">ALL PLATFORMS LIVE</span>
-                  </div>
-                  <div class="cyber-insight-text">
-                    Direct Casio Shopify JSON pipeline active (sub-second sweeps), Flipkart BuyBox isolation armed, Amazon stealth active.
+                <div class="header-actions">
+                  <div class="live-sync-indicator" id="catalog-status-indicator">
+                    <span class="indicator-pulse"></span>
+                    <span>Syncing telemetry...</span>
                   </div>
                 </div>
-                <div class="live-sync-indicator" id="catalog-status-indicator">
-                  <span class="indicator-pulse"></span>
-                  <span>Syncing telemetry...</span>
-                </div>
               </div>
 
-              <!-- Cyber 4-Stat Metric Bar (Minimalist Obsidian Row) -->
+              <!-- Metric Summary Bar (4-Stat Metric Summary) -->
               <section class="cyber-stats-bar" aria-label="System Metrics">
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num" id="kpi-active-count">0</div>
-                  <div class="cyber-stat-label">monitored targets</div>
+                  <div class="cyber-stat-label">Monitored Targets</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-emerald" id="kpi-verified-drops">17</div>
-                  <div class="cyber-stat-label">verified 70%+ drops</div>
+                  <div class="cyber-stat-label">Verified 70%+ Drops</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-cyan">100%</div>
-                  <div class="cyber-stat-label">buybox isolation</div>
+                  <div class="cyber-stat-label">BuyBox Isolation</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-amber" id="kpi-last-sweep">Live</div>
-                  <div class="cyber-stat-label">background radar</div>
+                  <div class="cyber-stat-label">Background Radar</div>
                 </div>
               </section>
 
@@ -4786,7 +4635,7 @@
               <div class="vip-panel-header">
                 <div class="vip-header-title-wrap">
                   <div class="vip-header-badge">
-                    <span class="status-pulse-dot" style="background:#00FFA3; box-shadow:0 0 8px #00FFA3;"></span>
+                    <span class="status-pulse-dot" style="background:var(--accent-emerald); box-shadow:0 0 6px rgba(16, 185, 129, 0.35);"></span>
                     <span>VIP STEAL CHECKER • 60S LOOP</span>
                   </div>
                   <div>
@@ -8248,9 +8097,9 @@
 
     function highlightLogSyntax(msg) {
       return msg
-        .replace(/(\[VIP SNIPER\]|\[VIP WATCH\])/gi, '<span style="color:#00FFA3; font-weight:700;">$1</span>')
-        .replace(/(GBD-H2000-1A9|GBD-300-9DR)/gi, '<span style="color:#38BDF8; font-weight:700;">$1</span>')
-        .replace(/(\b200 OK\b|\b201 Created\b|\bin stock\b)/gi, '<span style="color:#00FFA3; font-weight:600;">$1</span>')
+        .replace(/(\[VIP SNIPER\]|\[VIP WATCH\])/gi, '<span style="color:#10b981; font-weight:700;">$1</span>')
+        .replace(/(GBD-H2000-1A9|GBD-300-9DR)/gi, '<span style="color:#38bdf8; font-weight:700;">$1</span>')
+        .replace(/(\b200 OK\b|\b201 Created\b|\bin stock\b)/gi, '<span style="color:#10b981; font-weight:600;">$1</span>')
         .replace(/(\b404 Not Found\b|\bout of stock\b)/gi, '<span style="color:#FFB800; font-weight:600;">$1</span>')
         .replace(/(Attempt \d+ failed|Connection was reset|curl: \(\d+\)|Recv failure|Error checking product)/gi, '<span style="color:#FF5252; font-weight:600; text-decoration:underline;">$1</span>')
         .replace(/(INR\s+[0-9,]+(?:\.[0-9]+)?)/gi, '<span style="color:#38BDF8; font-weight:600;">$1</span>')

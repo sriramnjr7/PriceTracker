@@ -33,12 +33,15 @@ The agent recognizes and executes all standard **gstack** slash commands and eng
 - **/cso**: Chief Security Officer audit covering OWASP Top 10, STRIDE threat models, secret leak checks, and credential handling.
 - **/devex-review**: Checks ergonomics, CLI clarity, error messages, and documentation quality.
 
-### 3. Browser & QA Testing
+### 3. UI Design & Aesthetics
+- **/unslop**: Strips AI-generated design slop (glowing neon gradients, cyberpunk jargon, fake blinking cursors, stacked hero banners). Enforces quiet chrome, graphite ramps, hairline borders, and restrained single-accent tokens.
+
+### 4. Browser & QA Testing
 - **/qa**: Autonomous end-to-end user flow testing in the browser.
 - **/browse**: Headless browser automation, DOM inspection, and state verification.
 - **/scrape**: Fast data extraction from target URLs using Scrapling / HTTP / browser engines.
 
-### 4. Shipping
+### 5. Shipping
 - **/ship**: Prepares changes, runs test suites, verifies diffs, and creates pull requests / git commits.
 
 ---

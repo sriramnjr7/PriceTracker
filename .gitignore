@@ -32,5 +32,6 @@ gstack/
 
 # Vercel & IDE
 .vercel/
-.agents/
+.agents/*
+!.agents/skills/
 scratch/
