@@ -709,28 +709,10 @@
       letter-spacing: -0.02em;
       margin: 0;
       line-height: 1.25;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .live-status-pill {
-      font-size: 10px;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      color: var(--accent-emerald);
-      background: var(--accent-emerald-subtle);
-      border: 1px solid rgba(0, 212, 170, 0.25);
-      padding: 1px 6px;
-      border-radius: var(--radius-sm);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      letter-spacing: 0.04em;
     }
 
     .header-subtitle {
-      font-size: 12.5px;
+      font-size: 13px;
       color: var(--text-secondary);
       margin: 0;
       line-height: 1.4;
@@ -764,110 +746,7 @@
       flex-shrink: 0;
     }
 
-    /* OpenDesign Live Radar Ticker Tape */
-    .radar-ticker-strip {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(17, 20, 28, 0.7);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 6px 10px;
-      margin-bottom: 16px;
-      overflow: hidden;
-      font-size: 11px;
-      font-family: var(--font-mono);
-    }
-
-    .ticker-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(0, 212, 170, 0.08);
-      border: 1px solid rgba(0, 212, 170, 0.25);
-      color: var(--accent-primary);
-      font-size: 9.5px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 3px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      flex-shrink: 0;
-    }
-
-    .ticker-beacon {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--accent-primary);
-      display: inline-block;
-    }
-
-    .ticker-track {
-      flex: 1;
-      overflow-x: auto;
-      white-space: nowrap;
-      scrollbar-width: none;
-    }
-    .ticker-track::-webkit-scrollbar { display: none; }
-
-    .ticker-items-row {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--text-secondary);
-    }
-
-    .ticker-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .ticker-tag {
-      font-size: 9px;
-      font-weight: 700;
-      padding: 1px 4px;
-      border-radius: 3px;
-      letter-spacing: 0.03em;
-    }
-
-    .ticker-tag.tag-casio {
-      background: rgba(234, 179, 8, 0.12);
-      color: #facc15;
-      border: 1px solid rgba(234, 179, 8, 0.25);
-    }
-
-    .ticker-tag.tag-flipkart {
-      background: rgba(56, 189, 248, 0.12);
-      color: #38bdf8;
-      border: 1px solid rgba(56, 189, 248, 0.25);
-    }
-
-    .ticker-tag.tag-amazon {
-      background: rgba(16, 185, 129, 0.12);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-
-    .ticker-tag.tag-shoes {
-      background: rgba(129, 140, 248, 0.12);
-      color: #818cf8;
-      border: 1px solid rgba(129, 140, 248, 0.25);
-    }
-
-    .ticker-tag.tag-drops {
-      background: rgba(245, 158, 11, 0.12);
-      color: #fbbf24;
-      border: 1px solid rgba(245, 158, 11, 0.25);
-    }
-
-    .ticker-sep {
-      color: var(--text-dim);
-      font-size: 10px;
-    }
-
-    /* 4-Stat Bento Telemetry Bar */
+    /* 4-Stat Metric Summary Bar (Quiet Chrome) */
     .cyber-stats-bar {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -4087,14 +3966,11 @@
             <!-- TAB 1: MAIN DASHBOARD VIEW -->
             <div id="tab-content-dashboard" class="workspace-tab-page">
 
-              <!-- Dashboard Header Strip (OpenDesign Quiet Chrome) -->
+              <!-- Dashboard Header Strip (Quiet Chrome & High Density) -->
               <div class="dashboard-header-strip">
                 <div class="header-titles">
-                  <h1 class="header-main-title">
-                    <span>Price Radar</span>
-                    <span class="live-status-pill"><span class="status-dot-live"></span>ACTIVE</span>
-                  </h1>
-                  <p class="header-subtitle">Autonomous deal radar &amp; restock surveillance across Amazon, Flipkart, Myntra, and Casio</p>
+                  <h1 class="header-main-title">Price Radar</h1>
+                  <p class="header-subtitle">Autonomous deal surveillance across Amazon, Flipkart, Myntra, and Casio India</p>
                 </div>
                 <div class="header-actions">
                   <div class="live-sync-indicator" id="catalog-status-indicator">
@@ -4104,48 +3980,23 @@
                 </div>
               </div>
 
-              <!-- OpenDesign Live Radar Ticker Tape -->
-              <div class="radar-ticker-strip">
-                <div class="ticker-badge">
-                  <span class="ticker-beacon"></span>
-                  <span>RADAR TAPE</span>
-                </div>
-                <div class="ticker-track">
-                  <div class="ticker-items-row">
-                    <span class="ticker-item"><span class="ticker-tag tag-casio">CASIO</span> GBD-300-9DR: 404 Restock Radar Active (60s probe)</span>
-                    <span class="ticker-sep">•</span>
-                    <span class="ticker-item"><span class="ticker-tag tag-flipkart">FLIPKART</span> BuyBox Isolated (RetailNet verified)</span>
-                    <span class="ticker-sep">•</span>
-                    <span class="ticker-item"><span class="ticker-tag tag-amazon">AMAZON</span> Stealth Engine: TLS Impersonation armed</span>
-                    <span class="ticker-sep">•</span>
-                    <span class="ticker-item"><span class="ticker-tag tag-shoes">SHOES</span> Nike · Saucony · Asics Harvester live</span>
-                    <span class="ticker-sep">•</span>
-                    <span class="ticker-item"><span class="ticker-tag tag-drops">INTEL</span> 17 Verified 70%+ clearance deals tracked</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Metric Summary Bar (4-Stat Bento Telemetry) -->
+              <!-- Metric Summary Bar (4-Stat Metric Summary) -->
               <section class="cyber-stats-bar" aria-label="System Metrics">
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num" id="kpi-active-count">0</div>
                   <div class="cyber-stat-label">Monitored Targets</div>
-                  <div class="cyber-stat-sub">Amazon · Flipkart · Casio</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-emerald" id="kpi-verified-drops">17</div>
                   <div class="cyber-stat-label">Verified 70%+ Drops</div>
-                  <div class="cyber-stat-sub">Clearance Floor Alert</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-cyan">100%</div>
                   <div class="cyber-stat-label">BuyBox Isolation</div>
-                  <div class="cyber-stat-sub">RetailNet / Appario Only</div>
                 </div>
                 <div class="cyber-stat-col">
                   <div class="cyber-stat-num highlight-amber" id="kpi-last-sweep">Live</div>
                   <div class="cyber-stat-label">Background Radar</div>
-                  <div class="cyber-stat-sub">Autonomous Sweeper</div>
                 </div>
               </section>
 
