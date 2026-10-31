@@ -1989,7 +1989,6 @@
 
     .highlight-emerald {
       color: var(--accent-emerald) !important;
-      text-shadow: 0 0 16px rgba(0, 255, 163, 0.4);
     }
 
     /* Brand Control Matrix (Per-brand Toggle Switch Cards) */
@@ -2625,29 +2624,27 @@
       align-items: center;
       gap: 8px;
       background: var(--bg-card);
-      border: 1px solid rgba(0, 255, 163, 0.3);
+      border: 1px solid var(--border-subtle);
       padding: 6px 14px;
       border-radius: var(--radius-full);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
       color: var(--accent-emerald);
-      box-shadow: 0 0 16px rgba(0, 255, 163, 0.08);
     }
     .daemon-live-chip.is-idle {
-      border-color: rgba(255, 184, 0, 0.3);
+      border-color: var(--border-subtle);
       color: var(--accent-amber);
     }
     .daemon-live-chip.is-stopped {
-      border-color: rgba(255, 51, 102, 0.3);
+      border-color: var(--border-subtle);
       color: var(--accent-rose);
     }
 
     .status-pulse-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: var(--radius-full);
       background: currentColor;
-      box-shadow: 0 0 10px currentColor;
       animation: statusPulse 1.8s infinite ease-in-out;
     }
     @keyframes statusPulse {
@@ -2732,23 +2729,12 @@
 
     /* VIP Steal Checker Panel */
     .vip-sniper-panel {
-      background: rgba(14, 20, 32, 0.7);
-      border: 1px solid rgba(0, 255, 163, 0.22);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
       padding: var(--space-4) var(--space-5);
       margin-bottom: var(--space-5);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
       position: relative;
-      overflow: hidden;
-    }
-    .vip-sniper-panel::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(0, 255, 163, 0.6), rgba(0, 240, 255, 0.6), transparent);
     }
     .vip-panel-header {
       display: flex;
@@ -2767,18 +2753,18 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(0, 255, 163, 0.12);
-      border: 1px solid rgba(0, 255, 163, 0.3);
-      color: var(--accent-emerald);
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
       padding: 3px 8px;
       border-radius: var(--radius-full);
       font-size: 11px;
       font-family: var(--font-mono);
-      font-weight: 700;
+      font-weight: 600;
     }
     .vip-panel-title {
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 600;
       color: var(--text-primary);
       letter-spacing: -0.01em;
     }
@@ -2797,19 +2783,19 @@
       }
     }
     .vip-watch-card {
-      background: rgba(8, 11, 18, 0.7);
+      background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       padding: var(--space-4);
       display: flex;
       flex-direction: column;
       gap: 10px;
-      transition: all var(--transition-fast);
+      transition: border-color var(--transition-fast), background-color var(--transition-fast);
       position: relative;
     }
     .vip-watch-card:hover {
-      border-color: rgba(0, 255, 163, 0.35);
-      background: rgba(12, 17, 28, 0.85);
+      border-color: var(--border-medium);
+      background: var(--bg-card-hover);
     }
     .vip-watch-top {
       display: flex;
@@ -2819,18 +2805,18 @@
     }
     .vip-watch-name {
       font-size: 13px;
-      font-weight: 700;
-      color: #F8FAFC;
+      font-weight: 600;
+      color: var(--text-primary);
       line-height: 1.35;
     }
     .vip-watch-tag {
       font-size: 10px;
       font-family: var(--font-mono);
-      color: var(--accent-cyan);
-      background: rgba(0, 240, 255, 0.08);
-      border: 1px solid rgba(0, 240, 255, 0.2);
+      color: var(--text-muted);
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-subtle);
       padding: 1px 6px;
-      border-radius: var(--radius-full);
+      border-radius: var(--radius-sm);
       display: inline-block;
       margin-top: 3px;
     }
@@ -2838,21 +2824,21 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: var(--radius-full);
       font-size: 11px;
       font-family: var(--font-mono);
-      font-weight: 700;
+      font-weight: 600;
       white-space: nowrap;
     }
     .vip-status-pill.out-of-stock {
-      background: rgba(100, 116, 139, 0.15);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      color: #94A3B8;
+      background: rgba(100, 116, 139, 0.12);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
     }
     .vip-status-pill.in-stock {
       background: var(--accent-emerald-subtle);
-      border: 1px solid rgba(16, 185, 129, 0.35);
+      border: 1px solid rgba(16, 185, 129, 0.25);
       color: var(--accent-emerald);
     }
     .vip-metrics-row {
@@ -2863,8 +2849,9 @@
       font-size: 12px;
       font-family: var(--font-mono);
       padding: 6px 10px;
-      background: rgba(0, 0, 0, 0.25);
+      background: var(--bg-card-elevated);
       border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
     }
     .vip-metric-item {
       display: flex;
@@ -2878,7 +2865,7 @@
       letter-spacing: 0.05em;
     }
     .vip-metric-val {
-      font-weight: 700;
+      font-weight: 600;
       color: var(--text-primary);
     }
     .vip-watch-footer {
@@ -2889,32 +2876,31 @@
       color: var(--text-muted);
       font-family: var(--font-mono);
       padding-top: 4px;
-      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      border-top: 1px solid var(--border-subtle);
     }
     .lvl-vip {
-      background: rgba(0, 255, 163, 0.16);
+      background: rgba(16, 185, 129, 0.1);
       color: var(--accent-emerald);
-      border: 1px solid rgba(0, 255, 163, 0.4);
+      border: 1px solid rgba(16, 185, 129, 0.25);
     }
 
     .issues-spotlight-card {
-      background: rgba(255, 184, 0, 0.04);
-      border: 1px solid rgba(255, 184, 0, 0.28);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
       margin-bottom: var(--space-5);
       overflow: hidden;
       transition: border-color var(--transition-fast);
     }
     .issues-spotlight-card.has-errors {
-      background: rgba(255, 51, 102, 0.04);
-      border-color: rgba(255, 51, 102, 0.32);
+      border-color: rgba(244, 63, 94, 0.35);
     }
     .issues-spotlight-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: var(--space-3) var(--space-4);
-      background: rgba(0, 0, 0, 0.2);
+      background: var(--bg-card-elevated);
       cursor: pointer;
       user-select: none;
       gap: var(--space-3);
@@ -2926,10 +2912,11 @@
       gap: var(--space-3);
     }
     .issue-pulse-icon {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: var(--radius-sm);
-      background: rgba(255, 184, 0, 0.15);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
       color: var(--accent-amber);
       display: flex;
       align-items: center;
@@ -2937,7 +2924,6 @@
       flex-shrink: 0;
     }
     .issues-spotlight-card.has-errors .issue-pulse-icon {
-      background: rgba(255, 51, 102, 0.15);
       color: var(--accent-rose);
     }
     .issues-title {
@@ -3102,22 +3088,9 @@
       align-items: center;
       justify-content: space-between;
       padding: 10px 14px;
-      background: #090C14;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-card-elevated);
+      border-bottom: 1px solid var(--border-subtle);
     }
-    .terminal-dots {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .t-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: var(--radius-full);
-    }
-    .dot-red { background: #FF5F56; }
-    .dot-yellow { background: #FFBD2E; }
-    .dot-green { background: #27C93F; }
     .terminal-title {
       font-size: 12px;
       font-family: var(--font-mono);
@@ -3140,7 +3113,6 @@
       height: 6px;
       border-radius: var(--radius-full);
       background: var(--accent-emerald);
-      box-shadow: 0 0 8px var(--accent-emerald);
     }
     .terminal-body {
       max-height: 580px;
@@ -4104,7 +4076,7 @@
               <div class="page-breadcrumb">PriceTracker / My Collection</div>
               <div class="page-header-row">
                 <div>
-                  <h1 class="page-heading">MY COLLECTION</h1>
+                  <h1 class="page-heading">My Collection</h1>
                   <p class="page-subheading">A personal archive of the things I own.</p>
                 </div>
                 <div class="collection-header-actions">
@@ -4123,19 +4095,19 @@
             <section class="cyber-stats-bar" aria-label="Collection Telemetry">
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num" id="col-stat-total">17</div>
-                <div class="cyber-stat-label">total items</div>
+                <div class="cyber-stat-label">Total Items</div>
               </div>
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num highlight-cyan" id="col-stat-watches">7</div>
-                <div class="cyber-stat-label">watches</div>
+                <div class="cyber-stat-label">Watches</div>
               </div>
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num highlight-emerald" id="col-stat-shoes">10</div>
-                <div class="cyber-stat-label">shoes</div>
+                <div class="cyber-stat-label">Shoes</div>
               </div>
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num highlight-amber" id="col-stat-brands">10</div>
-                <div class="cyber-stat-label">brands</div>
+                <div class="cyber-stat-label">Brands</div>
               </div>
             </section>
 
@@ -4199,8 +4171,8 @@
                   <!-- Master Rocker Switch -->
                   <div class="shoes-switch-wrap">
                     <div class="switch-meta">
-                      <span class="switch-title">HARVESTER RADAR</span>
-                      <span class="switch-status-text is-paused" id="shoes-status-text">RADAR PAUSED</span>
+                      <span class="switch-title">Harvester Radar</span>
+                      <span class="switch-status-text is-paused" id="shoes-status-text">Radar Paused</span>
                     </div>
                     <label class="rocker-switch" title="Toggle Running Shoes Radar ON/OFF">
                       <input type="checkbox" id="shoes-master-toggle" onchange="handleShoesToggle(this.checked)">
@@ -4272,7 +4244,7 @@
               <div class="connector-card">
                 <div>
                   <div class="connector-name">Flipkart India</div>
-                  <div class="connector-meta">SSR window.__INITIAL_STATE__</div>
+                  <div class="connector-meta">Direct SSR stream</div>
                 </div>
                 <span class="connector-status-badge">
                   <span class="status-dot-live"></span>
@@ -4283,7 +4255,7 @@
               <div class="connector-card">
                 <div>
                   <div class="connector-name">Myntra</div>
-                  <div class="connector-meta">window.__myx SKU inventoryInfo</div>
+                  <div class="connector-meta">SKU inventory feed</div>
                 </div>
                 <span class="connector-status-badge">
                   <span class="status-dot-live"></span>
@@ -4294,7 +4266,7 @@
               <div class="connector-card">
                 <div>
                   <div class="connector-name">Tata CLiQ</div>
-                  <div class="connector-meta">SearchBFF JSON :inStockFlag:true</div>
+                  <div class="connector-meta">Catalog search API</div>
                 </div>
                 <span class="connector-status-badge">
                   <span class="status-dot-live"></span>
@@ -4305,7 +4277,7 @@
               <div class="connector-card">
                 <div>
                   <div class="connector-name">Ajio</div>
-                  <div class="connector-meta">API &amp; Proxy Adapter</div>
+                  <div class="connector-meta">Catalog proxy adapter</div>
                 </div>
                 <span class="connector-status-badge" style="background: rgba(59, 130, 246, 0.12); color: #60a5fa;">
                   <span class="status-dot-live" style="background:#3b82f6;"></span>
@@ -4321,18 +4293,18 @@
                 <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">131 Models</span>
               </div>
               <div class="whitelist-cloud">
-                <span class="model-chip" style="background:rgba(236,72,153,0.12); border-color:rgba(236,72,153,0.3); color:#f472b6;"><strong>🔥 TOP SNEAKERS:</strong> Adidas SL 72, Samba, Gazelle, Spezial, Superstar • Puma Palermo • Nike P-6000, Vomero 5, Dunk Low, Killshot • Asics Gel-1130, GT-2160 • NB 550, 1906R</span>
-                <span class="model-chip"><strong>SAUCONY:</strong> Endorphin Elite/Pro/Speed, Triumph, Kinvara Pro, Tempus, Guide, Ride</span>
-                <span class="model-chip"><strong>REEBOK:</strong> Floatride Energy 3-6, X, Symmetros</span>
-                <span class="model-chip"><strong>HOKA:</strong> Cielo X1, Rocket X, Mach X, Mach, Rincon, Clifton, Bondi, Skyward X</span>
-                <span class="model-chip"><strong>BROOKS:</strong> Hyperion Elite/Max, Ghost Max, Ghost, Glycerin GTS, Adrenaline GTS</span>
-                <span class="model-chip"><strong>PUMA:</strong> Fast-R, Deviate Nitro Elite, Deviate Nitro, MagMax, Velocity, Magnify, ForeverRun</span>
-                <span class="model-chip"><strong>NIKE:</strong> Alphafly, Vaporfly, Ultrafly, Zoom Fly, Streakfly, Invincible Run, Pegasus, Vomero, Structure</span>
-                <span class="model-chip"><strong>ADIDAS:</strong> Adios Pro, Prime X Strung, Takumi Sen, Boston, Adios, Supernova Prima/Rise, Adizero SL</span>
-                <span class="model-chip"><strong>ASICS:</strong> Metaspeed Sky/Edge, Superblast, Magic Speed, Gel-Nimbus, Gel-Kayano, Novablast, Cumulus, GT-2000</span>
-                <span class="model-chip"><strong>NEW BALANCE:</strong> SuperComp Elite/Trainer/Pacer, 1080, More, Rebel, 880, Propel</span>
-                <span class="model-chip"><strong>SKECHERS:</strong> Go Run Speed Beast/Elite, Razor, Max Road, Ride, Pure, Persistence</span>
-                <span class="model-chip"><strong>ON RUNNING:</strong> Cloudboom Echo/Strike, Cloudsurfer Next, Cloudflow, Cloudmonster Hyper, Cloudrunner</span>
+                <span class="model-chip" style="background:var(--bg-card-elevated); border-color:var(--border-subtle); color:var(--text-secondary);"><strong>Sneakers:</strong> Adidas SL 72, Samba, Gazelle, Spezial, Superstar • Puma Palermo • Nike P-6000, Vomero 5, Dunk Low, Killshot • Asics Gel-1130, GT-2160 • NB 550, 1906R</span>
+                <span class="model-chip"><strong>Saucony:</strong> Endorphin Elite/Pro/Speed, Triumph, Kinvara Pro, Tempus, Guide, Ride</span>
+                <span class="model-chip"><strong>Reebok:</strong> Floatride Energy 3-6, X, Symmetros</span>
+                <span class="model-chip"><strong>Hoka:</strong> Cielo X1, Rocket X, Mach X, Mach, Rincon, Clifton, Bondi, Skyward X</span>
+                <span class="model-chip"><strong>Brooks:</strong> Hyperion Elite/Max, Ghost Max, Ghost, Glycerin GTS, Adrenaline GTS</span>
+                <span class="model-chip"><strong>Puma:</strong> Fast-R, Deviate Nitro Elite, Deviate Nitro, MagMax, Velocity, Magnify, ForeverRun</span>
+                <span class="model-chip"><strong>Nike:</strong> Alphafly, Vaporfly, Ultrafly, Zoom Fly, Streakfly, Invincible Run, Pegasus, Vomero, Structure</span>
+                <span class="model-chip"><strong>Adidas:</strong> Adios Pro, Prime X Strung, Takumi Sen, Boston, Adios, Supernova Prima/Rise, Adizero SL</span>
+                <span class="model-chip"><strong>Asics:</strong> Metaspeed Sky/Edge, Superblast, Magic Speed, Gel-Nimbus, Gel-Kayano, Novablast, Cumulus, GT-2000</span>
+                <span class="model-chip"><strong>New Balance:</strong> SuperComp Elite/Trainer/Pacer, 1080, More, Rebel, 880, Propel</span>
+                <span class="model-chip"><strong>Skechers:</strong> Go Run Speed Beast/Elite, Razor, Max Road, Ride, Pure, Persistence</span>
+                <span class="model-chip"><strong>On Running:</strong> Cloudboom Echo/Strike, Cloudsurfer Next, Cloudflow, Cloudmonster Hyper, Cloudrunner</span>
               </div>
             </div>
 
@@ -4689,7 +4661,7 @@
                     <span id="label-probe-vip">Probe VIP Now</span>
                   </button>
                   <button class="filter-btn log-filter-btn btn-sm" id="filter-btn-vip-header" onclick="setLogLevelFilter('vip', document.getElementById('filter-btn-vip'))" title="Filter terminal to show exclusively VIP probe events">
-                    🎯 View VIP Probe Stream
+                    VIP Probe Stream
                   </button>
                 </div>
               </div>
@@ -4700,12 +4672,12 @@
                 <div class="vip-watch-card" id="vip-card-gbdh2000">
                   <div class="vip-watch-top">
                     <div>
-                      <div class="vip-watch-name">CASIO G-SHOCK GBD-H2000-1A9 G-SQUAD</div>
-                      <span class="vip-watch-tag">TAG: gbd-h2000 • ID #58</span>
+                      <div class="vip-watch-name">Casio G-Shock GBD-H2000-1A9 G-Squad</div>
+                      <span class="vip-watch-tag">gbd-h2000 • ID #58</span>
                     </div>
                     <span class="vip-status-pill out-of-stock" id="vip-badge-h2000">
                       <span class="status-pulse-dot"></span>
-                      <span id="vip-status-text-h2000">OUT OF STOCK</span>
+                      <span id="vip-status-text-h2000">Out of Stock</span>
                     </span>
                   </div>
                   <div class="vip-metrics-row">
@@ -4729,9 +4701,9 @@
                   <div class="vip-watch-footer">
                     <div style="display:flex; align-items:center; gap:8px;">
                       <button id="vip-btn-toggle-h2000" class="btn-ui btn-ui-secondary btn-sm" onclick="toggleVipWatch('gbdh2000', 58)" style="font-size:11px; padding: 3px 8px; border-radius: 6px; cursor:pointer;" aria-label="Toggle GBD-H2000 alerts">
-                        <span id="vip-btn-icon-h2000">⏸️</span> <span id="vip-btn-text-h2000">Pause</span>
+                        <span id="vip-btn-icon-h2000"></span> <span id="vip-btn-text-h2000">Pause Alerts</span>
                       </button>
-                      <span>Probed: <strong id="vip-time-h2000" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-h2000" style="color:#64748B;">(HTTP 200)</span></span>
+                      <span>Probed: <strong id="vip-time-h2000" style="color:var(--text-secondary);">Checking...</strong> <span id="vip-http-h2000" style="color:var(--text-muted);">(HTTP 200)</span></span>
                     </div>
                     <a href="https://casiostore.bhawar.com/products/casio-g-shock-gbd-h2000-1a9-g-squad-digital-sports-watch" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Store &rarr;</a>
                   </div>
@@ -4741,12 +4713,12 @@
                 <div class="vip-watch-card" id="vip-card-gbd300">
                   <div class="vip-watch-top">
                     <div>
-                      <div class="vip-watch-name">CASIO G-SHOCK GBD-300-9DR VIBRANT YELLOW</div>
-                      <span class="vip-watch-tag">TAG: gbd-300-9dr • CASIO BHAWAR</span>
+                      <div class="vip-watch-name">Casio G-Shock GBD-300-9DR Vibrant Yellow</div>
+                      <span class="vip-watch-tag">gbd-300-9dr • Casio Bhawar</span>
                     </div>
                     <span class="vip-status-pill out-of-stock" id="vip-badge-300">
                       <span class="status-pulse-dot"></span>
-                      <span id="vip-status-text-300">OUT OF STOCK</span>
+                      <span id="vip-status-text-300">Out of Stock</span>
                     </span>
                   </div>
                   <div class="vip-metrics-row">
@@ -4770,9 +4742,9 @@
                   <div class="vip-watch-footer">
                     <div style="display:flex; align-items:center; gap:8px;">
                       <button id="vip-btn-toggle-300" class="btn-ui btn-ui-secondary btn-sm" onclick="toggleVipWatch('gbd300_bhawar', 5)" style="font-size:11px; padding: 3px 8px; border-radius: 6px; cursor:pointer;" aria-label="Toggle GBD-300 Bhawar alerts">
-                        <span id="vip-btn-icon-300">⏸️</span> <span id="vip-btn-text-300">Pause</span>
+                        <span id="vip-btn-icon-300"></span> <span id="vip-btn-text-300">Pause Alerts</span>
                       </button>
-                      <span>Probed: <strong id="vip-time-300" style="color:#CBD5E1;">Checking...</strong> <span id="vip-http-300" style="color:#64748B;">(HTTP 404)</span></span>
+                      <span>Probed: <strong id="vip-time-300" style="color:var(--text-secondary);">Checking...</strong> <span id="vip-http-300" style="color:var(--text-muted);">(HTTP 404)</span></span>
                     </div>
                     <a href="https://casiostore.bhawar.com/products/casio-g-shock-gbd-300-9dr-watch" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Store &rarr;</a>
                   </div>
@@ -4782,12 +4754,12 @@
                 <div class="vip-watch-card" id="vip-card-gbd300fk">
                   <div class="vip-watch-top">
                     <div>
-                      <div class="vip-watch-name">CASIO G-SHOCK GBD-300-1DR (BLACK)</div>
-                      <span class="vip-watch-tag">TAG: gbd-300-1dr • FLIPKART VIP SNIPER</span>
+                      <div class="vip-watch-name">Casio G-Shock GBD-300-1DR (Black)</div>
+                      <span class="vip-watch-tag">gbd-300-1dr • Flipkart Restock Sniper</span>
                     </div>
                     <span class="vip-status-pill out-of-stock" id="vip-badge-gbd300fk">
                       <span class="status-pulse-dot"></span>
-                      <span id="vip-status-text-gbd300fk">OUT OF STOCK</span>
+                      <span id="vip-status-text-gbd300fk">Out of Stock</span>
                     </span>
                   </div>
                   <div class="vip-metrics-row">
@@ -4811,9 +4783,9 @@
                   <div class="vip-watch-footer">
                     <div style="display:flex; align-items:center; gap:8px;">
                       <button id="vip-btn-toggle-gbd300fk" class="btn-ui btn-ui-secondary btn-sm" onclick="toggleVipWatch('flipkart_gbd300', 111)" style="font-size:11px; padding: 3px 8px; border-radius: 6px; cursor:pointer;" aria-label="Toggle Flipkart GBD-300 alerts">
-                        <span id="vip-btn-icon-gbd300fk">⏸️</span> <span id="vip-btn-text-gbd300fk">Pause Alerts</span>
+                        <span id="vip-btn-icon-gbd300fk"></span> <span id="vip-btn-text-gbd300fk">Pause Alerts</span>
                       </button>
-                      <span>Probed: <strong id="vip-time-gbd300fk" style="color:#CBD5E1;">Every 60s</strong> <span id="vip-http-gbd300fk" style="color:#64748B;">(Flipkart VIP)</span></span>
+                      <span>Probed: <strong id="vip-time-gbd300fk" style="color:var(--text-secondary);">Every 60s</strong> <span id="vip-http-gbd300fk" style="color:var(--text-muted);">(Flipkart VIP)</span></span>
                     </div>
                     <a href="https://www.flipkart.com/casio-gbd-300-1dr-g-shock-digital-watch-men/p/itmd46dfdac5b669?pid=WATH6HSUVHVMZVPW" target="_blank" rel="noopener" style="color:var(--accent-primary); font-size:11px; text-decoration:none;">Open Flipkart &rarr;</a>
                   </div>
@@ -4865,19 +4837,19 @@
                   All Logs <span class="filter-chip-num" id="filter-cnt-all">0</span>
                 </button>
                 <button class="filter-btn log-filter-btn" id="filter-btn-vip" onclick="setLogLevelFilter('vip', this)">
-                  🎯 VIP Sniper <span class="filter-chip-num" id="filter-cnt-vip" style="color: var(--accent-emerald);">0</span>
+                  VIP Sniper <span class="filter-chip-num" id="filter-cnt-vip">0</span>
                 </button>
                 <button class="filter-btn log-filter-btn" id="filter-btn-issues" onclick="setLogLevelFilter('warning_error', this)">
-                  ⚠️ Issues <span class="filter-chip-num" id="filter-cnt-issues" style="color: var(--accent-amber);">0</span>
+                  Issues <span class="filter-chip-num" id="filter-cnt-issues">0</span>
                 </button>
                 <button class="filter-btn log-filter-btn" id="filter-btn-errors" onclick="setLogLevelFilter('error', this)">
-                  🔴 Errors <span class="filter-chip-num" id="filter-cnt-errors" style="color: var(--accent-rose);">0</span>
+                  Errors <span class="filter-chip-num" id="filter-cnt-errors">0</span>
                 </button>
                 <button class="filter-btn log-filter-btn" id="filter-btn-warnings" onclick="setLogLevelFilter('warning', this)">
-                  🟡 Warnings <span class="filter-chip-num" id="filter-cnt-warnings" style="color: var(--accent-amber);">0</span>
+                  Warnings <span class="filter-chip-num" id="filter-cnt-warnings">0</span>
                 </button>
                 <button class="filter-btn log-filter-btn" id="filter-btn-info" onclick="setLogLevelFilter('info', this)">
-                  🔵 Info <span class="filter-chip-num" id="filter-cnt-info">0</span>
+                  Info <span class="filter-chip-num" id="filter-cnt-info">0</span>
                 </button>
               </div>
 
@@ -4910,11 +4882,6 @@
             <!-- Cyber Obsidian Terminal Window -->
             <div class="terminal-window">
               <div class="terminal-chrome">
-                <div class="terminal-dots">
-                  <span class="t-dot dot-red"></span>
-                  <span class="t-dot dot-yellow"></span>
-                  <span class="t-dot dot-green"></span>
-                </div>
                 <div class="terminal-title">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="4 17 10 11 4 5"></polyline>
@@ -7340,7 +7307,7 @@
             btn.setAttribute("title", isActive ? "Pause 60s Sniper & Alerts" : "Resume 60s Sniper & Alerts");
             btn.setAttribute("aria-label", isActive ? "Pause Alerts" : "Resume Alerts");
           }
-          if (icon) icon.textContent = isActive ? "⏸️" : "▶️";
+          if (icon) icon.textContent = "";
           if (text) text.textContent = isActive ? "Pause Alerts" : "Resume Alerts";
 
           if (!isActive && badge && statusText) {
