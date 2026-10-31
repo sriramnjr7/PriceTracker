@@ -6,7 +6,8 @@ echo ======================================================================
 echo    FLIPKART CASIO G-SHOCK GBD-300-1DR (BLACK) EXCHANGE SNIPER
 echo ======================================================================
 echo.
-echo Polling Flipkart for Black 1DR restock every 20s...
+echo Polling Flipkart for Black 1DR restock every 20s (Continuous 24/7 infinite loop)...
+echo Press Ctrl+C at any time to pause or exit.
 echo Audit Log: All check entries written to gbd300_exchange_sniper.log
 echo When in-stock:
 echo   - Windows Native Desktop Notification banner

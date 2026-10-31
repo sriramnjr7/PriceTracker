@@ -151,7 +151,7 @@ async def run_exchange_sniper():
     logger.info("FLIPKART GBD-300-1DR (BLACK) EXCHANGE SNIPER INITIALIZED")
     logger.info("Target Item   : CASIO GBD-300-1DR (Black - PID: %s)", TARGET_PID)
     logger.info("Flipkart Order: OD439015405806274100")
-    logger.info("Check Cadence : Every %s seconds", CHECK_INTERVAL_SECONDS)
+    logger.info("Check Cadence : Every %s seconds (Infinite loop - runs continuously 24/7)", CHECK_INTERVAL_SECONDS)
     logger.info("Audit Log File: %s", LOG_FILE_PATH)
     logger.info("Notifications : Telegram Alert + Windows Toast + Browser Auto-Open")
     logger.info("Audio Alarm   : DISABLED (Silent notifications only)")
