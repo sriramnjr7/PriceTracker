@@ -181,7 +181,7 @@ class Tracker:
         should_notify, drop_percent = self._should_notify(
             product, product.current_price, result.price, effective_price=eff_price
         )
-        await self.db.update_price(product.id, result.price, title=result.title or None)
+        await self.db.update_price(product.id, result.price, title=result.title or None, old_price=product.current_price)
 
         if not should_notify:
             return False
@@ -285,7 +285,7 @@ class Tracker:
         best_price = min((d["price"] for d in deals), default=product.current_price)
         active_count = len(deals)
         updated_title = f"[Category: {category_name}] ({active_count} active deal{'s' if active_count != 1 else ''} currently)"
-        await self.db.update_price(product.id, best_price, title=updated_title)
+        await self.db.update_price(product.id, best_price, title=updated_title, old_price=product.current_price)
 
         if not deals:
             logger.info("[casio] Collection %s: 0 deals matching >= %s%% discount", handle, min_discount)
@@ -340,7 +340,7 @@ class Tracker:
             best_deal = max(deals, key=lambda d: d.get("discount_percent", 0))
             clean_name = best_deal["title"][:35]
             updated_title = f"[Category: Casio Myntra] Best: {clean_name} ({best_deal['discount_percent']:.0f}% OFF)"
-            await self.db.update_price(product.id, best_price, title=updated_title)
+            await self.db.update_price(product.id, best_price, title=updated_title, old_price=product.current_price)
         else:
             updated_title = "[Category: Casio Myntra] (0 active deals currently)"
             await self.db.update_price(product.id, None, title=updated_title)
@@ -397,7 +397,7 @@ class Tracker:
             best_deal = max(deals, key=lambda d: d.get("discount_percent", 0))
             clean_name = best_deal["title"][:35]
             updated_title = f"[Category: Casio Flipkart] Best: {clean_name} ({best_deal['discount_percent']:.0f}% OFF)"
-            await self.db.update_price(product.id, best_price, title=updated_title)
+            await self.db.update_price(product.id, best_price, title=updated_title, old_price=product.current_price)
         else:
             updated_title = "[Category: Casio Flipkart] (0 active deals currently)"
             await self.db.update_price(product.id, None, title=updated_title)
@@ -461,7 +461,7 @@ class Tracker:
             return False
 
         updated_title = f"{clean_model} ({len(in_stock_variants)} variant{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
-        await self.db.update_price(product.id, lowest_price, title=updated_title)
+        await self.db.update_price(product.id, lowest_price, title=updated_title, old_price=product.current_price)
 
         notified_any = False
         target_price = product.target_price or 2600.0
@@ -581,7 +581,7 @@ class Tracker:
             updated_title = f"{clean_model} ({size_prefix} {sizes_label} - {len(in_stock_variants)} color{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
         else:
             updated_title = f"{clean_model} ({len(in_stock_variants)} variant{'s' if len(in_stock_variants) != 1 else ''} In Stock)"
-        await self.db.update_price(product.id, lowest_price, title=updated_title)
+        await self.db.update_price(product.id, lowest_price, title=updated_title, old_price=product.current_price)
 
         notified_any = False
         target_price = product.target_price

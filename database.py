@@ -229,14 +229,16 @@ class Database:
         await self.conn.commit()
         return True
 
-    async def update_price(self, product_id: int, price: Optional[float], title: Optional[str] = None) -> None:
+    async def update_price(self, product_id: int, price: Optional[float], title: Optional[str] = None, old_price: Optional[float] = None) -> None:
         """Record a newly observed price in ``price_logs`` and refresh the row."""
         ts = _now()
         if price is not None:
-            await self.conn.execute(
-                "INSERT INTO price_logs (product_id, price, timestamp) VALUES (?, ?, ?)",
-                (product_id, price, ts),
-            )
+            should_log = old_price is None or abs(float(price) - float(old_price)) > 0.01
+            if should_log:
+                await self.conn.execute(
+                    "INSERT INTO price_logs (product_id, price, timestamp) VALUES (?, ?, ?)",
+                    (product_id, price, ts),
+                )
             if title:
                 await self.conn.execute(
                     "UPDATE products SET current_price = ?, title = ?, last_checked = ? WHERE id = ?",

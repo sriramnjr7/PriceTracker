@@ -58,7 +58,7 @@ class SupabaseDatabase:
     def is_configured(self) -> bool:
         return bool(self.url and self.key)
 
-    def _get_client(self, timeout: float = 6.0) -> httpx.AsyncClient:
+    def _get_client(self, timeout: float = 12.0) -> httpx.AsyncClient:
         """Get or initialize pooled HTTP client with keep-alive connections."""
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
@@ -77,7 +77,7 @@ class SupabaseDatabase:
         """Fast, pooled HTTP request to Supabase PostgREST with connection keep-alive."""
         url = path_or_url if path_or_url.startswith("http") else f"{self.base_rest}/{path_or_url.lstrip('/')}"
         headers = kwargs.pop("headers", self._headers)
-        timeout = kwargs.pop("timeout", 6.0)
+        timeout = kwargs.pop("timeout", 12.0)
 
         last_exc = None
         for attempt in range(max_retries):
@@ -187,19 +187,21 @@ class SupabaseDatabase:
         return resp.status_code in (200, 204)
 
     async def update_price(
-        self, product_id: int, price: Optional[float], title: Optional[str] = None
+        self, product_id: int, price: Optional[float], title: Optional[str] = None, old_price: Optional[float] = None
     ) -> None:
         ts = _now()
         if price is not None:
-            # Log price history
-            try:
-                await self._request(
-                    "POST",
-                    "/price_logs",
-                    json={"product_id": product_id, "price": price, "timestamp": ts},
-                )
-            except Exception as exc:
-                logger.debug("Failed logging price_logs for %s: %s", product_id, exc)
+            # DISK IO OPTIMIZATION: Only log to price_logs if price actually changed!
+            should_log = old_price is None or abs(float(price) - float(old_price)) > 0.01
+            if should_log:
+                try:
+                    await self._request(
+                        "POST",
+                        "/price_logs",
+                        json={"product_id": product_id, "price": price, "timestamp": ts},
+                    )
+                except Exception as exc:
+                    logger.debug("Failed logging price_logs for %s: %s", product_id, exc)
 
             payload: dict[str, Any] = {"current_price": price, "last_checked": ts}
             if title:

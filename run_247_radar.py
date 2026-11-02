@@ -35,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger("radar_daemon")
 
 
-async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 90):
+async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 900):
     """Dedicated deal radar loop for Casio Bhawar & Flipkart (70%+ OFF & GBD-300)."""
     cycle_count = 0
     while True:
@@ -52,7 +52,7 @@ async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 90):
         await asyncio.sleep(interval_seconds)
 
 
-async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 300):
+async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 1800):
     """Checks custom products manually added by the user via Telegram Bot."""
     cycle_count = 0
     while True:
@@ -248,6 +248,14 @@ VIP_WATCHES = [
 
 async def ship_vip_log_to_supabase(watch: dict, status_str: str, price: float, http_code: int, detail: str = ""):
     """Instantly flush a structured VIP probe log into Supabase for Vercel/UI live view."""
+    # DISK IO OPTIMIZATION: Only ship to Supabase when IN_STOCK or deal met!
+    # Out-of-stock ticks are recorded in local log to protect Supabase Disk IO budget.
+    is_deal = status_str == "IN_STOCK" and (
+        price <= watch.get("target_price", 0)
+        or (watch.get("offer_target_price") and price <= watch["offer_target_price"])
+    )
+    if status_str != "IN_STOCK" and not is_deal:
+        return
     supabase_url = getattr(settings, "supabase_url", None) or os.getenv("SUPABASE_URL", "").rstrip("/")
     supabase_key = getattr(settings, "supabase_key", None) or os.getenv("SUPABASE_KEY")
     if not supabase_url or not supabase_key:
@@ -780,9 +788,9 @@ async def main():
     tg_bot = TelegramAssistant(settings, db=radar.db)
     await tg_bot.init()
 
-    manual_interval = 120
-    casio_interval = 90
-    shoes_interval = 600
+    manual_interval = 1800
+    casio_interval = 900
+    shoes_interval = 1800
     for arg in sys.argv[1:]:
         if arg.isdigit():
             manual_interval = int(arg)
@@ -806,7 +814,6 @@ async def main():
             casio_deal_radar_loop(radar, interval_seconds=casio_interval),
             manual_tracker_loop(tracker, interval_seconds=manual_interval),
             running_shoes_radar_loop(interval_seconds=shoes_interval),
-            supabase_log_shipper_loop(interval_seconds=15),
             tg_bot.listen_loop(),
         )
     except (KeyboardInterrupt, SystemExit):
