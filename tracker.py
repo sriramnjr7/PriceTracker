@@ -130,7 +130,10 @@ class Tracker:
         if result.price is None or not result.in_stock:
             # Item is unlisted / out of stock / 404
             title_to_set = result.title or None
-            await self.db.update_price(product.id, None, title=title_to_set)
+            # Only hit DB if it flipped from in-stock to out-of-stock (saves Supabase Disk IO!)
+            if product.current_price is not None:
+                await self.db.update_price(product.id, None, title=title_to_set)
+                product.current_price = None
             return False
 
         # 1. Variant specification consistency guard (e.g. 1 TB SSD vs 250 GB pill)
@@ -181,7 +184,15 @@ class Tracker:
         should_notify, drop_percent = self._should_notify(
             product, product.current_price, result.price, effective_price=eff_price
         )
-        await self.db.update_price(product.id, result.price, title=result.title or None, old_price=product.current_price)
+        old_p = product.current_price
+        new_p = result.price
+        price_changed = old_p is None or abs(float(old_p) - float(new_p)) > 0.01
+
+        # Only hit Supabase if price changed or periodic 30-min timestamp refresh is due
+        if price_changed or self._needs_db_sync(product):
+            await self.db.update_price(product.id, result.price, title=result.title or None, old_price=old_p)
+            product.current_price = result.price
+            product.last_checked = datetime.now(timezone.utc)
 
         if not should_notify:
             return False

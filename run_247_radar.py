@@ -35,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger("radar_daemon")
 
 
-async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 900):
+async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 90):
     """Dedicated deal radar loop for Casio Bhawar & Flipkart (70%+ OFF & GBD-300)."""
     cycle_count = 0
     while True:
@@ -52,7 +52,7 @@ async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 900):
         await asyncio.sleep(interval_seconds)
 
 
-async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 1800):
+async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 120):
     """Checks custom products manually added by the user via Telegram Bot."""
     cycle_count = 0
     while True:
@@ -429,17 +429,19 @@ async def probe_vip_watches(tracker: Tracker) -> int:
             )
             await ship_vip_log_to_supabase(watch, status_str, deal_price, r_status, vip_detail)
 
-            # Update DB with current verified price & accurate stock status
+            # Update DB ONLY if stock status or price actually changed (saves Supabase Disk IO!)
             try:
                 products = await tracker.db.get_products()
                 vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
                 if vip_prod:
-                    if in_stock:
-                        eff_label = f" [Offer: ₹{eff_price:g}]" if eff_price and eff_price < deal_price else ""
-                        status_title = f"{watch['name']} (TARGET MET: ₹{deal_price:g}{eff_label})" if is_target_met else f"{watch['name']} (IN STOCK: ₹{deal_price:g}{eff_label})"
-                        await tracker.db.update_price(vip_prod.id, deal_price, title=status_title)
-                    else:
-                        if vip_prod.current_price is not None:
+                    was_in_stock = vip_prod.current_price is not None
+                    state_changed = (in_stock != was_in_stock) or (in_stock and abs(float(deal_price) - float(vip_prod.current_price or 0)) > 0.01)
+                    if state_changed:
+                        if in_stock:
+                            eff_label = f" [Offer: ₹{eff_price:g}]" if eff_price and eff_price < deal_price else ""
+                            status_title = f"{watch['name']} (TARGET MET: ₹{deal_price:g}{eff_label})" if is_target_met else f"{watch['name']} (IN STOCK: ₹{deal_price:g}{eff_label})"
+                            await tracker.db.update_price(vip_prod.id, deal_price, title=status_title, old_price=vip_prod.current_price)
+                        else:
                             await tracker.db.update_price(vip_prod.id, None, title=f"{watch['name']} (OUT OF STOCK)")
             except Exception as db_err:
                 logger.debug("[VIP Sniper] DB update error: %s", db_err)
@@ -788,9 +790,9 @@ async def main():
     tg_bot = TelegramAssistant(settings, db=radar.db)
     await tg_bot.init()
 
-    manual_interval = 1800
-    casio_interval = 900
-    shoes_interval = 1800
+    manual_interval = 120
+    casio_interval = 90
+    shoes_interval = 600
     for arg in sys.argv[1:]:
         if arg.isdigit():
             manual_interval = int(arg)
