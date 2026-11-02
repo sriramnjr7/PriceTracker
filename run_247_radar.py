@@ -429,10 +429,10 @@ async def probe_vip_watches(tracker: Tracker) -> int:
             )
             await ship_vip_log_to_supabase(watch, status_str, deal_price, r_status, vip_detail)
 
-            # Update DB ONLY if stock status or price actually changed (saves Supabase Disk IO!)
+            # Update DB state and sync last_checked timestamp for live UI telemetry
             try:
                 products = await tracker.db.get_products()
-                vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower()), None)
+                vip_prod = next((p for p in products if watch["tag"] in (p.url or "").lower() or p.id == watch.get("id")), None)
                 if vip_prod:
                     was_in_stock = vip_prod.current_price is not None
                     state_changed = (in_stock != was_in_stock) or (in_stock and abs(float(deal_price) - float(vip_prod.current_price or 0)) > 0.01)
@@ -443,6 +443,9 @@ async def probe_vip_watches(tracker: Tracker) -> int:
                             await tracker.db.update_price(vip_prod.id, deal_price, title=status_title, old_price=vip_prod.current_price)
                         else:
                             await tracker.db.update_price(vip_prod.id, None, title=f"{watch['name']} (OUT OF STOCK)")
+                    else:
+                        # Keep last_checked fresh so dashboard reflects active 24/7 server surveillance (zero price_logs writes)
+                        await tracker.db.update_last_checked(vip_prod.id)
             except Exception as db_err:
                 logger.debug("[VIP Sniper] DB update error: %s", db_err)
 

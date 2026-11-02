@@ -698,6 +698,17 @@ class Tracker:
         return "\u2014"
 
     @staticmethod
+    def _needs_db_sync(product: Product) -> bool:
+        """Check if periodic timestamp refresh is due to keep telemetry fresh without spamming writes."""
+        if not product.last_checked:
+            return True
+        now = datetime.now(timezone.utc)
+        last_dt = product.last_checked
+        if not getattr(last_dt, "tzinfo", None):
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        return (now - last_dt).total_seconds() >= 1800
+
+    @staticmethod
     def _should_notify(product, old_price: Optional[float], new_price: float, effective_price: Optional[float] = None):
         """Return (should_alert, drop_percent)."""
         drop_percent = 0.0
