@@ -243,6 +243,17 @@ VIP_WATCHES = [
         "platform": "casio",
         "is_active": False,
     },
+    {
+        "id": 148,
+        "name": "CASIO EDIFICE Solar Sapphire (EFS-S650DC-1ADF)",
+        "url": "https://www.flipkart.com/casio-efs-s650dc-1adf-edifice-analog-watch-men/p/itm2c0ecbb8a88aa?pid=WATHGXZJSNKU7ADE",
+        "target_price": 1500.0,
+        "default_price": 1420.0,
+        "mrp": 17995,
+        "tag": "wathgxzjsnku7ade",
+        "platform": "flipkart",
+        "is_active": True,
+    },
 ]
 
 
