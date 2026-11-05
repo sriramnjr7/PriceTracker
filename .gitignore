@@ -35,3 +35,7 @@ gstack/
 .agents/*
 !.agents/skills/
 scratch/
+
+# Local sniper credentials & profiles
+flipkart_session_cookies.json
+local_flipkart_profile/
