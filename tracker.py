@@ -705,6 +705,11 @@ class Tracker:
             return True
         now = datetime.now(timezone.utc)
         last_dt = product.last_checked
+        if isinstance(last_dt, str):
+            try:
+                last_dt = datetime.fromisoformat(last_dt.replace("Z", "+00:00"))
+            except Exception:
+                return True
         if not getattr(last_dt, "tzinfo", None):
             last_dt = last_dt.replace(tzinfo=timezone.utc)
         return (now - last_dt).total_seconds() >= 1800
