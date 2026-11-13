@@ -837,6 +837,68 @@
       flex-shrink: 0;
     }
 
+    /* Universal Page Header Section (Tabs: My Collection, Running Shoes Radar, System Logs) */
+    .page-title-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 4px 0 14px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .page-breadcrumb {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .page-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-heading {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .page-subheading {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 3px 0 0;
+      line-height: 1.4;
+    }
+
+    .collection-header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+      .page-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .collection-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
+
     /* 4-Stat Metric Summary Bar (Quiet Chrome) */
     .cyber-stats-bar {
       display: grid;
@@ -4146,7 +4208,7 @@
                   </svg>
                   <span>My Collection</span>
                 </div>
-                <span class="nav-item-badge badge-collection" id="nav-collection-count-badge">17</span>
+                <span class="nav-item-badge badge-collection" id="nav-collection-count-badge">18</span>
               </a>
 
               <a class="nav-link-dashboard" id="nav-btn-shoes" onclick="switchNavTab('shoes')">
@@ -4402,8 +4464,8 @@
                   <h1 class="page-heading">My Collection</h1>
                   <p class="page-subheading">A personal archive of the things I own.</p>
                 </div>
-                <div class="collection-header-actions" style="display: flex; gap: 8px; align-items: center;">
-                  <button class="btn-ui btn-ui-secondary btn-sm" onclick="resetCollectionToDefaults()" title="Reset collection to original 17 curated items">
+                <div class="collection-header-actions">
+                  <button class="btn-ui btn-ui-secondary btn-sm" onclick="resetCollectionToDefaults()" title="Reset collection to original 18 curated items">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                       <path d="M3 3v5h5"></path>
@@ -4424,7 +4486,7 @@
             <!-- Calculated Collection Summary KPI Bar -->
             <section class="cyber-stats-bar collection-stats-bar" aria-label="Collection Telemetry">
               <div class="cyber-stat-col">
-                <div class="cyber-stat-num" id="col-stat-total">17</div>
+                <div class="cyber-stat-num" id="col-stat-total">18</div>
                 <div class="cyber-stat-label">Total Items</div>
               </div>
               <div class="cyber-stat-col">
@@ -4432,7 +4494,7 @@
                 <div class="cyber-stat-label">Watches</div>
               </div>
               <div class="cyber-stat-col">
-                <div class="cyber-stat-num highlight-emerald" id="col-stat-shoes">10</div>
+                <div class="cyber-stat-num highlight-emerald" id="col-stat-shoes">11</div>
                 <div class="cyber-stat-label">Shoes</div>
               </div>
               <div class="cyber-stat-col">
@@ -4458,9 +4520,9 @@
 
               <!-- Category Filter Pills (Dynamically rendered with live counts) -->
               <div class="collection-category-pills" id="col-category-pills">
-                <button class="filter-btn active" data-category="all" onclick="setCollectionCategoryFilter('all', this)">All (<span id="col-pill-all">17</span>)</button>
+                <button class="filter-btn active" data-category="all" onclick="setCollectionCategoryFilter('all', this)">All (<span id="col-pill-all">18</span>)</button>
                 <button class="filter-btn" data-category="Watches" onclick="setCollectionCategoryFilter('Watches', this)">Watches (<span id="col-pill-watches">7</span>)</button>
-                <button class="filter-btn" data-category="Shoes" onclick="setCollectionCategoryFilter('Shoes', this)">Shoes (<span id="col-pill-shoes">10</span>)</button>
+                <button class="filter-btn" data-category="Shoes" onclick="setCollectionCategoryFilter('Shoes', this)">Shoes (<span id="col-pill-shoes">11</span>)</button>
               </div>
 
               <!-- Right Actions: Status & Sort -->
@@ -5676,7 +5738,7 @@
     let currentActiveTab = "dashboard";
 
     function switchNavTab(tabName) {
-      if (tabName === "dashboard" && localStorage.getItem("sritrack_authenticated") !== "true") {
+      if (localStorage.getItem("sritrack_authenticated") !== "true") {
         showView("login-view");
         return;
       }
@@ -6964,14 +7026,14 @@
     }
 
     async function resetCollectionToDefaults() {
-      if (!confirm("Are you sure you want to restore the collection to the verified initial 17 items (7 watches, 10 shoes)? Any added or modified records will be reset to curated defaults.")) {
+      if (!confirm("Are you sure you want to restore the collection to the verified initial 18 items (7 watches, 11 shoes)? Any added or modified records will be reset to curated defaults.")) {
         return;
       }
       try {
         showToast("Restoring collection to curated defaults...");
         const res = await fetch("/api/collection/reset", { method: "POST" });
         if (!res.ok) throw new Error("Reset failed");
-        showToast("Collection restored to 17 initial items! ✨");
+        showToast("Collection restored to 18 initial items! ✨");
         await fetchCollectionData(true);
       } catch (err) {
         showToast("⚠️ " + err.message);
@@ -7557,13 +7619,6 @@
       const storedEmail = localStorage.getItem("sritrack_user_email");
       if (storedAuth === "true") {
         onAuthenticated({ email: storedEmail || "Admin" });
-        return;
-      }
-      // Allow direct public showcase access to /my-collection without blocking login wall
-      const route = (window.location.pathname + window.location.hash).toLowerCase();
-      if (route.includes("collection")) {
-        showView("dashboard-view");
-        switchNavTab("collection");
         return;
       }
       showView("login-view");

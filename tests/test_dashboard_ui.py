@@ -118,3 +118,32 @@ def test_dashboard_accessibility_and_meta():
     assert '<meta property="og:title"' in html, "api/dashboard.html must include OpenGraph meta title"
     assert 'class="skip-to-content"' in html, "api/dashboard.html must include skip-to-content accessibility link"
 
+def test_my_collection_auth_gating():
+    """Ensure /my-collection is strictly gated behind authentication and has no bypass."""
+    with open(DASHBOARD_PATH, "r", encoding="utf-8") as f:
+        html = f.read()
+    # Ensure initAuthFlow does not bypass login for collection route
+    init_auth_match = re.search(r"async\s+function\s+initAuthFlow\s*\(\)\s*\{(.*?)\}\s*function\s+onAuthenticated", html, re.DOTALL)
+    assert init_auth_match is not None, "initAuthFlow function must exist"
+    init_auth_body = init_auth_match.group(1)
+    assert "route.includes" not in init_auth_body, "initAuthFlow must not contain route bypass for collection"
+    assert 'showView("login-view")' in init_auth_body, "initAuthFlow must show login-view when unauthenticated"
+
+    # Ensure switchNavTab requires authentication for all tabs
+    switch_tab_match = re.search(r"function\s+switchNavTab\s*\([^)]*\)\s*\{(.*?)\}\s*currentActiveTab\s*=", html, re.DOTALL)
+    assert switch_tab_match is not None, "switchNavTab function must exist"
+    switch_tab_body = switch_tab_match.group(1)
+    assert 'localStorage.getItem("sritrack_authenticated") !== "true"' in switch_tab_body
+    assert 'showView("login-view")' in switch_tab_body
+
+def test_page_header_layout_and_spacing_css():
+    """Ensure page title, header row, and action buttons have explicit CSS rules and spacing."""
+    with open(DASHBOARD_PATH, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert ".page-title-section" in html, "CSS must define .page-title-section"
+    assert ".page-header-row" in html, "CSS must define .page-header-row"
+    assert ".collection-header-actions" in html, "CSS must define .collection-header-actions"
+    assert ".page-heading" in html, "CSS must define .page-heading"
+    assert ".page-subheading" in html, "CSS must define .page-subheading"
+
+

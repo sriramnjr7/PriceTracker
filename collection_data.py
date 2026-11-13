@@ -1,7 +1,7 @@
 """Collection Data Manager for My Collection (Personal Inventory & Ownership Archive).
 
 Handles persistence, schema validation, search, filtering, and initial seeding
-of exactly 17 items (7 watches, 10 shoes) into `my_collection.json`.
+of exactly 18 items (7 watches, 11 shoes) into `my_collection.json`.
 """
 
 from __future__ import annotations
@@ -301,45 +301,47 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
         "updatedAt": "2026-01-10T10:00:00Z",
     },
     {
-        "id": "watch-07-g-shock-gbd-300-orange",
+        "id": "watch-07-casio-gbd-300-1dr",
         "category": "Watches",
-        "brand": "G-Shock",
-        "model": "GBD-300",
-        "reference": "GBD-300",
+        "brand": "Casio",
+        "model": "GBD-300-1DR",
+        "nickname": "G-Shock GBD-300 Stealth Black",
+        "reference": "GBD-300-1DR",
         "type": "Digital / Sports / Fitness",
-        "colour": "Orange",
-        "material": "Resin / Mineral Glass",
-        "description": "G-Shock GBD-300 digital sports watch in bright orange, with orange resin case and strap and a dark digital display.",
-        "primaryImage": "/assets/collection/g-shock-gbd-300-9.png",
+        "colour": "Stealth Black",
+        "material": "Bio-based Resin / Mineral Glass",
+        "description": "CASIO G-SHOCK GBD-300-1DR digital sports watch in Stealth Black, featuring Bluetooth smartphone link, step tracker, high-contrast MIP LCD display, and bio-based resin construction.",
+        "primaryImage": "https://www.swisstimehouse.com/img/p/1/7/9/2/2/0/179220.jpg",
         "images": [
             {
-                "url": "/assets/collection/g-shock-gbd-300-9.png",
+                "url": "https://www.swisstimehouse.com/img/p/1/7/9/2/2/0/179220.jpg",
                 "type": "primary",
-                "alt": "G-Shock GBD-300 in vibrant Orange with dark digital display",
+                "alt": "CASIO G-SHOCK GBD-300-1DR in Stealth Black with MIP LCD display",
                 "sortOrder": 0,
             }
         ],
         "status": "Owned",
-        "purchasePrice": 11995,
-        "purchasedFrom": "Casio India",
+        "purchasePrice": 5894,
+        "purchasedFrom": "Flipkart",
         "condition": "Brand New",
-        "tags": ["G-Shock", "G-SQUAD", "Orange", "Bluetooth", "Step Tracker", "200m WR"],
+        "tags": ["Casio", "G-Shock", "GBD-300", "G-SQUAD", "Stealth Black", "Bluetooth", "Step Tracker", "200m WR"],
         "categorySpecificMetadata": {
             "movement": "Digital Quartz / MIP LCD",
-            "caseMaterial": "Orange Bio-based Resin",
-            "caseColour": "Orange",
+            "caseMaterial": "Black Bio-based Resin",
+            "caseColour": "Stealth Black",
             "dialColour": "Dark / Negative MIP LCD",
             "strapType": "Urethane Resin Band",
-            "strapColour": "Orange",
+            "strapColour": "Stealth Black",
             "waterResistance": "200 m (20 Bar)",
             "caseSize": "48.9 × 47.4 × 14.9 mm",
         },
+        "notes": "Purchased from Flipkart with exchange for ₹5,894 (MRP ₹11,725).",
         "createdAt": "2026-01-10T10:00:00Z",
         "updatedAt": "2026-01-10T10:00:00Z",
     },
 
     # =========================================================================
-    # SHOES (10 Items)
+    # SHOES (11 Items)
     # =========================================================================
     {
         "id": "shoe-01-adidas-duramo-10",
@@ -695,6 +697,43 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
         "createdAt": "2026-01-10T10:00:00Z",
         "updatedAt": "2026-01-10T10:00:00Z",
     },
+    {
+        "id": "shoe-11-nike-air-zoom-pegasus-40-black",
+        "category": "Shoes",
+        "brand": "Nike",
+        "model": "Air Zoom Pegasus 40",
+        "reference": "DV3853-001",
+        "type": "Road Running / Daily Trainer",
+        "colour": "Black / White",
+        "material": "Engineered Mesh / React Foam & Zoom Air",
+        "description": "Nike Air Zoom Pegasus 40 road running shoes in classic Black and White, featuring dual Zoom Air units and responsive React foam for daily training and long-distance runs.",
+        "primaryImage": "https://cdn-images.farfetch-contents.com/29/87/24/73/29872473_59262520_1000.jpg",
+        "images": [
+            {
+                "url": "https://cdn-images.farfetch-contents.com/29/87/24/73/29872473_59262520_1000.jpg",
+                "type": "primary",
+                "alt": "Nike Air Zoom Pegasus 40 Black and White",
+                "sortOrder": 0,
+            }
+        ],
+        "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 11895,
+        "purchasedFrom": "Nike Store",
+        "condition": "Brand New",
+        "tags": ["Nike", "Pegasus 40", "Running", "Daily Trainer", "Zoom Air", "Road Running"],
+        "categorySpecificMetadata": {
+            "shoeType": "Road Running / Daily Trainer",
+            "upperMaterial": "Single-layer Engineered Mesh with Midfoot Band",
+            "soleOutsole": "Nike React Foam with Forefoot & Heel Zoom Air Units",
+            "intendedUse": "Daily Road Running & High Mileage Training",
+            "colour": "Black / White",
+            "heelDrop": "10 mm",
+            "shoeSize": "UK 9 / EU 43",
+        },
+        "createdAt": "2026-01-10T10:00:00Z",
+        "updatedAt": "2026-01-10T10:00:00Z",
+    },
 ]
 
 
@@ -837,7 +876,7 @@ class CollectionManager:
         return self.get_all_items()
 
     def _ensure_storage(self) -> None:
-        """Create file and seed initial 17 items if missing."""
+        """Create file and seed initial 18 items if missing."""
         # On serverless platforms like Vercel with read-only filesystems, use temp directory if available
         tmp_dir = tempfile.gettempdir()
         tmp_file = os.path.join(tmp_dir, "my_collection.json")
@@ -974,7 +1013,7 @@ class CollectionManager:
         return False
 
     def reset_to_defaults(self) -> List[Dict[str, Any]]:
-        """Restore the initial 17 verified items."""
+        """Restore the initial 18 verified items."""
         self._save_items(copy.deepcopy(INITIAL_COLLECTION_ITEMS))
         return self.get_all_items()
 

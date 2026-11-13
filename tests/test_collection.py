@@ -13,14 +13,14 @@ from api.index import app
 client = TestClient(app)
 
 def test_initial_collection_count():
-    """Ensure initial collection contains exactly 17 items (7 watches + 10 shoes)."""
-    assert len(INITIAL_COLLECTION_ITEMS) == 17
+    """Ensure initial collection contains exactly 18 items (7 watches + 11 shoes)."""
+    assert len(INITIAL_COLLECTION_ITEMS) == 18
     
     watches = [item for item in INITIAL_COLLECTION_ITEMS if item["category"] == "Watches"]
     shoes = [item for item in INITIAL_COLLECTION_ITEMS if item["category"] == "Shoes"]
     
     assert len(watches) == 7, f"Expected 7 watches, found {len(watches)}"
-    assert len(shoes) == 10, f"Expected 10 shoes, found {len(shoes)}"
+    assert len(shoes) == 11, f"Expected 11 shoes, found {len(shoes)}"
 
 def test_distinct_woodland_models():
     """Ensure all 3 Woodland shoes remain separate records and Flame is never merged with Trekking."""
@@ -40,23 +40,40 @@ def test_distinct_woodland_models():
     assert "Flame" in flame_shoe.get("model", "")
 
 def test_excluded_items_not_present():
-    """Ensure Puma R78 Year of Sports (Returned) and Nike Pegasus 40 (Unconfirmed) are excluded from active collection."""
+    """Ensure Puma R78 Year of Sports (Returned) is excluded from active collection."""
     all_titles = [f"{item['brand']} {item['model']}".lower() for item in INITIAL_COLLECTION_ITEMS]
     for title in all_titles:
         assert "year of sports" not in title, "Puma R78 Year of Sports must not be in active owned collection"
-        assert "pegasus 40" not in title, "Nike Pegasus 40 must not be in active owned collection"
+
+
+def test_pegasus_40_and_gbd_300_black_present():
+    """Ensure Nike Pegasus 40 Black and Casio G-Shock GBD-300 Black are present in active collection."""
+    all_titles = [f"{item['brand']} {item['model']}".lower() for item in INITIAL_COLLECTION_ITEMS]
+    assert any("pegasus 40" in t for t in all_titles), "Nike Pegasus 40 must be in active collection"
+    assert any("gbd-300" in t for t in all_titles), "Casio G-Shock GBD-300 must be in active collection"
+    
+    gbd = next(item for item in INITIAL_COLLECTION_ITEMS if "gbd-300" in item["model"].lower())
+    assert gbd["colour"].lower() in ("black", "stealth black")
+    assert "swisstimehouse.com" in gbd["primaryImage"]
+    assert gbd["purchasePrice"] == 5894
+    assert gbd["purchasedFrom"] == "Flipkart"
+    
+    pegasus = next(item for item in INITIAL_COLLECTION_ITEMS if "pegasus 40" in item["model"].lower())
+    assert "farfetch-contents.com" in pegasus["primaryImage"]
+    assert pegasus["category"] == "Shoes"
+    assert pegasus["brand"] == "Nike"
 
 def test_collection_manager_crud(tmp_path):
     """Test full CRUD operations on CollectionManager using an isolated temporary JSON file."""
     temp_file = str(tmp_path / "test_collection.json")
     manager = CollectionManager(data_file=temp_file)
     
-    # Manager automatically seeds initial 17 items
-    assert len(manager.items) == 17
+    # Manager automatically seeds initial 18 items
+    assert len(manager.items) == 18
     stats = manager.get_stats()
-    assert stats["total"] == 17
+    assert stats["total"] == 18
     assert stats["categories"]["watches"] == 7
-    assert stats["categories"]["shoes"] == 10
+    assert stats["categories"]["shoes"] == 11
     
     # Create / Add
     new_item = manager.add_item({
@@ -68,7 +85,7 @@ def test_collection_manager_crud(tmp_path):
         "categorySpecificMetadata": {"type": "Over-Ear Wireless ANC Headphones"}
     })
     assert new_item["id"] is not None
-    assert len(manager.items) == 18
+    assert len(manager.items) == 19
     assert manager.get_item(new_item["id"]) is not None
     
     # Update
@@ -89,7 +106,7 @@ def test_collection_manager_crud(tmp_path):
     deleted = manager.delete_item(new_item["id"])
     assert deleted is True
     assert manager.get_item(new_item["id"]) is None
-    assert len(manager.items) == 17
+    assert len(manager.items) == 18
 
 def test_collection_api_endpoints():
     """Test FastAPI REST endpoints for My Collection."""
@@ -99,8 +116,8 @@ def test_collection_api_endpoints():
     data = res.json()
     assert "items" in data
     assert "stats" in data
-    assert len(data["items"]) >= 17
-    assert data["stats"]["total"] >= 17
+    assert len(data["items"]) >= 18
+    assert data["stats"]["total"] >= 18
     
     # GET /my-collection and /collection route serve the dashboard
     res_page = client.get("/my-collection")
@@ -390,5 +407,5 @@ def test_api_crud_full_lifecycle():
     # 7. Reset defaults restores initial collection
     res_reset = client.post("/api/collection/reset")
     assert res_reset.status_code == 200
-    assert len(res_reset.json()["items"]) == 17
+    assert len(res_reset.json()["items"]) == 18
 
