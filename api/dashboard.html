@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Casio & Sneaker Real-Time Price Tracking and Personal Collection Console">
+  <meta property="og:title" content="PriceTracker Console">
+  <meta property="og:description" content="Real-time multi-platform price tracking, automated deal sniper, and luxury watch & sneaker collection manager.">
+  <meta property="og:type" content="website">
   <meta name="theme-color" content="#090a0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -176,11 +180,31 @@
       }
     }
 
+    /* Accessibility: Skip to Content */
+    .skip-to-content {
+      position: absolute;
+      top: -50px;
+      left: 16px;
+      background: var(--accent-primary);
+      color: #090a0f;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 13px;
+      z-index: 10000;
+      transition: top 160ms cubic-bezier(0.16, 1, 0.3, 1);
+      text-decoration: none;
+    }
+    .skip-to-content:focus {
+      top: 16px;
+    }
+
     /* ==========================================================================
        VIEW CONTAINER
        ========================================================================== */
     .view-container {
       min-height: 100vh;
+      min-height: 100dvh;
       width: 100%;
     }
 
@@ -336,6 +360,7 @@
     .app-shell {
       display: flex;
       min-height: 100vh;
+      min-height: 100dvh;
       background: var(--bg-canvas);
     }
 
@@ -585,6 +610,7 @@
       margin-left: var(--sidebar-width);
       flex: 1;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       background: var(--bg-canvas);
@@ -1857,6 +1883,30 @@
       }
     }
 
+    @media (max-width: 360px) {
+      .workspace-topbar {
+        padding: 0 var(--space-2);
+        gap: var(--space-1);
+      }
+      .topbar-search-wrap {
+        min-width: 110px;
+        max-width: 150px;
+      }
+      .topbar-actions {
+        gap: 4px;
+      }
+      .modal-dialog {
+        padding: 12px;
+        width: 96%;
+      }
+      .col-card-sku,
+      .shoe-sku-code,
+      .product-title {
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+    }
+
     .sidebar-backdrop {
       display: none;
       position: fixed;
@@ -2030,7 +2080,7 @@
       left: 0;
       width: 100%;
       height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(0, 255, 163, 0.4), transparent);
+      background: linear-gradient(90deg, transparent, rgba(0, 212, 170, 0.45), transparent);
       opacity: 0;
       transition: opacity var(--transition-fast);
     }
@@ -2747,9 +2797,9 @@
     }
 
     .btn-logs-autorefresh.is-active {
-      border-color: rgba(0, 255, 163, 0.35);
+      border-color: rgba(0, 212, 170, 0.35);
       color: var(--accent-primary);
-      background: rgba(0, 255, 163, 0.08);
+      background: var(--accent-emerald-subtle);
     }
     .refresh-indicator-dot {
       width: 6px;
@@ -3341,9 +3391,9 @@
        MY COLLECTION // PERSONAL INVENTORY & ARCHIVE CSS
        ========================================================================== */
     .badge-collection {
-      background: rgba(0, 255, 163, 0.12);
+      background: var(--accent-emerald-subtle);
       color: var(--accent-primary);
-      border: 1px solid rgba(0, 255, 163, 0.25);
+      border: 1px solid rgba(0, 212, 170, 0.25);
     }
 
     /* Paused Card Visual Distinction */
@@ -3969,8 +4019,8 @@
       }
     }
     .category-specific-box {
-      background: rgba(0, 255, 163, 0.03);
-      border: 1px dashed rgba(0, 255, 163, 0.2);
+      background: rgba(0, 212, 170, 0.04);
+      border: 1px dashed rgba(0, 212, 170, 0.22);
       border-radius: var(--radius-sm);
       padding: 12px;
       margin-bottom: 14px;
@@ -3993,6 +4043,7 @@
   </style>
 </head>
 <body>
+  <a href="#main-dashboard-content" class="skip-to-content">Skip to content</a>
   <div class="view-wrapper">
 
     <!-- ========================================================================
@@ -4163,7 +4214,7 @@
         </aside>
 
         <!-- Main Workspace Area -->
-        <main class="app-workspace">
+        <main class="app-workspace" id="main-dashboard-content">
           
           <!-- Top Utility Bar -->
           <header class="workspace-topbar">
@@ -8343,7 +8394,7 @@
               display: Boolean(data.target_price),
               labels: {
                 color: "#94a3b8",
-                font: { family: "'JetBrains Mono', monospace", size: 11 },
+                font: { family: "'Geist Mono', 'JetBrains Mono', monospace", size: 11 },
                 boxWidth: 12,
               }
             },
@@ -8353,8 +8404,8 @@
               borderWidth: 1,
               titleColor: "#f8fafc",
               bodyColor: "#94a3b8",
-              titleFont: { family: "'Inter', sans-serif", size: 12, weight: "bold" },
-              bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+              titleFont: { family: "'Geist', -apple-system, BlinkMacSystemFont, sans-serif", size: 12, weight: "bold" },
+              bodyFont: { family: "'Geist Mono', 'JetBrains Mono', monospace", size: 11 },
               padding: 10,
               displayColors: true,
               callbacks: {
@@ -8372,7 +8423,7 @@
               },
               ticks: {
                 color: "#64748b",
-                font: { family: "'JetBrains Mono', monospace", size: 10 },
+                font: { family: "'Geist Mono', 'JetBrains Mono', monospace", size: 10 },
                 maxRotation: 0,
                 maxTicksLimit: 8,
               }
@@ -8386,7 +8437,7 @@
               },
               ticks: {
                 color: "#64748b",
-                font: { family: "'JetBrains Mono', monospace", size: 10 },
+                font: { family: "'Geist Mono', 'JetBrains Mono', monospace", size: 10 },
                 callback: function(val) {
                   return '₹' + Number(val).toLocaleString('en-IN');
                 }

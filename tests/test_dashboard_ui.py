@@ -90,3 +90,31 @@ def test_dashboard_uses_geist_fonts():
         html = f.read()
     assert "Geist" in html, "api/dashboard.html must include Geist font family"
     assert "tabular-nums" in html, "api/dashboard.html must include tabular-nums for numeric precision"
+
+def test_dashboard_no_legacy_neon_tokens():
+    with open(DASHBOARD_PATH, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert "#00ffa3" not in html, "api/dashboard.html must not use legacy neon #00ffa3"
+    assert not re.search(r"0,\s*255,\s*163", html), "api/dashboard.html must not use legacy neon rgba(0, 255, 163)"
+
+def test_dashboard_chart_uses_geist():
+    with open(DASHBOARD_PATH, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert "titleFont: { family: \"'Geist'" in html or "titleFont: { family: \"'Geist" in html, (
+        "Chart.js titleFont must use Geist font family"
+    )
+    assert "'Inter', sans-serif" not in html, "api/dashboard.html must not hardcode 'Inter', sans-serif"
+
+def test_dashboard_viewport_and_dvh():
+    with open(DASHBOARD_PATH, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert "min-height: 100dvh;" in html, "api/dashboard.html must include 100dvh for mobile Safari support"
+    assert "max-width: 360px" in html, "api/dashboard.html must include responsive styling for narrow viewports <= 360px"
+
+def test_dashboard_accessibility_and_meta():
+    with open(DASHBOARD_PATH, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert '<meta name="description"' in html, "api/dashboard.html must include meta description"
+    assert '<meta property="og:title"' in html, "api/dashboard.html must include OpenGraph meta title"
+    assert 'class="skip-to-content"' in html, "api/dashboard.html must include skip-to-content accessibility link"
+
