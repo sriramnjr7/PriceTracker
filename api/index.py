@@ -1096,7 +1096,7 @@ async def api_delete_collection_item(item_id: str):
 @app.post("/api/collection/reset")
 @app.post("/api/index.py/api/collection/reset")
 async def api_reset_collection():
-    """Reset collection to verified initial 17 items."""
+    """Reset collection to verified initial 18 items."""
     items = collection_mgr.reset_to_defaults()
     stats = collection_mgr.get_summary_stats()
     return JSONResponse(content={"status": "success", "stats": stats, "items": items})

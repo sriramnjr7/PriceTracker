@@ -146,4 +146,19 @@ def test_page_header_layout_and_spacing_css():
     assert ".page-heading" in html, "CSS must define .page-heading"
     assert ".page-subheading" in html, "CSS must define .page-subheading"
 
+def test_collection_static_telemetry_rendered_values():
+    """Ensure static collection telemetry KPI cards and filter badges match verified counts."""
+    with open(DASHBOARD_PATH, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert 'id="col-stat-total">18<' in html, "col-stat-total must be 18"
+    assert 'id="col-stat-watches">7<' in html, "col-stat-watches must be 7"
+    assert 'id="col-stat-shoes">11<' in html, "col-stat-shoes must be 11"
+    assert 'id="col-stat-brands">9<' in html, "col-stat-brands must be 9"
+    assert 'id="col-stat-valuation">₹1,05,829<' in html, "col-stat-valuation must be ₹1,05,829"
+    assert 'id="nav-collection-count-badge">18<' in html, "nav-collection-count-badge must be 18"
+    assert 'id="col-pill-all">18<' in html, "col-pill-all must be 18"
+    assert 'id="col-pill-watches">7<' in html, "col-pill-watches must be 7"
+    assert 'id="col-pill-shoes">11<' in html, "col-pill-shoes must be 11"
+
+
 
