@@ -335,7 +335,7 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             "waterResistance": "200 m (20 Bar)",
             "caseSize": "48.9 × 47.4 × 14.9 mm",
         },
-        "notes": "Purchased from Flipkart with exchange for ₹5,894 (MRP ₹11,725).",
+        "notes": "Purchased from Flipkart with exchange for ₹5,894 (MRP ₹11,725). Seller: Wizrob Fashion (+ 50 SuperCoins).",
         "createdAt": "2026-01-10T10:00:00Z",
         "updatedAt": "2026-01-10T10:00:00Z",
     },

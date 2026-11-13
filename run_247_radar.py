@@ -193,6 +193,17 @@ async def flush_daemon_logs_to_supabase():
         if batch:
             async with httpx.AsyncClient(timeout=8.0) as client:
                 await client.post(f"{supabase_url}/rest/v1/custom_radar_rules", headers=headers, json=batch)
+
+        # DISK IO BUDGET PROTECTION: Auto-prune cloud logs older than 24 hours to prevent database bloat
+        try:
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.delete(
+                    f"{supabase_url}/rest/v1/custom_radar_rules?name=in.(DAEMON_LOG,VIP_LOG)&created_at=lt.{cutoff}",
+                    headers=headers,
+                )
+        except Exception as prune_exc:
+            logger.debug("Stale log prune note: %s", prune_exc)
     except Exception as exc:
         logger.debug("Final Supabase log flush error: %s", exc)
 
@@ -669,8 +680,6 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
         except Exception as hb_exc:
             logger.debug("Heartbeat check error: %s", hb_exc)
 
-        shipper_task = asyncio.create_task(supabase_log_shipper_loop(interval_seconds=10))
-
         # Maintain active VIP vigilance every 60s for the entire duration_seconds surveillance window if specified
         if duration_seconds > 0:
             elapsed = loop.time() - start_time
@@ -684,11 +693,6 @@ async def run_cloud_runner(duration_seconds: int = 240) -> int:
 
         stop_event.set()
         await vip_task
-        shipper_task.cancel()
-        try:
-            await shipper_task
-        except asyncio.CancelledError:
-            pass
         total_alerts += vip_alerts_total
 
         try:

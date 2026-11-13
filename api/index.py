@@ -397,6 +397,29 @@ async def get_dashboard_data(bypass: bool = False):
         shoes_cfg = shoes_radar.load_config()
         shoes_deals = shoes_radar.load_cached_deals()
 
+        for d in recent_deals:
+            ratio = d.get("supercoin_ratio")
+            earned = d.get("supercoins_earned")
+            if ratio is not None:
+                d["is_supercoin_deal"] = (float(ratio) >= 0.70)
+            elif earned and d.get("price") and d["price"] > 0:
+                calc_ratio = earned / d["price"]
+                d["supercoin_ratio"] = round(calc_ratio, 4)
+                d["is_supercoin_deal"] = (calc_ratio >= 0.70)
+            elif d.get("coupon_text"):
+                c_txt = str(d.get("coupon_text"))
+                m_pct = re.search(r"(\d+)%\s*(?:super)?coins?", c_txt, re.I) or re.search(r"\((\d+)%\s*back\)", c_txt, re.I)
+                if m_pct:
+                    pct_val = float(m_pct.group(1))
+                    d["supercoin_ratio"] = round(pct_val / 100.0, 4)
+                    d["is_supercoin_deal"] = (pct_val >= 70.0)
+                else:
+                    d["is_supercoin_deal"] = False
+            else:
+                d["is_supercoin_deal"] = False
+
+        supercoin_deals_count = sum(1 for d in recent_deals if d.get("is_supercoin_deal"))
+
         stats = {
             "active_count": active_count,
             "total_count": len(products),
@@ -404,6 +427,7 @@ async def get_dashboard_data(bypass: bool = False):
             "deal_radar_status": "ONLINE",
             "database": "Supabase PostgreSQL" if os.getenv("SUPABASE_URL") else "SQLite",
             "daemon": daemon_info,
+            "supercoin_deals_count": supercoin_deals_count,
             "running_shoes_radar": {
                 "is_active": shoes_radar.is_active(),
                 "deals_count": len(shoes_deals),
@@ -423,6 +447,9 @@ async def get_dashboard_data(bypass: bool = False):
                 "is_active": p.is_active,
                 "last_checked": _format_datetime(p.last_checked),
                 "created_at": _format_datetime(getattr(p, "created_at", None)),
+                "supercoins_earned": getattr(p, "supercoins_earned", None),
+                "supercoin_ratio": getattr(p, "supercoin_ratio", None),
+                "is_supercoin_deal": getattr(p, "is_supercoin_deal", False),
             }
             for p in products
         ]
@@ -1569,6 +1596,12 @@ VIP_WATCHES_DEF = [
 ]
 
 
+_VIP_CACHE: dict[str, Any] = {
+    "timestamp": 0.0,
+    "entries": [],
+}
+
+
 def get_vip_logs_and_telemetry() -> dict[str, Any]:
     """Retrieve dedicated VIP Steal Checker logs and live state for GBD-H2000 and GBD-300."""
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
@@ -1576,8 +1609,11 @@ def get_vip_logs_and_telemetry() -> dict[str, Any]:
 
     vip_entries: list[dict[str, Any]] = []
 
-    # 1. Fetch from Supabase cloud
-    if supabase_url and supabase_key:
+    # 1. Fetch from Supabase cloud with in-memory caching to protect Disk IO
+    now_t = time.time()
+    if (now_t - _VIP_CACHE["timestamp"]) < 5.0 and _VIP_CACHE["entries"]:
+        vip_entries = list(_VIP_CACHE["entries"])
+    elif supabase_url and supabase_key:
         try:
             headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
             with httpx.Client(timeout=4.0) as client:
@@ -1600,6 +1636,8 @@ def get_vip_logs_and_telemetry() -> dict[str, Any]:
                             "message": row.get("query") or "",
                             "raw": raw,
                         })
+                    _VIP_CACHE["timestamp"] = now_t
+                    _VIP_CACHE["entries"] = vip_entries
         except Exception as exc:
             logger.debug("Supabase VIP log read error: %s", exc)
 
@@ -1807,6 +1845,14 @@ async def probe_vip_watches_live() -> dict[str, Any]:
     }
 
 
+# In-memory short TTL cache for Supabase logs & telemetry to protect Supabase Disk IO budget
+_SUPABASE_LOGS_CACHE: dict[str, Any] = {
+    "timestamp": 0.0,
+    "rows": [],
+    "price_rows": [],
+}
+
+
 def _fetch_supabase_logs_and_status(limit: int = 100, level: Optional[str] = None, search: Optional[str] = None) -> dict[str, Any]:
     """Retrieve synced daemon logs and activity from Supabase cloud database for serverless environments."""
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
@@ -1842,20 +1888,29 @@ def _fetch_supabase_logs_and_status(limit: int = 100, level: Optional[str] = Non
     is_running = False
 
     try:
-        with httpx.Client(timeout=6.0) as client:
-            # 1. Fetch synced daemon logs
-            resp = client.get(
-                f"{supabase_url}/rest/v1/custom_radar_rules?name=eq.DAEMON_LOG&order=id.desc&limit=300",
-                headers=headers,
-            )
-            rows = resp.json() if resp.status_code == 200 else []
+        now_t = time.time()
+        # Serve from short in-memory cache (5.0s) to eliminate rapid Supabase Disk IO burst depletion
+        if (now_t - _SUPABASE_LOGS_CACHE["timestamp"]) < 5.0 and _SUPABASE_LOGS_CACHE["rows"]:
+            rows = _SUPABASE_LOGS_CACHE["rows"]
+            price_rows = _SUPABASE_LOGS_CACHE["price_rows"]
+        else:
+            with httpx.Client(timeout=6.0) as client:
+                # 1. Fetch synced daemon logs
+                resp = client.get(
+                    f"{supabase_url}/rest/v1/custom_radar_rules?name=eq.DAEMON_LOG&order=id.desc&limit=300",
+                    headers=headers,
+                )
+                rows = resp.json() if resp.status_code == 200 else []
 
-            # 2. Fetch latest price logs for telemetry & backup activity
-            resp_p = client.get(
-                f"{supabase_url}/rest/v1/price_logs?select=timestamp,price,products(title,platform)&order=timestamp.desc&limit=30",
-                headers=headers,
-            )
-            price_rows = resp_p.json() if resp_p.status_code == 200 else []
+                # 2. Fetch latest price logs for telemetry & backup activity
+                resp_p = client.get(
+                    f"{supabase_url}/rest/v1/price_logs?select=timestamp,price,products(title,platform)&order=timestamp.desc&limit=30",
+                    headers=headers,
+                )
+                price_rows = resp_p.json() if resp_p.status_code == 200 else []
+                _SUPABASE_LOGS_CACHE["timestamp"] = now_t
+                _SUPABASE_LOGS_CACHE["rows"] = rows
+                _SUPABASE_LOGS_CACHE["price_rows"] = price_rows
 
             # Determine latest activity
             latest_iso = None

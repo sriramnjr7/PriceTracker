@@ -49,7 +49,9 @@ CREATE TABLE IF NOT EXISTS deal_alerts_log (
     discount_percent REAL,
     coupon_text      TEXT,
     platform         TEXT,
-    notified_at      TEXT NOT NULL
+    notified_at      TEXT NOT NULL,
+    supercoins_earned INTEGER,
+    supercoin_ratio  REAL
 );
 
 CREATE TABLE IF NOT EXISTS custom_radar_rules (
@@ -136,6 +138,14 @@ class Database:
         self._conn = await aiosqlite.connect(self.path)
         self._conn.row_factory = aiosqlite.Row
         await self._conn.executescript(SCHEMA)
+        for col_def in [
+            "ALTER TABLE deal_alerts_log ADD COLUMN supercoins_earned INTEGER",
+            "ALTER TABLE deal_alerts_log ADD COLUMN supercoin_ratio REAL",
+        ]:
+            try:
+                await self._conn.execute(col_def)
+            except Exception:
+                pass
         await self._conn.commit()
 
     async def close(self) -> None:
@@ -334,13 +344,22 @@ class Database:
         discount_percent: float,
         coupon_text: Optional[str] = None,
         platform: Optional[str] = None,
+        supercoins_earned: Optional[int] = None,
+        supercoin_ratio: Optional[float] = None,
     ) -> None:
         """Record an alert in the de-duplication log."""
-        await self.conn.execute(
-            "INSERT INTO deal_alerts_log (product_url, title, price, effective_price, discount_percent, coupon_text, platform, notified_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (product_url, title, price, effective_price, discount_percent, coupon_text, platform, _now()),
-        )
+        try:
+            await self.conn.execute(
+                "INSERT INTO deal_alerts_log (product_url, title, price, effective_price, discount_percent, coupon_text, platform, notified_at, supercoins_earned, supercoin_ratio) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (product_url, title, price, effective_price, discount_percent, coupon_text, platform, _now(), supercoins_earned, supercoin_ratio),
+            )
+        except Exception:
+            await self.conn.execute(
+                "INSERT INTO deal_alerts_log (product_url, title, price, effective_price, discount_percent, coupon_text, platform, notified_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (product_url, title, price, effective_price, discount_percent, coupon_text, platform, _now()),
+            )
         await self.conn.commit()
 
     async def get_recent_deal_alerts(self, limit: int = 15) -> list[dict[str, Any]]:

@@ -63,6 +63,9 @@ class ScrapeResult:
     url: str
     effective_price: Optional[float] = None
     offers: Optional[list[str]] = None
+    supercoins_earned: Optional[int] = None
+    supercoin_ratio: Optional[float] = None
+    is_supercoin_deal: bool = False
 
 
 def _priceish_class(value) -> bool:

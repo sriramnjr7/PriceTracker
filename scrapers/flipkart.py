@@ -57,10 +57,31 @@ class FlipkartScraper(BaseScraper):
         "temporarily unavailable",
     )
 
+    SUPERCOIN_REDEEM_PATTERNS = (
+        re.compile(r"pay\s*(?:using|with|via)?\s*(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"pay\s*(?:₹?\s*[\d,]+\s*\+?\s*)?(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"pay\s+for\s+[^.!?\n]+?(?:with|using)\s*(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"use\s*(?:up\s+to\s+)?(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"redeem\s*(?:up\s+to\s+)?(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"save\s*(?:₹?\s*[\d,]+\s*)?(?:using|with|via)\s*(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"(?:extra|flat|get)?\s*₹?\s*[\d,]+(?:\s*off|\s*discount)?\s*(?:using|with|via)\s*(?:up\s+to\s+)?(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"price\s*includes?\s*(?:\d+%?|\d+)\s*(?:super\s*coins?|supercoins?)", re.I),
+        re.compile(r"applicable\s+on\s+payment\s+(?:using|with)\s*(?:super\s*coins?|supercoins?)", re.I),
+    )
+
     def parse(self, html: str, url: str) -> ScrapeResult:
         soup = BeautifulSoup(html, "html.parser")
         price = self._extract_price(soup, url=url)
         eff_price, offers = self._extract_offers_and_effective_price(soup, price, html=html)
+        coins, ratio, is_supercoin = self._extract_supercoins(soup, price, html=html)
+        if is_supercoin and coins:
+            sc_offer = f"🪙 {coins} SuperCoins ({round((ratio or 0) * 100)}% back)"
+            if offers is not None:
+                if sc_offer not in offers:
+                    offers.append(sc_offer)
+            else:
+                offers = [sc_offer]
+
         return ScrapeResult(
             title=self._extract_title(soup),
             price=price,
@@ -69,7 +90,114 @@ class FlipkartScraper(BaseScraper):
             url=url,
             effective_price=eff_price,
             offers=offers,
+            supercoins_earned=coins,
+            supercoin_ratio=ratio,
+            is_supercoin_deal=is_supercoin,
         )
+
+    def _extract_supercoins_from_text(
+        self, text: str, price: Optional[float]
+    ) -> tuple[int, Optional[float], bool]:
+        """Extract SuperCoins earned from a string and calculate ratio against price."""
+        if not text:
+            return 0, None, False
+
+        redeem_spans = []
+        for rpat in self.SUPERCOIN_REDEEM_PATTERNS:
+            for rm in rpat.finditer(text):
+                redeem_spans.append((rm.start(), rm.end()))
+
+        best_coins = 0
+
+        # 1. Percentage SuperCoins back / cashback (e.g. '100% SuperCoins back', 'Earn 100% cashback as SuperCoins')
+        pct_patterns = [
+            re.compile(r"(?:earn|get)\s*(?:up\s*to\s*)?(\d+)%\s*(?:cashback\s*(?:in|as|with)?\s*)?(?:super\s*coins?|supercoins?)(?:\s*(?:back|cashback|reward|on\s*(?:this\s*)?order))?", re.I),
+            re.compile(r"(\d+)%\s*(?:cashback\s*(?:in|as|with)?\s*)?(?:super\s*coins?|supercoins?)\s*(?:back|cashback|reward|on\s*(?:this\s*)?order)", re.I),
+            re.compile(r"(\d+)%\s*(?:super\s*coins?|supercoins?)\s*(?:back|cashback|reward)", re.I),
+        ]
+        for ppat in pct_patterns:
+            for m in ppat.finditer(text):
+                start, end = m.start(), m.end()
+                if any(rs <= start < re_end or rs < end <= re_end for rs, re_end in redeem_spans):
+                    continue
+                clause = text[max(0, start - 50):start].lower()
+                last_delim = max(clause.rfind("."), clause.rfind("!"), clause.rfind(";"), clause.rfind("\n"))
+                if last_delim != -1:
+                    clause = clause[last_delim + 1:]
+                if re.search(r"\b(?:pay|use|using|redeem|with|save)\b", clause):
+                    continue
+                pct = int(m.group(1))
+                if price and price > 0:
+                    coins = int(price * (pct / 100.0))
+                    if coins > best_coins:
+                        best_coins = coins
+
+        # 2. Explicit earn / get callouts with coin amounts (e.g. 'Earn 700 SuperCoins on this order')
+        for m in re.finditer(r"(?:earn|get)\s*(?:up\s*to\s*)?(\d+)\s*(?:super\s*coins?|supercoins?)(?:\s*(?:back|on\s*(?:this\s*)?order|cashback|reward))?", text, re.I):
+            start, end = m.start(), m.end()
+            if any(rs <= start < re_end or rs < end <= re_end for rs, re_end in redeem_spans):
+                continue
+            clause = text[max(0, start - 50):start].lower()
+            last_delim = max(clause.rfind("."), clause.rfind("!"), clause.rfind(";"), clause.rfind("\n"))
+            if last_delim != -1:
+                clause = clause[last_delim + 1:]
+            if re.search(r"\b(?:pay|use|using|redeem|with|save)\b", clause):
+                continue
+            coins = int(m.group(1))
+            if coins > best_coins:
+                best_coins = coins
+
+        # 3. SuperCoins back / on order / cashback (e.g. '700 SuperCoins on this order', '700 SuperCoins back')
+        for m in re.finditer(r"(\d+)\s*(?:super\s*coins?|supercoins?)\s*(?:back|on\s*(?:this\s*)?order|cashback|reward)", text, re.I):
+            start, end = m.start(), m.end()
+            if any(rs <= start < re_end or rs < end <= re_end for rs, re_end in redeem_spans):
+                continue
+            clause = text[max(0, start - 50):start].lower()
+            last_delim = max(clause.rfind("."), clause.rfind("!"), clause.rfind(";"), clause.rfind("\n"))
+            if last_delim != -1:
+                clause = clause[last_delim + 1:]
+            if re.search(r"\b(?:pay|use|using|redeem|with|save)\b", clause):
+                continue
+            coins = int(m.group(1))
+            if coins > best_coins:
+                best_coins = coins
+
+        if best_coins <= 0:
+            return 0, None, False
+
+        ratio = (best_coins / price) if (price and price > 0) else None
+        if ratio is not None:
+            ratio = round(ratio, 4)
+            is_deal = ratio >= 0.70
+        else:
+            is_deal = False
+
+        return best_coins, ratio, is_deal
+
+    def _extract_supercoins(
+        self, soup: Optional[BeautifulSoup], price: Optional[float], html: str = ""
+    ) -> tuple[Optional[int], Optional[float], bool]:
+        """Extract SuperCoins earned on product order and determine >= 70% return deal."""
+        if soup is None and html:
+            soup = BeautifulSoup(html, "html.parser")
+        page_text = soup.get_text(" ", strip=True) if soup else ""
+        coins, ratio, is_deal = self._extract_supercoins_from_text(page_text, price)
+
+        # Fallback to script data (INITIAL_STATE or dlsData)
+        if coins == 0:
+            scripts = soup.find_all("script") if soup else []
+            for s in scripts:
+                stxt = s.string or s.get_text() or ""
+                if "__INITIAL_STATE__" in stxt or "dlsData" in stxt:
+                    c, r, d = self._extract_supercoins_from_text(stxt, price)
+                    if c > 0:
+                        coins, ratio, is_deal = c, r, d
+                        break
+
+        if coins <= 0:
+            return None, None, False
+
+        return coins, ratio, is_deal
 
     def _extract_offers_and_effective_price(
         self, soup: BeautifulSoup, base_price: Optional[float], html: str = ""
@@ -215,22 +343,13 @@ class FlipkartScraper(BaseScraper):
                 # Modern Flipkart out-of-stock: primary action is NOTIFY_ME_V4 (Notify Me) and no BUY_NOW / CART_ADD
                 if '"NOTIFY_ME_V4"' in txt and '"BUY_NOW"' not in txt and '"CART_ADD"' not in txt:
                     return False
-                # Location unserviceable / non-deliverable check:
-                # Flipkart sets "isa": false in INITIAL_STATE when the listing is unserviceable to the location
-                if '"isa":false' in txt:
-                    return False
 
         # 3. Explicit UI Out of Stock Badges & Banners (Do NOT scan full body to avoid customer review false positives)
+        # Note: Regional pincode checks ("not deliverable in your location" / "isa:false") are skipped to capture all national deals.
         stock_badge = soup.select_one(".z3htrc, ._16FRp0, ._3xgQrA, div._1V3wBu")
         if stock_badge:
             b_txt = stock_badge.get_text(" ", strip=True).lower()
             if any(bad in b_txt for bad in ("currently unavailable", "out of stock", "sold out", "temporarily unavailable")):
-                return False
-
-        # 3b. Visible non-deliverable badge / pincode unserviceable
-        for el in soup.find_all(string=re.compile(r"not deliverable (?:in|at) your location|currently out of stock for", re.I)):
-            if el.parent and el.parent.name not in ("script", "style"):
-                logger.info("[flipkart] Detected non-deliverable / pincode out-of-stock for %s", url)
                 return False
 
         # 4. Variant Capacity / Storage Consistency Check:
@@ -665,17 +784,23 @@ class FlipkartScraper(BaseScraper):
                     if min_mrp is not None and mrp_val < min_mrp:
                         continue
 
-                    # 4. Calculate discount
+                    # 4. Calculate discount & SuperCoin loot check
                     if mrp_val > selling_price and mrp_val > 0:
                         discount_percent = round(((mrp_val - selling_price) / mrp_val) * 100.0, 1)
                     else:
                         discount_percent = 0.0
 
+                    card_text = card.get_text(" ", strip=True)
+                    sc_coins, sc_ratio, sc_is_deal = self._extract_supercoins_from_text(card_text, selling_price)
+
                     if discount_percent < min_discount and (max_price is None or selling_price > max_price):
-                        continue
+                        if not sc_is_deal:
+                            continue
 
                     if max_price is not None and selling_price > max_price:
                         continue
+
+                    sc_coupon = f"🪙 {sc_coins} SuperCoins ({round(sc_ratio*100)}% back)" if sc_is_deal and sc_ratio else None
 
                     deals.append({
                         "title": title,
@@ -683,12 +808,15 @@ class FlipkartScraper(BaseScraper):
                         "effective_price": selling_price,
                         "mrp": mrp_val,
                         "discount_percent": discount_percent,
-                        "coupon_text": None,
+                        "coupon_text": sc_coupon,
                         "platform": "flipkart",
                         "url": clean_url,
                         "in_stock": True,
                         "scraped_brand": scraped_brand,
                         "product_id": product_id,
+                        "supercoins_earned": sc_coins if sc_coins > 0 else None,
+                        "supercoin_ratio": sc_ratio if sc_coins > 0 else None,
+                        "is_supercoin_deal": sc_is_deal,
                     })
         except Exception as exc:
             logger.warning("[flipkart] deal scan error for query '%s': %s", query, exc)

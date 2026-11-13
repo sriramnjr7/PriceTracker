@@ -4373,6 +4373,7 @@
                   <button class="filter-btn" onclick="setFilter('casio', this)">Casio Bhawar (<span id="chip-count-casio">0</span>)</button>
                   <button class="filter-btn" onclick="setFilter('flipkart', this)">Flipkart (<span id="chip-count-flipkart">0</span>)</button>
                   <button class="filter-btn" onclick="setFilter('amazon', this)">Amazon (<span id="chip-count-amazon">0</span>)</button>
+                  <button class="filter-btn" onclick="setFilter('supercoin', this)">🪙 70%+ SuperCoins (<span id="chip-count-supercoin">0</span>)</button>
                   <button class="filter-btn" onclick="setFilter('deals', this)">Target Met</button>
                 </div>
 
@@ -4396,6 +4397,12 @@
                       <span>Verified Clearance</span>
                     </h2>
                     <span class="panel-badge">70% OFF</span>
+                  </div>
+
+                  <!-- Deals Feed Filter Pills -->
+                  <div class="deals-filter-bar" style="display:flex; gap:6px; padding:6px 14px 10px 14px; border-bottom:1px solid rgba(255,255,255,0.06); margin-bottom:8px;">
+                    <button class="filter-btn active" id="deal-pill-all" style="padding:3px 10px; font-size:11px;" onclick="filterDealsFeed('all', this)">All Deals</button>
+                    <button class="filter-btn" id="deal-pill-supercoin" style="padding:3px 10px; font-size:11px; color:#fbbf24;" onclick="filterDealsFeed('supercoin', this)">🪙 70%+ SuperCoins (<span id="supercoin-feed-count">0</span>)</button>
                   </div>
 
                   <div class="deals-stream-list" id="deals-feed-container">
@@ -4474,7 +4481,7 @@
                     </svg>
                     <span>Reset Defaults</span>
                   </button>
-                  <button class="btn-ui btn-ui-primary" onclick="openCollectionFormModal()">
+                  <button class="btn-ui btn-ui-primary btn-sm" onclick="openCollectionFormModal()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <line x1="12" y1="5" x2="12" y2="19"></line>
                       <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -7861,6 +7868,7 @@
       const countFlipkart = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("flipkart")).length;
       const countAmazon = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("amazon")).length;
       const countCasio = rawProductsList.filter(p => (p.platform || "").toLowerCase().includes("casio")).length;
+      const countSuperCoin = rawProductsList.filter(p => p.is_supercoin_deal || (p.supercoin_ratio || 0) >= 0.70 || (p.supercoins_earned && p.current_price && (p.supercoins_earned / p.current_price) >= 0.70)).length;
 
       const cAll = document.getElementById("chip-count-all");
       const cActive = document.getElementById("chip-count-active");
@@ -7868,21 +7876,23 @@
       const cFlip = document.getElementById("chip-count-flipkart");
       const cAmz = document.getElementById("chip-count-amazon");
       const cCas = document.getElementById("chip-count-casio");
+      const cSC = document.getElementById("chip-count-supercoin");
       if (cAll) cAll.textContent = countAll;
       if (cActive) cActive.textContent = countActive;
       if (cPaused) cPaused.textContent = countPaused;
       if (cFlip) cFlip.textContent = countFlipkart;
       if (cAmz) cAmz.textContent = countAmazon;
       if (cCas) cCas.textContent = countCasio;
+      if (cSC) cSC.textContent = countSuperCoin;
     }
 
     function setFilter(filterType, element) {
       currentFilter = filterType;
-      document.querySelectorAll(".filter-btn").forEach(c => c.classList.remove("active"));
+      document.querySelectorAll(".catalog-section .filter-btn").forEach(c => c.classList.remove("active"));
       if (element) {
         element.classList.add("active");
       } else {
-        document.querySelectorAll(".filter-btn").forEach(c => {
+        document.querySelectorAll(".catalog-section .filter-btn").forEach(c => {
           if (c.textContent.toLowerCase().includes(filterType)) c.classList.add("active");
         });
       }
@@ -7901,6 +7911,7 @@
         if (currentFilter === "active") return p.is_active !== false;
         if (currentFilter === "paused") return p.is_active === false;
         if (currentFilter === "deals") return p.current_price && p.target_price && p.current_price <= p.target_price;
+        if (currentFilter === "supercoin") return p.is_supercoin_deal || (p.supercoin_ratio || 0) >= 0.70 || (p.supercoins_earned && p.current_price && (p.supercoins_earned / p.current_price) >= 0.70);
         return (p.platform || "").toLowerCase().includes(currentFilter);
       });
 
@@ -7956,6 +7967,12 @@
           }
         }
 
+        const isSuperCoin = p.is_supercoin_deal || (p.supercoin_ratio || 0) >= 0.70 || (p.supercoins_earned && p.current_price && (p.supercoins_earned / p.current_price) >= 0.70);
+        const scRatio = p.supercoin_ratio || (p.supercoins_earned && p.current_price ? (p.supercoins_earned / p.current_price) : 0);
+        const scBadge = isSuperCoin
+          ? `<span class="status-badge-inline" style="background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 700;">🪙 ${Math.round(scRatio * 100)}% Coins Back</span>`
+          : '';
+
         return `
           <div class="product-card ${p.is_active ? '' : 'is-paused'}" id="card-${p.id}">
             <div class="card-main-content">
@@ -7964,6 +7981,7 @@
                 <span class="status-badge-inline ${p.is_active ? 'is-active' : 'is-paused'}">
                   ${p.is_active ? 'Tracking' : 'Paused'}
                 </span>
+                ${scBadge}
               </div>
 
               <div class="product-title-row" title="${p.title || p.url}">
@@ -8026,40 +8044,81 @@
       }).join("");
     }
 
+    let currentDealsFilter = 'all';
+    let cachedRecentDeals = [];
+
+    function filterDealsFeed(mode, el) {
+      currentDealsFilter = mode;
+      document.querySelectorAll(".deals-filter-bar .filter-btn").forEach(b => b.classList.remove("active"));
+      if (el) {
+        el.classList.add("active");
+      } else {
+        const targetBtn = document.getElementById(mode === 'supercoin' ? 'deal-pill-supercoin' : 'deal-pill-all');
+        if (targetBtn) targetBtn.classList.add("active");
+      }
+      renderDeals(cachedRecentDeals);
+    }
+
     function renderDeals(deals) {
+      cachedRecentDeals = deals || [];
       const container = document.getElementById("deals-feed-container");
       if (!container) return;
 
-      const validDeals = (deals || []).filter(d => (d.discount_percent || 0) >= 10);
-      
-      const countBadge = document.getElementById("kpi-verified-drops");
-      if (countBadge) countBadge.textContent = validDeals.length > 0 ? validDeals.length : 17;
+      const allValidDeals = cachedRecentDeals.filter(d => 
+        (d.discount_percent || 0) >= 10 || d.is_supercoin_deal || (d.supercoin_ratio || 0) >= 0.70
+      );
 
-      if (!validDeals || validDeals.length === 0) {
+      const supercoinDeals = allValidDeals.filter(d => 
+        d.is_supercoin_deal || (d.supercoin_ratio || 0) >= 0.70
+      );
+
+      const scCountBadge = document.getElementById("supercoin-feed-count");
+      if (scCountBadge) scCountBadge.textContent = supercoinDeals.length;
+
+      const countBadge = document.getElementById("kpi-verified-drops");
+      if (countBadge) countBadge.textContent = allValidDeals.length > 0 ? allValidDeals.length : 17;
+
+      const displayedDeals = currentDealsFilter === 'supercoin' ? supercoinDeals : allValidDeals;
+
+      if (!displayedDeals || displayedDeals.length === 0) {
         container.innerHTML = `
           <div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 14px 0;">
-            Radar active. Continuous sweeps scan Casio Bhawar &amp; Flipkart clearance catalogs.
+            ${currentDealsFilter === 'supercoin' 
+              ? 'No 70%+ SuperCoin deals active right now. Continuous radar scans Flipkart 24/7.'
+              : 'Radar active. Continuous sweeps scan Casio Bhawar &amp; Flipkart clearance catalogs.'}
           </div>
         `;
         return;
       }
 
-      container.innerHTML = validDeals.map(d => `
-        <div class="deal-stream-item">
-          <div class="deal-item-top">
-            <a href="${d.product_url}" class="deal-item-title" target="_blank" rel="noopener" title="${d.title}">
-              ${d.title}
-            </a>
-            <span class="deal-discount-pill">
-              ${Math.round(d.discount_percent)}% OFF
-            </span>
+      container.innerHTML = displayedDeals.map(d => {
+        const isSuperCoin = d.is_supercoin_deal || (d.supercoin_ratio || 0) >= 0.70;
+        const returnPct = d.supercoin_ratio ? Math.round(d.supercoin_ratio * 100) : (d.price && d.supercoins_earned ? Math.round((d.supercoins_earned / d.price) * 100) : 0);
+        const badgeText = isSuperCoin 
+          ? (returnPct >= 100 ? '🪙 100% Coins Back' : `🪙 ${returnPct}% Coins Back`)
+          : `${Math.round(d.discount_percent || 0)}% OFF`;
+        const badgeStyle = isSuperCoin
+          ? 'background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 700;'
+          : '';
+
+        return `
+          <div class="deal-stream-item" style="${isSuperCoin ? 'border-left: 2px solid #fbbf24;' : ''}">
+            <div class="deal-item-top">
+              <a href="${d.product_url}" class="deal-item-title" target="_blank" rel="noopener" title="${d.title}">
+                ${d.title}
+              </a>
+              <span class="deal-discount-pill" style="${badgeStyle}">
+                ${badgeText}
+              </span>
+            </div>
+            <div class="deal-item-bottom">
+              <span class="deal-price-val">₹${(d.effective_price || d.price).toLocaleString('en-IN')}</span>
+              ${d.supercoins_earned ? `<span style="color: #fbbf24; font-size: 11px; font-weight: 600;">🪙 +${d.supercoins_earned} SuperCoins</span>` : ''}
+              <span>${timeAgo(d.notified_at)}</span>
+            </div>
           </div>
-          <div class="deal-item-bottom">
-            <span class="deal-price-val">₹${(d.effective_price || d.price).toLocaleString('en-IN')}</span>
-            <span>${timeAgo(d.notified_at)}</span>
-          </div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
     }
 
     // User Interactive Actions
@@ -9051,12 +9110,12 @@
       }
     }
 
-    // Periodic live streaming update for logs tab (every 3 seconds)
+    // Periodic live streaming update for logs tab (every 8 seconds to protect Disk IO budget)
     setInterval(() => {
       if (currentUser && document.visibilityState === "visible" && currentActiveTab === "logs" && logsState.isAutoRefresh) {
         fetchLogsData(true);
       }
-    }, 3000);
+    }, 8000);
 
     // Periodic Background Polling (Fluid CPU friendly: only polls when tab is visible)
     setInterval(() => {

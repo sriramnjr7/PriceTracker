@@ -307,8 +307,15 @@ class StealRadar:
                 continue
 
             # 2. Fast instant deal alert (zero latency, no AI bottleneck so deals don't sell out)
+            sc_earned = deal.get("supercoins_earned")
+            sc_ratio = deal.get("supercoin_ratio")
+            if sc_ratio is None and sc_earned and deal.get("price"):
+                sc_ratio = round(sc_earned / deal["price"], 4)
+            is_sc = bool(deal.get("is_supercoin_deal") or ((sc_ratio or 0) >= 0.70))
+
             coupon_line = f"\n🎟️ *Coupon:* {coupon} (Apply on page!)" if coupon else ""
-            deal_badge = "🔥 STEAL DEAL" if disc < 80 else "🚨 PRICING GLITCH / CLEARANCE"
+            sc_line = f"\n🪙 *SuperCoins Earned:* {sc_earned} ({round(sc_ratio * 100)}% back)" if (is_sc and sc_earned and sc_ratio) else ""
+            deal_badge = "🪙 SUPERCOIN 70%+ LOOT DEAL" if is_sc else ("🔥 STEAL DEAL" if disc < 80 else "🚨 PRICING GLITCH / CLEARANCE")
             brand_tag = deal.get("scraped_brand") or "(verified)"
 
             msg = (
@@ -316,7 +323,7 @@ class StealRadar:
                 f"🏷️ *Rule:* {rule.name}\n"
                 f"📦 *Item:* {deal['title']}\n"
                 f"🏭 *Brand:* {brand_tag}\n"
-                f"💰 *Deal Price:* ₹{eff_price:g} (MRP: ₹{mrp:g}){coupon_line}\n"
+                f"💰 *Deal Price:* ₹{eff_price:g} (MRP: ₹{mrp:g}){coupon_line}{sc_line}\n"
                 f"📉 *Discount:* {disc:.1f}% OFF (Target: >={rule.min_discount}%)\n"
                 f"🏪 *Platform:* {deal.get('platform', 'Retailer').title()}\n"
                 f"🛒 *BUY NOW:* {url}"
@@ -332,8 +339,10 @@ class StealRadar:
                         price=deal["price"],
                         effective_price=eff_price,
                         discount_percent=disc,
-                        coupon_text=coupon,
+                        coupon_text=coupon or (f"🪙 {round(sc_ratio*100)}% SuperCoins Back" if is_sc and sc_ratio else None),
                         platform=deal.get("platform"),
+                        supercoins_earned=sc_earned,
+                        supercoin_ratio=sc_ratio,
                     )
                     alerts_sent += 1
                     logger.info("[radar] Dispatched steal alert for %s at ₹%s", deal["title"][:40], eff_price)
@@ -346,8 +355,10 @@ class StealRadar:
                     price=deal["price"],
                     effective_price=eff_price,
                     discount_percent=disc,
-                    coupon_text=coupon,
+                    coupon_text=coupon or (f"🪙 {round(sc_ratio*100)}% SuperCoins Back" if is_sc and sc_ratio else None),
                     platform=deal.get("platform"),
+                    supercoins_earned=sc_earned,
+                    supercoin_ratio=sc_ratio,
                 )
 
         return alerts_sent

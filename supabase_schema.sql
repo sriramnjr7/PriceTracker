@@ -55,11 +55,14 @@ CREATE TABLE IF NOT EXISTS custom_radar_rules (
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Indexes for lightning fast lookups
+-- Indexes for lightning fast lookups & Disk IO budget protection
 CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
 CREATE INDEX IF NOT EXISTS idx_products_url ON products(url);
 CREATE INDEX IF NOT EXISTS idx_price_logs_product ON price_logs(product_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_price_logs_timestamp ON price_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_deal_alerts_url ON deal_alerts_log(product_url, notified_at DESC);
+CREATE INDEX IF NOT EXISTS idx_custom_radar_rules_name_id ON custom_radar_rules(name, id DESC);
+CREATE INDEX IF NOT EXISTS idx_custom_radar_rules_name_created ON custom_radar_rules(name, created_at DESC);
 
 -- Enable Row Level Security (RLS) but allow service role / anon access with apikey
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
