@@ -19,6 +19,9 @@
       }
     ],
     "status": "Owned",
+    "purchasePrice": 2495,
+    "purchasedFrom": "Titan World",
+    "condition": "Mint",
     "tags": [
       "Analog",
       "Dress",
@@ -73,6 +76,7 @@
     "status": "Owned",
     "purchasePrice": 12995,
     "purchasedFrom": "Titan Official",
+    "condition": "Mint",
     "tags": [
       "Titan Grandmaster",
       "Chess Tribute",
@@ -114,6 +118,9 @@
       }
     ],
     "status": "Owned",
+    "purchasePrice": 7995,
+    "purchasedFrom": "Titan World",
+    "condition": "Excellent",
     "tags": [
       "Chronograph",
       "Sport Analog",
@@ -152,6 +159,9 @@
       }
     ],
     "status": "Owned",
+    "purchasePrice": 13995,
+    "purchasedFrom": "Kenneth Cole Boutique",
+    "condition": "Mint",
     "tags": [
       "Automatic",
       "Skeleton",
@@ -191,6 +201,9 @@
       }
     ],
     "status": "Owned",
+    "purchasePrice": 3995,
+    "purchasedFrom": "Casio India",
+    "condition": "Mint",
     "tags": [
       "Analog Chronograph",
       "Gold Dial",
@@ -231,6 +244,9 @@
       }
     ],
     "status": "Owned",
+    "purchasePrice": 3595,
+    "purchasedFrom": "Casio India",
+    "condition": "Mint",
     "tags": [
       "Casio Royale",
       "Digital",
@@ -271,6 +287,9 @@
       }
     ],
     "status": "Owned",
+    "purchasePrice": 11995,
+    "purchasedFrom": "Casio India",
+    "condition": "Brand New",
     "tags": [
       "G-Shock",
       "G-SQUAD",
@@ -312,6 +331,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 4999,
+    "purchasedFrom": "Adidas",
+    "condition": "Good",
     "tags": [
       "Running",
       "Training",
@@ -348,6 +371,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 4499,
+    "purchasedFrom": "ASICS India",
+    "condition": "Mint",
     "tags": [
       "ASICS",
       "Retro 80s",
@@ -384,6 +411,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 3695,
+    "purchasedFrom": "Nike Store",
+    "condition": "Lightly Used",
     "tags": [
       "Nike",
       "Running",
@@ -420,6 +451,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 5995,
+    "purchasedFrom": "Nike Store",
+    "condition": "Mint",
     "tags": [
       "Nike Waffle",
       "Retro Runner",
@@ -456,6 +491,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 3999,
+    "purchasedFrom": "Puma Store",
+    "condition": "Mint",
     "tags": [
       "Puma",
       "Retro 70s",
@@ -492,6 +531,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 6999,
+    "purchasedFrom": "Puma India",
+    "condition": "Brand New",
     "tags": [
       "Terrace Culture",
       "Palermo",
@@ -521,13 +564,17 @@
     "primaryImage": "/assets/collection/woodland-beige.webp",
     "images": [
       {
-        "url": "/assets/collection/woodland-flame.webp",
+        "url": "/assets/collection/woodland-beige.webp",
         "type": "primary",
         "alt": "Woodland Chunky Beige Sneaker with Peach Accents",
         "sortOrder": 0
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 3495,
+    "purchasedFrom": "Woodland",
+    "condition": "Good",
     "tags": [
       "Woodland",
       "Chunky Sneaker",
@@ -564,6 +611,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 3995,
+    "purchasedFrom": "Woodland",
+    "condition": "Mint",
     "tags": [
       "Woodland Flame",
       "Outdoor",
@@ -602,6 +653,10 @@
       }
     ],
     "status": "Owned",
+    "size": "UK 9 / EU 43",
+    "purchasePrice": 4295,
+    "purchasedFrom": "Woodland",
+    "condition": "Good",
     "tags": [
       "Woodland Trekking",
       "Trail Shoe",
@@ -640,6 +695,9 @@
     ],
     "status": "Owned",
     "size": "44",
+    "purchasePrice": 999,
+    "purchasedFrom": "Zudio",
+    "condition": "Good",
     "tags": [
       "Zudio",
       "Chunky Sneaker",

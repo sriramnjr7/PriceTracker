@@ -36,6 +36,7 @@ The agent recognizes and executes all standard **gstack** slash commands and eng
 ### 3. UI Design & Aesthetics
 - **/unslop**: Strips AI-generated design slop (glowing neon gradients, cyberpunk jargon, fake blinking cursors, stacked hero banners). Enforces quiet chrome, graphite ramps, hairline borders, and restrained single-accent tokens.
 - **/open-design**: Transforms product briefs into brand-aligned, production-ready interfaces using OpenDesign's 4-axis architecture (151 design systems, universal craft knowledge, archetype blueprints).
+- **/redesign**: Diagnoses generic AI patterns, weak states, typography hierarchies, and applies surgical visual upgrades using [elayadesign/redesign-skill](https://github.com/elayadesign/redesign-skill) and the extended [rmyndharis/antigravity-skills](https://github.com/rmyndharis/antigravity-skills) catalog in `.agents/skills/`.
 
 ### 4. Browser & QA Testing
 - **/qa**: Autonomous end-to-end user flow testing in the browser.

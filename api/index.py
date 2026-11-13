@@ -146,7 +146,7 @@ async def root(request: Request):
 
     # Route based on rewritten target if applicable
     # 0. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
-    if is_browser_request(request) and not clean.startswith("api/"):
+    if is_browser_request(request) and not clean.startswith("api/") and not clean.startswith("assets/"):
         return HTMLResponse(
             content=get_dashboard_html(),
             status_code=200,
@@ -239,7 +239,7 @@ async def root(request: Request):
         filename = clean.split("/")[-1]
         return await serve_collection_asset(filename)
     elif "collection" in clean:
-        if clean in ("my-collection", "collection", "my_collection") or is_browser_request(request):
+        if clean in ("my-collection", "collection", "my_collection") or (is_browser_request(request) and not clean.startswith("api/")):
             return HTMLResponse(
                 content=get_dashboard_html(),
                 status_code=200,
@@ -247,16 +247,21 @@ async def root(request: Request):
             )
         if "reset" in clean and method == "POST":
             return await api_reset_collection()
+        if clean.endswith("/stats") or clean == "api/collection/stats":
+            return await api_get_collection_stats()
         archive_match = re.search(r"collection/([^/]+)/archive", clean)
         if archive_match and method == "POST":
             return await api_archive_collection_item(archive_match.group(1))
         item_match = re.search(r"collection/([^/]+)$", clean)
         if item_match:
             item_id = item_match.group(1)
-            if method in ("PUT", "PATCH"):
-                return await api_update_collection_item(item_id, request)
-            elif method == "DELETE":
-                return await api_delete_collection_item(item_id)
+            if item_id not in ("stats", "reset", "archive"):
+                if method in ("PUT", "PATCH"):
+                    return await api_update_collection_item(item_id, request)
+                elif method == "DELETE":
+                    return await api_delete_collection_item(item_id)
+                elif method == "GET":
+                    return await api_get_collection_item(item_id)
         if method == "POST":
             return await api_add_collection_item(request)
         return await api_get_collection()
@@ -1010,6 +1015,30 @@ async def api_get_collection():
             "stats": stats,
             "items": items,
         },
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+    )
+
+
+@app.get("/api/collection/stats")
+@app.get("/api/index.py/api/collection/stats")
+async def api_get_collection_stats():
+    """Get computed statistics for personal collection."""
+    stats = collection_mgr.get_summary_stats()
+    return JSONResponse(
+        content={"status": "success", "stats": stats},
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+    )
+
+
+@app.get("/api/collection/{item_id}")
+@app.get("/api/index.py/api/collection/{item_id}")
+async def api_get_collection_item(item_id: str):
+    """Get single collection item by ID."""
+    item = collection_mgr.get_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return JSONResponse(
+        content={"status": "success", "item": item},
         headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
     )
 
@@ -2241,7 +2270,7 @@ async def catch_all(request: Request, full_path: str):
     method = request.method.upper()
 
     # 0. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
-    if is_browser_request(request) and not clean.startswith("api/"):
+    if is_browser_request(request) and not clean.startswith("api/") and not clean.startswith("assets/"):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)
 
     if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs"):
@@ -2349,20 +2378,25 @@ async def catch_all(request: Request, full_path: str):
         return await serve_collection_asset(filename)
 
     if "collection" in clean:
-        if clean in ("my-collection", "collection", "my_collection") or is_browser_request(request):
+        if clean in ("my-collection", "collection", "my_collection") or (is_browser_request(request) and not clean.startswith("api/")):
             return HTMLResponse(content=get_dashboard_html(), status_code=200)
         if "reset" in clean and method == "POST":
             return await api_reset_collection()
+        if clean.endswith("/stats") or clean == "api/collection/stats":
+            return await api_get_collection_stats()
         archive_match = re.search(r"collection/([^/]+)/archive", clean)
         if archive_match and method == "POST":
             return await api_archive_collection_item(archive_match.group(1))
         item_match = re.search(r"collection/([^/]+)$", clean)
         if item_match:
             item_id = item_match.group(1)
-            if method in ("PUT", "PATCH"):
-                return await api_update_collection_item(item_id, request)
-            elif method == "DELETE":
-                return await api_delete_collection_item(item_id)
+            if item_id not in ("stats", "reset", "archive"):
+                if method in ("PUT", "PATCH"):
+                    return await api_update_collection_item(item_id, request)
+                elif method == "DELETE":
+                    return await api_delete_collection_item(item_id)
+                elif method == "GET":
+                    return await api_get_collection_item(item_id)
         if method == "POST":
             return await api_add_collection_item(request)
         return await api_get_collection()

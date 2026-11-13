@@ -22,6 +22,7 @@
    - [4. AI Brand Validation Arbiter (DeepSeek-R1 / Gemini)](#4-ai-brand-validation-arbiter-deepseek-r1--gemini)
    - [5. Personal Inventory & Ownership Archive (My Collection)](#5-personal-inventory--ownership-archive-my-collection)
    - [6. Cloud Logging & Real-Time Telemetry Streaming](#6-cloud-logging--real-time-telemetry-streaming)
+   - [7. Production Case Study: Casio GBD-300-1DR Zero-Cost Variant Exchange Snipe](#7-production-case-study-casio-gbd-300-1dr-zero-cost-variant-exchange-snipe)
 4. [Complete API & Serverless Reference](#-complete-api--serverless-reference)
 5. [Antigravity IDE & Engineering Workflows (gstack)](#-antigravity-ide--engineering-workflows-gstack)
 6. [Security Architecture & Threat Model (CSO Audit)](#-security-architecture--threat-model-cso-audit)
@@ -161,6 +162,45 @@ The footwear tracking engine ([`running_shoes_radar.py`](file:///c:/Users/srira/
 ### 6. Cloud Logging & Real-Time Telemetry Streaming
 - Serverless environments lack persistent local filesystems. SriTrack routes background daemon logs into Supabase `custom_radar_rules` table under keys `DAEMON_LOG` and `VIP_LOG`.
 - The dashboard frontend streams these logs via `/api/logs` with real-time level filtering (`ERROR`, `WARNING`, `INFO`) and full-text search.
+
+### 7. Production Case Study: Casio GBD-300-1DR Zero-Cost Variant Exchange Snipe
+SriTrack demonstrated real-world operational execution by engineering an algorithmic zero-cost variant exchange on Flipkart:
+
+```
+[ Flipkart Purchase: White GBD-300-7DR (₹5,894) ]
+                       │
+          (Approaching 10-day deadline)
+                       ▼
+[ Initiated Replacement to Extend Clock ]
+                       │
+          (15s Stealth Scrapling Radar Active)
+                       ▼
+[ Restock Detected: Black GBD-300-1DR @ ₹10,294 (Eff: ₹9,544) ]
+        Sat Nov 7, 19:55:51 IST (11-Minute Inventory Window)
+                       │
+          (Flipkart 1-to-1 Variant Exchange Rule)
+                       ▼
+[ Direct Variant Swap Executed: ₹0 Price Delta ]
+      Final Confirmed Invoice: ₹5,894 + 50 Supercoins
+      Status: Order Confirmed • Delivery Sat Nov 14 (Open Box)
+```
+
+- **The Strategic Opportunity**:
+  - The white colorway (GBD-300-7DR) was secured during a promotional price dip for **₹5,894** (MRP ₹11,725).
+  - The stealth black colorway (GBD-300-1DR) remained sold out for weeks. When briefly restocked, its price jumped to **₹10,294** (effective ₹9,544 after bank offers).
+- **The Flipkart OMS Architecture & Reverse Logistics Rules**:
+  1. **Zero-Delta Variant Parity**: Flipkart’s Order Management System (OMS) treats size and color variants within the same product listing family as equivalent stock items. Regardless of whether the live listing price is ₹10,294 or ₹11,725, swapping from an active order carries a **₹0 price differential**.
+  2. **The Replacement-in-Transit Maneuver**: Initiating a replacement on the final day of the return window safely extends product possession. If the desired alternate variant restocks while the replacement order is active/in-transit, Flipkart’s mobile interface permits converting or superseding the open request into a variant exchange, preserving the initial ₹5,894 purchase basis.
+  3. **The Child Order Trap**: Once a replacement item is physically delivered and accepted, Flipkart's self-service portal tags it as a child order and restricts subsequent claims strictly to "Return for Full Refund". Executing the exchange *prior* to replacement delivery successfully avoided this lockdown.
+- **Scrapling Stealth Radar & Rapid Alerting**:
+  - Tracked via dedicated 15-second Scrapling fetcher using TLS fingerprint impersonation (`impersonate="chrome"` via `curl_cffi`).
+  - Restock event triggered at **19:55:51 IST** on Saturday, Nov 7, 2026.
+  - High-priority VIP alerts broadcasted across Telegram; the inventory window lasted only **11 minutes** before selling out.
+  - Exchange successfully finalized: Flipkart cancelled the white replacement, confirmed the Black GBD-300-1DR, and scheduled Open Box Delivery.
+- **1-Click Web Console Control (Paused State & Instant Re-Arm)**:
+  - Following the confirmed order, active tracking loops for Product `#111` (Black) and `#132` (White) were paused (`is_active = False` in Supabase PostgreSQL) to eliminate redundant network traffic.
+  - The Web Dashboard ([`api/dashboard.html`](file:///c:/Users/srira/Downloads/Antigravity/PriceTracker/api/dashboard.html)) provides a **1-click VIP Watch Card toggle** (`vip-btn-toggle-gbd300fk`) hitting `POST /api/products/111/toggle`.
+  - The 24/7 background daemon dynamically reads `db_prod.is_active` on every sweep pass. Clicking **"Resume Alerts"** on the dashboard immediately reactivates high-frequency tracking with zero code deployment or server restarts required.
 
 ---
 
@@ -368,6 +408,11 @@ For a complete breakdown of multi-user syndication and passive affiliate monetiz
    - Never trust backend product tags like `silent_sale_product` on Shopify stores. Bhawar tags high-end items like `MTG-B4000B-1ADR` (₹100,995) with this tag even at full retail price. Always verify live rendered HTML classes (`.price--on-sale`) using an authenticated member session.
 5. **Windows Currency Encoding (`₹`)**:
    - On Windows consoles using `cp1252`, printing raw Unicode `₹` (`\u20b9`) without UTF-8 stdout configuration throws `UnicodeEncodeError`. Always use safe formatters or set `PYTHONIOENCODING=utf-8`.
+6. **Flipkart 1-to-1 Variant Exchange & Child Order Restrictions**:
+   - Flipkart allows 1:1 color/size variant exchanges at a ₹0 delta even if the target variant's live listing is priced 75%+ higher than the original order invoice.
+   - However, if a replacement is physically marked delivered, the self-service portal demotes the order to a "Child Order" and disables variant exchange, forcing "Return for Refund". Always trigger variant swaps while the original order or pending replacement is still in-transit or open.
+7. **Stateless Dynamic Polling via Supabase `is_active`**:
+   - Instead of restarting daemon processes to pause or resume individual product alerts, daemons query `is_active` on every evaluation cycle. Web console mutations (`POST /api/products/{id}/toggle`) take effect instantly across all serverless and persistent daemon workers without code changes or restarts.
 
 ---
 

@@ -118,7 +118,7 @@ async def test_check_product_standard_flow(mock_db, mock_notifier):
     with patch("tracker.get_scraper", return_value=mock_scraper):
         alerted = await tracker.check_product(prod)
         assert alerted is True
-        mock_db.update_price.assert_called_with(1, 1400.0, title="Casio Watch G-Shock")
+        mock_db.update_price.assert_called_with(1, 1400.0, title="Casio Watch G-Shock", old_price=2000.0)
         mock_notifier.notify.assert_called_once()
         mock_db.set_last_notified.assert_called_with(1, 1400.0)
 

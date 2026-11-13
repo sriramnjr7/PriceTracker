@@ -6,9 +6,11 @@ of exactly 17 items (7 watches, 10 shoes) into `my_collection.json`.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -81,6 +83,9 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "purchasePrice": 2495,
+        "purchasedFrom": "Titan World",
+        "condition": "Mint",
         "tags": ["Analog", "Dress", "Silver", "Metal Bracelet"],
         "categorySpecificMetadata": {
             "movement": "Quartz",
@@ -130,6 +135,7 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
         "status": "Owned",
         "purchasePrice": 12995,
         "purchasedFrom": "Titan Official",
+        "condition": "Mint",
         "tags": ["Titan Grandmaster", "Chess Tribute", "Analog", "Two-Tone", "1828KM02"],
         "categorySpecificMetadata": {
             "movement": "Quartz",
@@ -165,6 +171,9 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "purchasePrice": 7995,
+        "purchasedFrom": "Titan World",
+        "condition": "Excellent",
         "tags": ["Chronograph", "Sport Analog", "Sub-Dials"],
         "categorySpecificMetadata": {
             "movement": "Quartz Chronograph",
@@ -199,6 +208,9 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "purchasePrice": 13995,
+        "purchasedFrom": "Kenneth Cole Boutique",
+        "condition": "Mint",
         "tags": ["Automatic", "Skeleton", "Exhibition Caseback", "Black IP"],
         "categorySpecificMetadata": {
             "movement": "Automatic Self-Winding",
@@ -233,6 +245,9 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "purchasePrice": 3995,
+        "purchasedFrom": "Casio India",
+        "condition": "Mint",
         "tags": ["Analog Chronograph", "Gold Dial", "100m Water Resistance", "Sport"],
         "categorySpecificMetadata": {
             "movement": "Quartz Chronograph",
@@ -268,6 +283,9 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "purchasePrice": 3595,
+        "purchasedFrom": "Casio India",
+        "condition": "Mint",
         "tags": ["Casio Royale", "Digital", "World Time", "10-Year Battery", "Stainless Steel"],
         "categorySpecificMetadata": {
             "movement": "Digital Quartz",
@@ -302,6 +320,9 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "purchasePrice": 11995,
+        "purchasedFrom": "Casio India",
+        "condition": "Brand New",
         "tags": ["G-Shock", "G-SQUAD", "Orange", "Bluetooth", "Step Tracker", "200m WR"],
         "categorySpecificMetadata": {
             "movement": "Digital Quartz / MIP LCD",
@@ -340,6 +361,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 4999,
+        "purchasedFrom": "Adidas",
+        "condition": "Good",
         "tags": ["Running", "Training", "Lightmotion Cushioning", "Breathable Mesh"],
         "categorySpecificMetadata": {
             "shoeType": "Road Running / Trainer",
@@ -371,6 +396,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 4499,
+        "purchasedFrom": "ASICS India",
+        "condition": "Mint",
         "tags": ["ASICS", "Retro 80s", "Lifestyle", "Grey"],
         "categorySpecificMetadata": {
             "shoeType": "Casual / Retro Sneaker",
@@ -402,6 +431,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 3695,
+        "purchasedFrom": "Nike Store",
+        "condition": "Lightly Used",
         "tags": ["Nike", "Running", "Lightweight", "Neon Swoosh"],
         "categorySpecificMetadata": {
             "shoeType": "Running / Daily Trainer",
@@ -433,6 +466,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 5995,
+        "purchasedFrom": "Nike Store",
+        "condition": "Mint",
         "tags": ["Nike Waffle", "Retro Runner", "Suede Overlay", "Waffle Outsole"],
         "categorySpecificMetadata": {
             "shoeType": "Heritage Casual Sneaker",
@@ -464,6 +501,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 3999,
+        "purchasedFrom": "Puma Store",
+        "condition": "Mint",
         "tags": ["Puma", "Retro 70s", "White Green", "SoftFoam+"],
         "categorySpecificMetadata": {
             "shoeType": "Retro Athletic Sneaker",
@@ -495,6 +536,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 6999,
+        "purchasedFrom": "Puma India",
+        "condition": "Brand New",
         "tags": ["Terrace Culture", "Palermo", "Suede", "Gum Sole"],
         "categorySpecificMetadata": {
             "shoeType": "Low-Profile Terrace Sneaker",
@@ -519,13 +564,17 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
         "primaryImage": "/assets/collection/woodland-beige.webp",
         "images": [
             {
-                "url": "/assets/collection/woodland-flame.webp",
+                "url": "/assets/collection/woodland-beige.webp",
                 "type": "primary",
                 "alt": "Woodland Chunky Beige Sneaker with Peach Accents",
                 "sortOrder": 0,
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 3495,
+        "purchasedFrom": "Woodland",
+        "condition": "Good",
         "tags": ["Woodland", "Chunky Sneaker", "Beige Cream", "Casual"],
         "categorySpecificMetadata": {
             "shoeType": "Chunky Casual Sneaker",
@@ -557,6 +606,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 3995,
+        "purchasedFrom": "Woodland",
+        "condition": "Mint",
         "tags": ["Woodland Flame", "Outdoor", "Sports", "Dark Olive", "Rugged"],
         "categorySpecificMetadata": {
             "shoeType": "Performance Sports / Outdoor Trainer",
@@ -589,6 +642,10 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
             }
         ],
         "status": "Owned",
+        "size": "UK 9 / EU 43",
+        "purchasePrice": 4295,
+        "purchasedFrom": "Woodland",
+        "condition": "Good",
         "tags": ["Woodland Trekking", "Trail Shoe", "Aggressive Lugs", "Outdoor"],
         "categorySpecificMetadata": {
             "shoeType": "Trekking / Trail Hiking Shoe",
@@ -622,6 +679,9 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
         ],
         "status": "Owned",
         "size": "44",
+        "purchasePrice": 999,
+        "purchasedFrom": "Zudio",
+        "condition": "Good",
         "tags": ["Zudio", "Chunky Sneaker", "Neon Green Tongue", "Rope Laces", "Size 44"],
         "categorySpecificMetadata": {
             "shoeType": "Chunky Casual Sneaker",
@@ -638,6 +698,132 @@ INITIAL_COLLECTION_ITEMS: List[Dict[str, Any]] = [
 ]
 
 
+def _normalize_item_input(data: Dict[str, Any], is_update: bool = False) -> Dict[str, Any]:
+    """Normalize input dictionary so snake_case frontend inputs map seamlessly to model schema."""
+    norm = dict(data)
+
+    # 1. Field name aliases
+    if "reference_number" in norm and not norm.get("reference"):
+        norm["reference"] = norm.pop("reference_number")
+    if "purchase_price" in norm and not norm.get("purchasePrice"):
+        norm["purchasePrice"] = norm.pop("purchase_price")
+    if "purchased_from" in norm and not norm.get("purchasedFrom"):
+        norm["purchasedFrom"] = norm.pop("purchased_from")
+    if "category_specific_specs" in norm and not norm.get("categorySpecificMetadata"):
+        norm["categorySpecificMetadata"] = norm.pop("category_specific_specs")
+    if "purchase_date" in norm and not norm.get("purchaseDate"):
+        norm["purchaseDate"] = norm.pop("purchase_date")
+    if "warranty_expiry" in norm and not norm.get("warrantyExpiry"):
+        norm["warrantyExpiry"] = norm.pop("warranty_expiry")
+
+    # 2. Images normalization
+    has_images_field = "images" in norm
+
+    if "primary_image" in norm and not norm.get("primaryImage"):
+        norm["primaryImage"] = norm.pop("primary_image")
+
+    if has_images_field:
+        raw_images = norm.get("images") or []
+        norm_images = []
+        for idx, img in enumerate(raw_images):
+            if isinstance(img, str):
+                norm_images.append({
+                    "url": img,
+                    "type": "primary" if idx == 0 else "detail",
+                    "alt": None,
+                    "sortOrder": idx,
+                })
+            elif isinstance(img, dict):
+                url = img.get("url") or ""
+                img_type = img.get("type") or ("primary" if img.get("is_primary") else "detail")
+                norm_images.append({
+                    "url": url,
+                    "type": img_type,
+                    "alt": img.get("alt") or img.get("caption"),
+                    "sortOrder": img.get("sortOrder", idx),
+                })
+        norm["images"] = norm_images
+        if not norm.get("primaryImage") and norm_images:
+            norm["primaryImage"] = norm_images[0]["url"]
+    elif not is_update:
+        # Creating new item without explicit images array
+        pri = norm.get("primaryImage")
+        if pri:
+            norm["images"] = [{"url": pri, "type": "primary", "sortOrder": 0}]
+        else:
+            norm["images"] = []
+
+    # 3. Category specific metadata normalization
+    has_meta_field = "categorySpecificMetadata" in norm or "category_specific_specs" in norm
+    if has_meta_field or not is_update:
+        meta = norm.get("categorySpecificMetadata") or {}
+        if isinstance(meta, dict):
+            norm_meta = dict(meta)
+            if "case_diameter" in norm_meta and "caseSize" not in norm_meta:
+                norm_meta["caseSize"] = norm_meta["case_diameter"]
+            if "water_resistance" in norm_meta and "waterResistance" not in norm_meta:
+                norm_meta["waterResistance"] = norm_meta["water_resistance"]
+            if "strap_material" in norm_meta and "strapType" not in norm_meta:
+                norm_meta["strapType"] = norm_meta["strap_material"]
+            if "dial_colour" in norm_meta and "dialColour" not in norm_meta:
+                norm_meta["dialColour"] = norm_meta["dial_colour"]
+            if "shoe_size" in norm_meta and "shoeSize" not in norm_meta:
+                norm_meta["shoeSize"] = norm_meta["shoe_size"]
+            if "upper_material" in norm_meta and "upperMaterial" not in norm_meta:
+                norm_meta["upperMaterial"] = norm_meta["upper_material"]
+            if "sole_material" in norm_meta and "soleOutsole" not in norm_meta:
+                norm_meta["soleOutsole"] = norm_meta["sole_material"]
+            if "intended_use" in norm_meta and "intendedUse" not in norm_meta:
+                norm_meta["intendedUse"] = norm_meta["intended_use"]
+            norm["categorySpecificMetadata"] = norm_meta
+            if "shoeSize" in norm_meta and not norm.get("size"):
+                norm["size"] = norm_meta["shoeSize"]
+
+    return norm
+
+
+def _format_item_response(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure both camelCase and snake_case aliases are available in all responses."""
+    res = dict(item)
+    ref = res.get("reference") or res.get("reference_number")
+    res["reference"] = ref
+    res["reference_number"] = ref
+
+    price = res.get("purchasePrice") if res.get("purchasePrice") is not None else res.get("purchase_price")
+    res["purchasePrice"] = price
+    res["purchase_price"] = price
+
+    from_val = res.get("purchasedFrom") or res.get("purchased_from")
+    res["purchasedFrom"] = from_val
+    res["purchased_from"] = from_val
+
+    meta = res.get("categorySpecificMetadata") or res.get("category_specific_specs") or {}
+    res["categorySpecificMetadata"] = meta
+    res["category_specific_specs"] = meta
+
+    pri = res.get("primaryImage") or res.get("primary_image")
+    res["primaryImage"] = pri
+    res["primary_image"] = pri
+
+    p_date = res.get("purchaseDate") or res.get("purchase_date")
+    res["purchaseDate"] = p_date
+    res["purchase_date"] = p_date
+
+    w_exp = res.get("warrantyExpiry") or res.get("warranty_expiry")
+    res["warrantyExpiry"] = w_exp
+    res["warranty_expiry"] = w_exp
+
+    c_at = res.get("createdAt") or res.get("created_at") or _now()
+    res["createdAt"] = c_at
+    res["created_at"] = c_at
+
+    u_at = res.get("updatedAt") or res.get("updated_at") or _now()
+    res["updatedAt"] = u_at
+    res["updated_at"] = u_at
+
+    return res
+
+
 class CollectionManager:
     """Manages collection items in local storage file and computes dynamic metrics."""
 
@@ -652,68 +838,112 @@ class CollectionManager:
 
     def _ensure_storage(self) -> None:
         """Create file and seed initial 17 items if missing."""
+        # On serverless platforms like Vercel with read-only filesystems, use temp directory if available
+        tmp_dir = tempfile.gettempdir()
+        tmp_file = os.path.join(tmp_dir, "my_collection.json")
+        if os.path.exists(tmp_file):
+            self.file_path = tmp_file
+
         if not os.path.exists(self.file_path):
-            self._save_items(INITIAL_COLLECTION_ITEMS)
+            self._save_items(copy.deepcopy(INITIAL_COLLECTION_ITEMS))
             logger.info("Created %s with %s initial items.", self.file_path, len(INITIAL_COLLECTION_ITEMS))
         else:
             try:
-                items = self.get_all_items()
+                items = self._read_raw_items()
                 if not items:
-                    self._save_items(INITIAL_COLLECTION_ITEMS)
+                    self._save_items(copy.deepcopy(INITIAL_COLLECTION_ITEMS))
             except Exception as exc:
                 logger.error("Error reading %s: %s; re-seeding defaults.", self.file_path, exc)
-                self._save_items(INITIAL_COLLECTION_ITEMS)
+                self._save_items(copy.deepcopy(INITIAL_COLLECTION_ITEMS))
 
-    def _save_items(self, items: List[Dict[str, Any]]) -> None:
-        with open(self.file_path, "w", encoding="utf-8") as f:
-            json.dump(items, f, indent=2, ensure_ascii=False)
-
-    def get_all_items(self) -> List[Dict[str, Any]]:
-        """Read all collection items."""
+    def _read_raw_items(self) -> List[Dict[str, Any]]:
         if not os.path.exists(self.file_path):
-            return list(INITIAL_COLLECTION_ITEMS)
+            return copy.deepcopy(INITIAL_COLLECTION_ITEMS)
         try:
             with open(self.file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as exc:
             logger.error("Failed to load collection items: %s", exc)
-            return list(INITIAL_COLLECTION_ITEMS)
+            return copy.deepcopy(INITIAL_COLLECTION_ITEMS)
+
+    def _save_items(self, items: List[Dict[str, Any]]) -> None:
+        try:
+            with open(self.file_path, "w", encoding="utf-8") as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        except (OSError, IOError) as exc:
+            # Fallback to temp directory on serverless environments if primary path is read-only
+            tmp_path = os.path.join(tempfile.gettempdir(), "my_collection.json")
+            if self.file_path != tmp_path:
+                try:
+                    with open(tmp_path, "w", encoding="utf-8") as f:
+                        json.dump(items, f, indent=2, ensure_ascii=False)
+                    self.file_path = tmp_path
+                    logger.info("Fell back to %s for persistence: %s", tmp_path, exc)
+                    return
+                except Exception as inner_exc:
+                    logger.error("Failed writing to fallback tmp path: %s", inner_exc)
+            raise
+
+    def get_all_items(self) -> List[Dict[str, Any]]:
+        """Read all collection items with compatibility aliases."""
+        raw = self._read_raw_items()
+        return [_format_item_response(i) for i in raw]
 
     def get_item(self, item_id: str) -> Optional[Dict[str, Any]]:
         items = self.get_all_items()
+        target = str(item_id).strip().lower()
         for item in items:
-            if item.get("id") == item_id:
+            if str(item.get("id")).strip().lower() == target:
                 return item
         return None
 
     def add_item(self, item_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate and insert a new item into collection."""
-        items = self.get_all_items()
-        item_id = item_data.get("id") or str(uuid.uuid4())
+        """Validate, normalize and insert a new item into collection."""
+        norm_data = _normalize_item_input(item_data, is_update=False)
+        items = self._read_raw_items()
+        item_id = norm_data.get("id") or str(uuid.uuid4())
 
-        # Ensure ID uniqueness
-        if any(i.get("id") == item_id for i in items):
+        # Ensure ID uniqueness (case-insensitive)
+        if any(str(i.get("id")).strip().lower() == str(item_id).strip().lower() for i in items):
             item_id = str(uuid.uuid4())
 
-        # Validate with pydantic
-        item_data["id"] = item_id
-        if not item_data.get("createdAt"):
-            item_data["createdAt"] = _now()
-        item_data["updatedAt"] = _now()
+        norm_data["id"] = item_id
+        if not norm_data.get("createdAt"):
+            norm_data["createdAt"] = _now()
+        norm_data["updatedAt"] = _now()
 
-        item = CollectionItem(**item_data)
+        item = CollectionItem(**norm_data)
         item_dict = item.model_dump()
         items.insert(0, item_dict)
         self._save_items(items)
-        return item_dict
+        return _format_item_response(item_dict)
 
     def update_item(self, item_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Update fields on an existing collection item."""
-        items = self.get_all_items()
+        """Update fields on an existing collection item with normalization and merging."""
+        norm_updates = _normalize_item_input(updates, is_update=True)
+        items = self._read_raw_items()
         updated_item = None
+        target = str(item_id).strip().lower()
         for idx, item in enumerate(items):
-            if item.get("id") == item_id:
-                merged = {**item, **updates, "id": item_id, "updatedAt": _now()}
+            if str(item.get("id")).strip().lower() == target:
+                # Merge category-specific metadata if provided
+                merged_meta = dict(item.get("categorySpecificMetadata") or {})
+                if "categorySpecificMetadata" in norm_updates:
+                    merged_meta.update(norm_updates["categorySpecificMetadata"])
+                    norm_updates["categorySpecificMetadata"] = merged_meta
+
+                # Merge images if primaryImage provided without full images array
+                if "images" not in norm_updates and "primaryImage" in norm_updates:
+                    cur_images = list(item.get("images") or [])
+                    new_pri = norm_updates["primaryImage"]
+                    if cur_images:
+                        cur_images[0] = {**cur_images[0], "url": new_pri, "type": "primary"}
+                    elif new_pri:
+                        cur_images = [{"url": new_pri, "type": "primary", "sortOrder": 0}]
+                    norm_updates["images"] = cur_images
+
+                actual_id = item.get("id", item_id)
+                merged = {**item, **norm_updates, "id": actual_id, "updatedAt": _now()}
                 validated = CollectionItem(**merged)
                 updated_item = validated.model_dump()
                 items[idx] = updated_item
@@ -721,7 +951,8 @@ class CollectionManager:
 
         if updated_item:
             self._save_items(items)
-        return updated_item
+            return _format_item_response(updated_item)
+        return None
 
     def archive_item(self, item_id: str) -> Optional[Dict[str, Any]]:
         """Toggle or set item status to Archived without deleting."""
@@ -732,10 +963,11 @@ class CollectionManager:
         return self.update_item(item_id, {"status": new_status})
 
     def delete_item(self, item_id: str) -> bool:
-        """Remove item from collection."""
-        items = self.get_all_items()
+        """Remove item from collection (case-insensitive ID)."""
+        items = self._read_raw_items()
         initial_len = len(items)
-        items = [i for i in items if i.get("id") != item_id]
+        target = str(item_id).strip().lower()
+        items = [i for i in items if str(i.get("id")).strip().lower() != target]
         if len(items) < initial_len:
             self._save_items(items)
             return True
@@ -743,18 +975,22 @@ class CollectionManager:
 
     def reset_to_defaults(self) -> List[Dict[str, Any]]:
         """Restore the initial 17 verified items."""
-        self._save_items(INITIAL_COLLECTION_ITEMS)
-        return list(INITIAL_COLLECTION_ITEMS)
+        self._save_items(copy.deepcopy(INITIAL_COLLECTION_ITEMS))
+        return self.get_all_items()
 
     def get_summary_stats(self) -> Dict[str, Any]:
-        """Compute live counts, categories, and brands dynamically from current data."""
+        """Compute live counts, categories, brands, and valuation dynamically from current data."""
         items = self.get_all_items()
         total_count = len(items)
-        owned_count = sum(1 for i in items if i.get("status", "Owned") == "Owned")
+        owned_items = [i for i in items if i.get("status", "Owned") == "Owned"]
+        owned_count = len(owned_items)
         archived_count = sum(1 for i in items if i.get("status") == "Archived")
 
         categories: Dict[str, int] = {}
         brands: set[str] = set()
+        total_valuation = 0.0
+        watches_valuation = 0.0
+        shoes_valuation = 0.0
 
         for i in items:
             cat = i.get("category") or "Uncategorized"
@@ -762,6 +998,20 @@ class CollectionManager:
             brand = i.get("brand")
             if brand and brand.strip():
                 brands.add(brand.strip())
+
+            # Valuation metrics on owned items
+            if i.get("status", "Owned") == "Owned":
+                price = i.get("purchasePrice") if i.get("purchasePrice") is not None else i.get("purchase_price")
+                if price:
+                    try:
+                        p_float = float(price)
+                        total_valuation += p_float
+                        if cat.lower() == "watches":
+                            watches_valuation += p_float
+                        elif cat.lower() == "shoes":
+                            shoes_valuation += p_float
+                    except (ValueError, TypeError):
+                        pass
 
         watches = categories.get("Watches", 0)
         shoes = categories.get("Shoes", 0)
@@ -775,6 +1025,9 @@ class CollectionManager:
             "shoes_count": shoes,
             "total_brands": len(brands),
             "unique_brands_count": len(brands),
+            "total_valuation": round(total_valuation, 2),
+            "watches_valuation": round(watches_valuation, 2),
+            "shoes_valuation": round(shoes_valuation, 2),
             "categories": {
                 "watches": watches,
                 "shoes": shoes,
