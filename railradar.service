@@ -10,7 +10,7 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/PriceTracker
 Environment=PYTHONUNBUFFERED=1
 EnvironmentFile=-/home/ubuntu/PriceTracker/.env
-ExecStart=/usr/bin/python3 /home/ubuntu/PriceTracker/rail_daemon.py
+ExecStart=/home/ubuntu/PriceTracker/venv/bin/python /home/ubuntu/PriceTracker/rail_daemon.py
 Restart=always
 RestartSec=10
 KillMode=process

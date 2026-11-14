@@ -23,10 +23,10 @@ import re
 import ssl
 import urllib.parse
 import urllib.request
+import math
 from datetime import datetime, time as dtime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
@@ -727,20 +727,35 @@ def load_delay_statistics() -> Dict[str, Any]:
                     for k in h.keys():
                         if k.endswith("_delay"):
                             stns_found.add(k.replace("_delay", ""))
+                def _calc_p(data: List[float], p: float) -> float:
+                    if not data:
+                        return 0.0
+                    s = sorted(data)
+                    k = (len(s) - 1) * (p / 100.0)
+                    f = int(k)
+                    c = min(f + 1, len(s) - 1)
+                    w = k - f
+                    return float(s[f] * (1.0 - w) + s[c] * w)
+
                 stats[t_no] = {"label": label, "stations": {}}
                 for stn in sorted(stns_found):
-                    delays = [h[f"{stn}_delay"] for h in history if f"{stn}_delay" in h]
+                    delays = [float(h[f"{stn}_delay"]) for h in history if f"{stn}_delay" in h]
                     if not delays:
                         continue
-                    arr = np.array(delays)
+                    n = len(delays)
+                    mean_val = sum(delays) / n
+                    var_val = sum((x - mean_val) ** 2 for x in delays) / n
+                    std_val = math.sqrt(var_val)
+                    on_time_pct = (sum(1 for d in delays if d <= 5) / n) * 100.0
+
                     stats[t_no]["stations"][stn] = {
-                        "N": len(delays),
-                        "P10": float(np.percentile(arr, 10)),
-                        "P50": float(np.percentile(arr, 50)),
-                        "P90": float(np.percentile(arr, 90)),
-                        "Mean": round(float(np.mean(arr)), 1),
-                        "Std": round(float(np.std(arr)), 1),
-                        "OnTimePct": round(float(np.mean(arr <= 5) * 100), 1),
+                        "N": n,
+                        "P10": round(_calc_p(delays, 10), 1),
+                        "P50": round(_calc_p(delays, 50), 1),
+                        "P90": round(_calc_p(delays, 90), 1),
+                        "Mean": round(mean_val, 1),
+                        "Std": round(std_val, 1),
+                        "OnTimePct": round(on_time_pct, 1),
                         "RawDelays": delays,
                     }
             _cached_stats = stats
