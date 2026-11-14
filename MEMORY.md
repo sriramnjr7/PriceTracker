@@ -113,3 +113,83 @@ SriTrack implements stateless, zero-restart tracking controls:
 - **SQL / API Hygiene**: Database mutations in `supabase_db.py` use PostgREST parameterized endpoints; no raw string interpolation in SQL.
 - **Credentials Isolation**: Zero session cookies or passwords in version control. `flipkart_session_cookies.json` and `.env` are strictly `.gitignore`d.
 
+---
+
+## 🚆 RailRadar Commute Intelligence Architecture & Operating Memory
+
+> **Autonomous Transit System for Sriram's Hosur &harr; ETV Bangalore Daily Commute**  
+> **Shift:** 12:00 PM &ndash; 08:30 PM+ | **Office:** JPMorgan Chase, Parcel 5 (Back Gate), Embassy Tech Village (ETV)  
+> **Home:** Gangaiya Venkatachalapathy St, Nehru Nagar Ext, Hosur (180m from Railway Station PF1)  
+> **Telegram Bot:** `@SriTrainBot` (Token: `9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyqFZU` | Chat: `716060462`)  
+> **Cloud Daemon:** Oracle Cloud VM (`140.245.250.104` &middot; `railradar.service`)  
+> **Web & API:** `https://sritrack.vercel.app/` (Tab: `/rail-radar` &middot; API: `/api/rail/*`)
+
+### 1. Commuter Persona & Geography Rules
+- **Work Shift Start:** **12:00 PM**.
+- **Desk Location:** JPMorgan Chase, Parcel 5, Embassy Tech Village (ETV), Outer Ring Road, Bangalore. Entrance strictly through **ETV Back Gate**.
+- **Home Location:** Gangaiya Venkatachalapathy St, Nehru Nagar Ext, Hosur (directly opposite Hosur Station Platform 1).
+  - Walk distance: **180 meters** (3–5 mins).
+  - Doorstep Lead Time in RailRadar: **10 minutes** (5m walk + 5m buffer for FOB/platform entry).
+- **Morning Station & Walk:**
+  - De-board Station: **Bellandur Road (`BLRR`)**.
+  - Morning Walk: **2.2 km** (exactly 30 mins) via Level Crossing &rarr; Panathur Main Road &rarr; GEAR Innovative School Road &rarr; ETV Back Gate.
+  - Reason for BLRR: Avoids Carmelaram highway auto congestion and auto fare gouging; scenic walking route directly into Parcel 5 back gate.
+- **Evening Station & Rapido Bike Taxi:**
+  - Origin: ETV Back Gate.
+  - Transit Mode: **Rapido Bike Taxi**.
+  - Destinations:
+    - **Bellandur Road (`BLRR`):** 2.5 km bike ride (8–12 mins, ~₹35). Recommended for MEMU 66585 and 06277.
+    - **Carmelaram (`CRLM`):** 4.8 km bike ride (15–20 mins, ~₹60). Recommended for Express 16211 and night expresses (12677, 11013).
+
+### 2. Algorithmic Decision Engine: Max-Sleep Utility Optimization
+- **Shift Cutoff:** Desk arrival $\le$ 11:30 AM (30-minute safety buffer ahead of 12:00 PM shift).
+- **Objective Function:** Among all viable morning trains reaching desk before 11:30 AM, **select the train that departs Hosur latest** ($\arg\max_{t} T_{\text{dep}}(t)$).
+- **Primary Recommendation:** **Train 16212 (Salem &rarr; Yesvantpur Intercity Express)**:
+  - Scheduled: 08:20 AM. Historical mean delay: +34.1 mins.
+  - Departs Hosur: ~08:54 AM.
+  - Arrives BLRR: ~09:54 AM.
+  - Arrives ETV Desk: **~10:24 AM** (via 30-min walk).
+  - **Net Gain:** **+45.4 extra minutes of sleep and home time every single morning** compared to old MEMU-only policy!
+  - **Safety Margin:** 96 minutes ahead of 12:00 PM shift start.
+- **Backup Hierarchy:**
+  1. **Train 66596 (Hosur &rarr; Yesvantpur MEMU):** Departs Hosur ~08:26 AM, Desk ~09:38 AM. Guarded by incoming rake 66595 (if 66595 is cancelled, 66596 is automatically bypassed).
+  2. **Train 06278 (Dharmapuri &rarr; SBC MEMU):** Departs Hosur ~07:07 AM, Desk ~08:21 AM. Ultra-early fallback for line blocks.
+
+### 3. Data Science & Probability Validation (10,000-Day Monte Carlo)
+- **Empirical Delay Metrics (N=70):**
+  - Train 16212: Mean 34.1m &plusmn; 8.8m | P10: 24m | P50 (Median): 34m | P90: 45m | Max: 55m.
+  - Train 66596: Mean 1.4m &plusmn; 1.7m | P50: 1m | P90: 6m.
+- **Monte Carlo Results across 10,000 Commute Days (with +50m tail shocks):**
+  - Modal Train Selection: 16212 (88.4%), 66596 (11.6%).
+  - Desk ETA Quantiles: P50 = 10:24 AM | P90 = 10:39 AM | P99 = 11:05 AM.
+  - **Absolute Worst Case (P100):** **11:25 AM** (still 35 mins before 12:00 PM shift!).
+  - **On-Time Probability (&le; 12:00 PM):** **100.00%**.
+
+### 4. 7-State Autonomous Commute Daemon (`rail_daemon.py`)
+- **Strict Bot Isolation:** Dedicated token `9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyqFZU`. NEVER share or mix with PriceTracker.
+- **Zero-Polling Supabase Write Guarantee:** State transitions only ($\le 7$ rows/day). Zero polling writes.
+- **State Machine Lifecycle:**
+  1. `NIGHT_SLEEP` (22:30 – 06:45)
+  2. `MORNING_PROMPT` (06:45 AM corridor scan & recommendation)
+  3. `MORNING_TRACKING` (Adaptive polling: 30s critical window)
+  4. `MIDDAY_STANDBY` (10:00 – 14:00 PM)
+  5. `EVENING_PROMPT` (14:00 PM interactive check-in)
+  6. `EVENING_TRACKING` (Milestone monitoring & Rapido advisories)
+  7. `HIBERNATION` (Paused until 06:45 AM next morning)
+- **The `/reached` Command:** Sending `/reached` or simply typing `reached` immediately pauses tracking for the day and puts the daemon to sleep.
+- **Workday Overrides:**
+  - `/wfh`: Marks today as Work From Home; suspends tracking.
+  - `/bike`: Marks today as Bike Commute; suspends train alerts.
+  - `/reset`: Clears daily tracking state back to default.
+
+### 5. Production Infrastructure Runbook
+- **Oracle VM:**
+  - Service: `sudo systemctl status railradar`
+  - Restart: `sudo systemctl restart railradar`
+  - Logs: `journalctl -u railradar -f`
+- **Vercel Web App:**
+  - URL: `https://sritrack.vercel.app/`
+  - Rail Dashboard: `/rail-radar`
+  - Status API: `/api/rail/status`
+
+

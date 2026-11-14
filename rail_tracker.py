@@ -1121,88 +1121,58 @@ def scan_morning_commute_options(
         },
     ]
 
-    # Intelligent Recommendation Logic:
-    # Viable options include trains currently viable or in boarding
+    # Intelligent Recommendation Logic: Max-Sleep Utility Optimization
+    # Target shift: 12:00 PM. Target desk arrival: <= 11:30 AM (30-minute safety buffer).
+    # Objective: Among all viable trains reaching desk before cutoff, pick the LATEST departing train!
     viable = [o for o in options if o["status"] in ("VIABLE", "BOARDING")]
 
     if not viable:
         recommended = options[0]
         rec_reason = "All morning trains appear to have departed or are in departure."
     else:
-        # Check specific user requirement:
-        # "I am okay in taking any of the morning MEMU, I believe there are two.
-        # Whichever comes the last for me, I am okay taking it"
-        memu2_opt = next((o for o in viable if o["train_no"] == MORNING_TRAIN_EARLIER_MEMU), None)
-        memu_opt = next((o for o in viable if o["train_no"] == MORNING_TRAIN_MEMU), None)
-        exp_opt = next((o for o in viable if o["train_no"] == MORNING_TRAIN_EXP), None)
+        # 1. Filter out 66596 if incoming rake 66595 is cancelled
+        active_viable = [
+            o for o in viable
+            if not (o["train_no"] == MORNING_TRAIN_MEMU and memu_rake.get("rake_cancelled"))
+        ]
+        if not active_viable:
+            active_viable = viable
 
-        # 1. If incoming rake 66595 is cancelled, immediately recommend alternative
+        # 2. Safety Cutoff: Desk ETA <= 11:30 AM (>= 30 mins buffer ahead of 12:00 PM shift)
+        SHIFT_CUTOFF_DESK = "11:30"
+        qualifying = [
+            o for o in active_viable
+            if minutes_difference(o.get("desk_eta", "12:00"), SHIFT_CUTOFF_DESK) >= 0
+        ]
+
+        # Fallback to active_viable if severe delays push all trains past cutoff
+        pool = qualifying if qualifying else active_viable
+
+        # Helper to convert "HH:MM" into minutes from midnight
+        def _dep_minutes(o: dict) -> int:
+            t = o.get("projected_departure", "00:00")
+            try:
+                parts = t.split(":")
+                return int(parts[0]) * 60 + int(parts[1])
+            except Exception:
+                return 0
+
+        # Maximize sleep / home time: Pick the latest departing train!
+        recommended = max(pool, key=_dep_minutes)
+
         if memu_rake.get("rake_cancelled"):
-            if memu2_opt:
-                recommended = memu2_opt
-                rec_reason = (
-                    f"Train {MORNING_TRAIN_MEMU} rake is cancelled! Recommend taking Train {MORNING_TRAIN_EARLIER_MEMU} "
-                    f"({memu2_opt['train_name']}) departing Hosur at ~{memu2_opt['projected_departure']} (ETV Desk: ~{memu2_opt['desk_eta']})."
-                )
-            elif exp_opt:
-                recommended = exp_opt
-                rec_reason = (
-                    f"Train {MORNING_TRAIN_MEMU} rake is cancelled! Recommend taking Train {MORNING_TRAIN_EXP} "
-                    f"({exp_opt['train_name']}) departing Hosur at ~{exp_opt['projected_departure']} (ETV Desk: ~{exp_opt['desk_eta']})."
-                )
-            else:
-                recommended = viable[0]
-                rec_reason = f"Train {MORNING_TRAIN_MEMU} cancelled. {viable[0]['train_name']} is available."
-
-        # 2. Both MEMUs are viable -> Select whichever departs LATEST (the last MEMU) as requested!
-        elif memu_opt and memu2_opt:
-            # Check which MEMU departs later from Hosur
-            # If 06278 departs LATER than 66596 (e.g. 66596 @ 08:25, 06278 delayed to 08:45)
-            if minutes_difference(memu_opt["projected_departure"], memu2_opt["projected_departure"]) > 0:
-                recommended = memu2_opt
-                rec_reason = (
-                    f"Both morning MEMUs are running. Train {MORNING_TRAIN_EARLIER_MEMU} ({memu2_opt['train_name']}) "
-                    f"is delayed by {memu2_opt['delay_mins']}m and departs Hosur at ~{memu2_opt['projected_departure']}, "
-                    f"which is the LATEST morning MEMU. Reaches BLRR ~{memu2_opt['dest_eta']} (ETV Desk: ~{memu2_opt['desk_eta']} - before 11 AM!)."
-                )
-            else:
-                recommended = memu_opt
-                delay_note = f" (delayed by {memu_opt['delay_mins']}m)" if memu_opt['is_delayed'] else ""
-                rec_reason = (
-                    f"Train {MORNING_TRAIN_MEMU} departs Hosur at ~{memu_opt['projected_departure']}{delay_note}, "
-                    f"which is the LATEST morning MEMU. (Earlier MEMU {MORNING_TRAIN_EARLIER_MEMU} departs at ~{memu2_opt['projected_departure']}). "
-                    f"Reaches BLRR ~{memu_opt['dest_eta']} (ETV Desk: ~{memu_opt['desk_eta']} - before 11 AM!)."
-                )
-
-        # 3. Only Earlier MEMU 06278 is viable
-        elif memu2_opt:
-            recommended = memu2_opt
             rec_reason = (
-                f"Train {MORNING_TRAIN_EARLIER_MEMU} ({memu2_opt['train_name']}) is delayed by {memu2_opt['delay_mins']}m "
-                f"and departing Hosur at ~{memu2_opt['projected_departure']} (reaches BLRR ~{memu2_opt['dest_eta']}, ETV Desk: ~{memu2_opt['desk_eta']})."
+                f"⚠️ Train {MORNING_TRAIN_MEMU} rake is CANCELLED! Recommend taking Train {recommended['train_no']} "
+                f"({recommended['train_name']}) departing Hosur at ~{recommended['projected_departure']} AM. "
+                f"Reaches BLRR at ~{recommended['dest_eta']} AM (ETV Desk: ~{recommended['desk_eta']} AM)."
             )
-
-        # 4. Only MEMU 66596 is viable
-        elif memu_opt:
-            recommended = memu_opt
-            delay_text = f"Delayed by {memu_opt['delay_mins']}m" if memu_opt['is_delayed'] else "On schedule"
-            rec_reason = (
-                f"Train {MORNING_TRAIN_MEMU} is {delay_text}. Departs HSRA at ~{memu_opt['projected_departure']}, "
-                f"arrives BLRR at ~{memu_opt['dest_eta']} (ETV Desk: ~{memu_opt['desk_eta']})."
-            )
-
-        # 5. Fallback to Express if no MEMU is viable
-        elif exp_opt:
-            recommended = exp_opt
-            rec_reason = (
-                f"No MEMU available. Train {MORNING_TRAIN_EXP} is departing at ~{exp_opt['projected_departure']} "
-                f"and reaches BLRR at ~{exp_opt['dest_eta']} (Desk: ~{exp_opt['desk_eta']})."
-            )
-
         else:
-            recommended = viable[0]
-            rec_reason = f"Train {recommended['train_name']} ({recommended['train_no']}) is your primary viable option at this time."
-            rec_reason = f"Train {recommended['train_name']} ({recommended['train_no']}) is your primary viable option at this time."
+            delay_note = f" (delay: +{recommended['delay_mins']}m)" if recommended.get("is_delayed") else " (on schedule)"
+            rec_reason = (
+                f"Train {recommended['train_no']} ({recommended['train_name']}) departs Hosur latest at ~{recommended['projected_departure']} AM{delay_note}, "
+                f"maximizing your sleep and home time! Reaches BLRR at ~{recommended['dest_eta']} AM and ETV desk by ~{recommended['desk_eta']} AM "
+                f"(comfortably ahead of your 12:00 PM shift cutoff)."
+            )
 
     return {
         "reference_time": reference_time,

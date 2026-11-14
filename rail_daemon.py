@@ -302,9 +302,15 @@ class CommuteStateStore:
 class RailDaemon:
     """The Autonomous Rail Commute Daemon."""
 
-    def __init__(self, bot_token: str = TELEGRAM_BOT_TOKEN, chat_id: str = TELEGRAM_CHAT_ID):
-        self.bot = TelegramClient(bot_token, chat_id)
-        self.store = CommuteStateStore()
+    def __init__(
+        self,
+        bot_token: str = TELEGRAM_BOT_TOKEN,
+        chat_id: str = TELEGRAM_CHAT_ID,
+        store: Optional[CommuteStateStore] = None,
+        bot: Optional[TelegramClient] = None,
+    ):
+        self.bot = bot if bot is not None else TelegramClient(bot_token, chat_id)
+        self.store = store if store is not None else CommuteStateStore()
         self.update_offset = 0
         self.running = True
         self.last_track_poll_time: float = 0.0
@@ -583,6 +589,8 @@ class RailDaemon:
             self.cmd_eta(train_no, chat_id)
         elif cmd == "/milestones":
             self.cmd_milestones(chat_id)
+        elif cmd in ("/reached", "reached"):
+            self.cmd_reached(chat_id)
         elif cmd == "/reset":
             self.cmd_reset(chat_id)
         else:
@@ -605,6 +613,7 @@ class RailDaemon:
             f"• `/station <code>` — View timetable for HSRA, CRLM, or BLRR\n"
             f"• `/milestones` — View departure milestone triggers (e.g. 16232 @ BNC)\n\n"
             f"⚙️ *Overrides & Controls*:\n"
+            f"• `/reached` — Pause tracking for the day (sleeps until next commute)\n"
             f"• `/wfh` — Mark today as Work From Home (pauses alerts)\n"
             f"• `/bike` — Switch today's mode to Bike/Road commute\n"
             f"• `/reset` — Reset daily tracking state machine\n"
@@ -772,6 +781,27 @@ class RailDaemon:
         )
         self.bot.send_message(msg, chat_id=chat_id)
 
+    def cmd_reached(self, chat_id: Optional[str] = None) -> None:
+        st = self.store.state_data
+        curr_state = st.get("state", "")
+        if "MORNING" in curr_state:
+            st["morning_completed"] = True
+            self.store.transition_state(STATE_MIDDAY_STANDBY, "User reached destination (morning)")
+            msg = (
+                "🎉 *Destination Reached!*\n\n"
+                "Morning commute completed. Tracking is now paused in *MIDDAY_STANDBY*.\n"
+                "I will check in with you at *02:00 PM* for your evening return options. Have a productive shift at ETV!"
+            )
+        else:
+            st["evening_completed"] = True
+            self.store.transition_state(STATE_HIBERNATION, "User reached home (evening)")
+            msg = (
+                "🏠 *Welcome Home to Hosur!*\n\n"
+                "Commute tracking is officially *paused for the day*.\n"
+                "State entered: `HIBERNATION`. Zero alerts will be sent tonight. Sleep well!"
+            )
+        self.bot.send_message(msg, chat_id=chat_id)
+
     def cmd_reset(self, chat_id: Optional[str] = None) -> None:
         self.store.reset_today()
         self.bot.send_message("🔄 Daily commute state reset back to default. Next scheduled trigger: 06:45 AM.", chat_id=chat_id)
@@ -792,6 +822,8 @@ class RailDaemon:
                 chat_id = str(msg.get("chat", {}).get("id", ""))
                 if text.startswith("/"):
                     self.execute_command(text, chat_id=chat_id)
+                elif text.strip().lower() in ("reached", "status", "morning", "evening", "wfh", "bike", "help", "delays", "rake"):
+                    self.execute_command("/" + text.strip().lower(), chat_id=chat_id)
 
             # 2. Inline Callback Query
             elif "callback_query" in u:
@@ -810,9 +842,7 @@ class RailDaemon:
                 elif data == "action:bike":
                     self.cmd_bike(chat_id=chat_id)
                 elif data == "action:reached":
-                    self.bot.send_message("🎉 Platform 1 reached! Have a smooth and on-time commute.", chat_id=chat_id)
-                    self.store.state_data["morning_completed"] = True
-                    self.store.transition_state(STATE_MIDDAY_STANDBY, "User reached platform")
+                    self.cmd_reached(chat_id=chat_id)
                 elif data == "action:morning_scan":
                     self.cmd_morning(chat_id=chat_id)
                 elif data == "action:skip":

@@ -445,6 +445,36 @@ def test_daemon_state_machine_and_zero_polling(tmp_path):
     assert store.state_data["state"] == rail_daemon.STATE_NIGHT_SLEEP
 
 
+def test_daemon_cmd_reached_transitions_and_quiets(tmp_path):
+    """Test /reached and 'reached' text command pausing tracking into standby/hibernation."""
+    test_state_file = os.path.join(tmp_path, "test_commute_state.json")
+    store = rail_daemon.CommuteStateStore(file_path=test_state_file)
+
+    class MockBot:
+        def __init__(self):
+            self.messages = []
+        def send_message(self, text, **kwargs):
+            self.messages.append(text)
+            return {"ok": True}
+        def get_updates(self, **kwargs):
+            return []
+
+    mock_bot = MockBot()
+    daemon = rail_daemon.RailDaemon(store=store, bot=mock_bot)
+
+    # 1. Morning commute reached -> MIDDAY_STANDBY
+    store.transition_state(rail_daemon.STATE_MORNING_TRACKING, "Tracking morning train")
+    daemon.cmd_reached("12345")
+    assert store.state_data["state"] == rail_daemon.STATE_MIDDAY_STANDBY
+    assert "Morning commute completed" in mock_bot.messages[-1]
+
+    # 2. Evening commute reached -> HIBERNATION
+    store.transition_state(rail_daemon.STATE_EVENING_TRACKING, "Tracking evening train")
+    daemon.execute_command("reached", chat_id="12345")
+    assert store.state_data["state"] == rail_daemon.STATE_HIBERNATION
+    assert "Welcome Home to Hosur" in mock_bot.messages[-1]
+
+
 # =============================================================================
 # 10. FASTAPI REST ENDPOINTS & SPA REWRITES
 # =============================================================================
@@ -633,18 +663,17 @@ def test_step_out_trigger_alert_fires_at_window():
 
 def test_morning_scanner_recommends_delayed_other_memu_06278():
     """
-    USER REQUIREMENT TEST:
-    'Hey, and also, I am okay in taking any of the morning MEMU, I believe there are two.
-    Whichever comes the last for me, I am okay taking it...'
+    Verify that when comparing morning MEMUs (e.g. Express has departed or is unavailable),
+    the scanner recommends whichever MEMU departs latest.
 
     Case 1: When Train 06278 is delayed and departs Hosur at 08:35 AM while 66596 is on time at 08:25 AM,
-    06278 is the LATEST morning MEMU, so the scanner recommends 06278.
+    06278 is the latest viable train, so the scanner recommends 06278.
 
     Case 2: When Train 66596 is delayed to 08:45 AM while 06278 departs earlier at 08:15 AM,
-    66596 is the LATEST morning MEMU, so the scanner recommends 66596.
+    66596 is the latest viable train, so the scanner recommends 66596.
     """
     with patch("rail_tracker.inspect_rake_turnaround") as mock_rake, patch("rail_tracker.get_live_train_status") as mock_status:
-        # Case 1: 66596 on-time at 08:25 AM; 06278 delayed to 08:35 AM
+        # Case 1: 66596 on-time at 08:25 AM; 06278 delayed to 08:35 AM; 16212 departed
         mock_rake.return_value = {
             "morning_train": "66596",
             "incoming_rake_train": "66595",
@@ -675,11 +704,11 @@ def test_morning_scanner_recommends_delayed_other_memu_06278():
             "16212": {
                 "train_no": "16212",
                 "train_name": "Salem Express",
-                "current_station": "DPJ",
-                "current_station_name": "DHARMAPURI",
-                "delay_minutes": 60,
+                "current_station": "SBC",
+                "current_station_name": "BENGALURU",
+                "delay_minutes": 0,
                 "stations": [
-                    {"code": "HSRA", "sta": "08:18", "std": "08:20", "eta": "09:18", "etd": "09:20", "has_arrived": False, "has_departed": False},
+                    {"code": "HSRA", "sta": "08:18", "std": "08:20", "eta": "08:20", "etd": "08:20", "has_arrived": True, "has_departed": True},
                 ],
             },
         }[t]
@@ -694,13 +723,12 @@ def test_morning_scanner_recommends_delayed_other_memu_06278():
         assert opt_06278["projected_departure"] == "08:35"
         assert opt_06278["step_out_time"] == "08:25"
 
-        # 06278 departs at 08:35 (later than 66596's 08:25), so 06278 is recommended as the LATEST MEMU!
+        # 06278 departs at 08:35 (later than 66596's 08:25), so 06278 is recommended!
         rec = scan["recommended_train"]
         assert rec["train_no"] == "06278"
-        assert "LATEST morning MEMU" in scan["recommendation_reason"]
         assert "08:35" in scan["recommendation_reason"]
 
-        # Case 2: 66596 delayed to 08:45 AM; 06278 at 08:15 AM
+        # Case 2: 66596 delayed to 08:45 AM; 06278 at 08:15 AM; 16212 departed
         mock_rake.return_value["projected_hsra_departure"] = "08:45"
         mock_rake.return_value["effective_delay_mins"] = 20
         mock_rake.return_value["is_delayed"] = True
@@ -720,18 +748,130 @@ def test_morning_scanner_recommends_delayed_other_memu_06278():
             "16212": {
                 "train_no": "16212",
                 "train_name": "Salem Express",
-                "current_station": "DPJ",
-                "delay_minutes": 60,
-                "stations": [{"code": "HSRA", "std": "08:20", "etd": "09:20"}],
+                "current_station": "SBC",
+                "delay_minutes": 0,
+                "stations": [{"code": "HSRA", "std": "08:20", "etd": "08:20", "has_departed": True}],
             },
         }[t]
 
         scan2 = rail_tracker.scan_morning_commute_options(reference_time="08:00")
-        # 66596 departs at 08:45 (later than 06278's 08:15), so 66596 is recommended as the LATEST MEMU!
+        # 66596 departs at 08:45 (later than 06278's 08:15), so 66596 is recommended!
         rec2 = scan2["recommended_train"]
         assert rec2["train_no"] == "66596"
-        assert "LATEST morning MEMU" in scan2["recommendation_reason"]
         assert "08:45" in scan2["recommendation_reason"]
+
+
+def test_morning_scanner_recommends_salem_express_16212_for_12pm_shift():
+    """
+    USER REQUIREMENT TEST:
+    'wHY IS sALEM yESVANTPUR NOT RECOMMENDED? i WANT TO LEAVE AS LATE AS POSSIBLE IN MORNING,
+    AS MY SHIFT STARTS ONLY AT 12pm'
+
+    When Train 16212 (Salem - Yesvantpur Express) departs Hosur at 08:54 AM (delay 24m)
+    and reaches BLRR at 09:54 AM (ETV desk by 10:24 AM, 96 mins ahead of 12 PM shift),
+    the scanner MUST recommend Train 16212 over 66596 (08:26 AM) and 06278 (07:07 AM)
+    because it departs latest, maximizing sleep and home comfort!
+    """
+    with patch("rail_tracker.inspect_rake_turnaround") as mock_rake, patch("rail_tracker.get_live_train_status") as mock_status:
+        mock_rake.return_value = {
+            "morning_train": "66596",
+            "incoming_rake_train": "66595",
+            "scheduled_hsra_departure": "08:25",
+            "projected_hsra_departure": "08:26",
+            "effective_delay_mins": 1,
+            "revised_step_out_time": "08:16",
+            "is_delayed": True,
+            "rake_cancelled": False,
+            "rake_current_station": "HSRA",
+            "rake_current_station_name": "HOSUR",
+            "delay_summary": "1m late",
+            "memu_status": {"stations": [{"code": "BLRR", "sta": "09:03", "eta": "09:08"}]},
+        }
+
+        mock_status.side_effect = lambda t, d=None: {
+            "06278": {
+                "train_no": "06278",
+                "train_name": "Dharmapuri - KSR Bengaluru MEMU",
+                "current_station": "HSRA",
+                "current_station_name": "HOSUR",
+                "delay_minutes": 0,
+                "stations": [
+                    {"code": "HSRA", "sta": "07:05", "std": "07:07", "eta": "07:07", "etd": "07:07", "has_arrived": False, "has_departed": False},
+                    {"code": "BLRR", "sta": "07:51", "std": "07:52", "eta": "07:51", "etd": "07:52", "has_arrived": False, "has_departed": False},
+                ],
+            },
+            "16212": {
+                "train_no": "16212",
+                "train_name": "Salem - Yesvantpur Express",
+                "current_station": "KMLM",
+                "current_station_name": "KELAMANGALAM",
+                "delay_minutes": 24,
+                "stations": [
+                    {"code": "HSRA", "sta": "08:18", "std": "08:20", "eta": "08:52", "etd": "08:54", "has_arrived": False, "has_departed": False},
+                    {"code": "BLRR", "sta": "08:59", "std": "09:00", "eta": "09:54", "etd": "09:55", "has_arrived": False, "has_departed": False},
+                ],
+            },
+        }[t]
+
+        scan = rail_tracker.scan_morning_commute_options(reference_time="08:00")
+        assert len(scan["options"]) == 3
+
+        # Train 16212 departs at 08:54 AM (later than 66596's 08:26 AM and 06278's 07:07 AM)
+        rec = scan["recommended_train"]
+        assert rec["train_no"] == "16212"
+        assert rec["projected_departure"] == "08:54"
+        assert rec["step_out_time"] == "08:44"
+        assert rec["desk_eta"] == "10:24"
+        assert "16212" in scan["recommendation_reason"]
+        assert "sleep" in scan["recommendation_reason"].lower()
+        assert "12:00 PM" in scan["recommendation_reason"]
+
+
+def test_morning_scanner_filters_salem_express_if_delayed_past_cutoff():
+    """
+    If Train 16212 is severely delayed past the safety cutoff (Desk ETA > 11:30 AM),
+    the scanner must filter it out and safely fall back to Train 66596!
+    """
+    with patch("rail_tracker.inspect_rake_turnaround") as mock_rake, patch("rail_tracker.get_live_train_status") as mock_status:
+        mock_rake.return_value = {
+            "morning_train": "66596",
+            "incoming_rake_train": "66595",
+            "scheduled_hsra_departure": "08:25",
+            "projected_hsra_departure": "08:30",
+            "effective_delay_mins": 5,
+            "revised_step_out_time": "08:20",
+            "is_delayed": True,
+            "rake_cancelled": False,
+            "rake_current_station": "HSRA",
+            "rake_current_station_name": "HOSUR",
+            "delay_summary": "5m late",
+            "memu_status": {"stations": [{"code": "BLRR", "sta": "09:03", "eta": "09:15"}]},
+        }
+
+        mock_status.side_effect = lambda t, d=None: {
+            "06278": {
+                "train_no": "06278",
+                "current_station": "SBC",
+                "stations": [{"code": "HSRA", "std": "07:07", "etd": "07:07", "has_departed": True}],
+            },
+            "16212": {
+                "train_no": "16212",
+                "train_name": "Salem Express",
+                "current_station": "SA",
+                "delay_minutes": 180,
+                # Projected to reach BLRR at 11:45 AM -> Desk ETA is 12:15 PM (past 11:30 cutoff!)
+                "stations": [
+                    {"code": "HSRA", "sta": "08:18", "std": "08:20", "eta": "10:45", "etd": "10:50", "has_arrived": False, "has_departed": False},
+                    {"code": "BLRR", "sta": "08:59", "std": "09:00", "eta": "11:45", "etd": "11:46", "has_arrived": False, "has_departed": False},
+                ],
+            },
+        }[t]
+
+        scan = rail_tracker.scan_morning_commute_options(reference_time="08:00")
+        rec = scan["recommended_train"]
+        # Must fall back to 66596 because 16212 arrives after 11:30 AM!
+        assert rec["train_no"] == "66596"
+        assert rec["projected_departure"] == "08:30"
 
 
 def test_rake_turnaround_location_physical_delay():

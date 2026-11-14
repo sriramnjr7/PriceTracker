@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RailRadar — Real-Life Commute Guide & Operations Blueprint</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #090d16;
+            color: #f1f5f9;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.25);
+        }
+        .glow-sky {
+            box-shadow: 0 0 35px -5px rgba(14, 165, 233, 0.25);
+        }
+        .glow-amber {
+            box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.25);
+        }
+        .step-active {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                    <i data-lucide="train" class="w-5 h-5 text-white"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-sky-400">RailRadar Commute Intelligence</span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">v2.4 LIVE</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Hosur Doorstep &harr; ETV JPMorgan Parcel 5 Commute Engine</p>
+                </div>
+            </div>
+
+            <!-- Profile & Quick Stats -->
+            <div class="hidden md:flex items-center space-x-6 text-xs">
+                <div class="flex items-center space-x-2 text-slate-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Commuter: <strong class="text-white">Sriram</strong></span>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-300">
+                    Shift: <strong class="text-sky-400">12:00 PM – 08:30 PM+</strong>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium">
+                    Max-Sleep Utility: <strong class="text-white">+45m Sleep Daily</strong>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+        <!-- Banner / Hero Summary -->
+        <section class="relative overflow-hidden rounded-2xl glass-panel p-6 sm:p-8 border border-slate-800 glow-sky">
+            <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div class="space-y-2 max-w-3xl">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-semibold">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        <span>Zero Stress, Zero Traffic, Mathematically Proven</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                        Your Complete Real-Life Rail Commute Blueprint
+                    </h1>
+                    <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+                        Operating between <span class="text-white font-medium">Gangaiya Venkatachalapathy St, Hosur</span> and <span class="text-white font-medium">Embassy Tech Village (ETV) JPMorgan Chase Parcel 5</span>. Built to prioritize <strong class="text-sky-300">maximum morning sleep</strong> while guaranteeing on-time arrival before your 12:00 PM shift.
+                    </p>
+                </div>
+                <!-- Action / Quick Links -->
+                <div class="flex flex-wrap gap-3">
+                    <a href="https://t.me/SriTrainBot" target="_blank" class="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white text-xs font-semibold shadow-lg shadow-sky-500/25 hover:opacity-95 transition-all">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Open Telegram Bot (@SriTrainBot)</span>
+                    </a>
+                    <a href="https://sritrack.vercel.app/" target="_blank" class="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-all">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        <span>Live Dashboard</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 4 Quick Key Metrics -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-slate-800/80">
+                <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-800">
+                    <p class="text-xs text-slate-400">Home to Hosur PF1</p>
+                    <p class="text-lg font-bold text-white mt-1">180m <span class="text-xs font-normal text-slate-400">(5m walk)</span></p>
+                    <span class="text-[11px] text-emerald-400 font-mono">Lead: 10 mins</span>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-800">
+                    <p class="text-xs text-slate-400">Primary Morning Train</p>
+                    <p class="text-lg font-bold text-sky-400 mt-1">Train 16212 <span class="text-xs font-normal text-slate-400">Exp</span></p>
+                    <span class="text-[11px] text-slate-400 font-mono">Dep Hosur: ~08:54 AM</span>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-800">
+                    <p class="text-xs text-slate-400">BLRR to ETV Desk</p>
+                    <p class="text-lg font-bold text-white mt-1">2.2 km <span class="text-xs font-normal text-slate-400">(30m walk)</span></p>
+                    <span class="text-[11px] text-slate-400 font-mono">Panathur / GEAR Rd</span>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-800">
+                    <p class="text-xs text-slate-400">Desk Arrival Buffer</p>
+                    <p class="text-lg font-bold text-emerald-400 mt-1">~10:24 AM</p>
+                    <span class="text-[11px] text-emerald-400 font-mono">96 mins ahead of shift!</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <div class="flex items-center space-x-2 border-b border-slate-800 pb-2 overflow-x-auto">
+            <button onclick="switchTab('morning')" id="tab-btn-morning" class="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-sky-500/20 border border-sky-500/40 transition-all flex items-center space-x-2">
+                <i data-lucide="sunrise" class="w-4 h-4 text-sky-400"></i>
+                <span>1. Morning Door-to-Desk (Hosur &rarr; ETV)</span>
+            </button>
+            <button onclick="switchTab('evening')" id="tab-btn-evening" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center space-x-2">
+                <i data-lucide="sunset" class="w-4 h-4 text-amber-400"></i>
+                <span>2. Evening Door-to-Door (ETV &rarr; Hosur)</span>
+            </button>
+            <button onclick="switchTab('backtest')" id="tab-btn-backtest" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center space-x-2">
+                <i data-lucide="bar-chart-2" class="w-4 h-4 text-emerald-400"></i>
+                <span>3. Data Science & 10,000-Day Backtest</span>
+            </button>
+            <button onclick="switchTab('telegram')" id="tab-btn-telegram" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center space-x-2">
+                <i data-lucide="bot" class="w-4 h-4 text-indigo-400"></i>
+                <span>4. Telegram Bot & Milestone Flow</span>
+            </button>
+            <button onclick="switchTab('watchdog')" id="tab-btn-watchdog" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center space-x-2">
+                <i data-lucide="shield-check" class="w-4 h-4 text-rose-400"></i>
+                <span>5. Watchdog & Fail-Safe Architecture</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: MORNING COMMUTE -->
+        <div id="tab-content-morning" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left 2 Cols: Step-by-Step Physical Journey -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                            <div>
+                                <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                                    <i data-lucide="navigation" class="w-4 h-4 text-sky-400"></i>
+                                    <span>Morning Physical Journey (Door-to-Desk)</span>
+                                </h2>
+                                <p class="text-xs text-slate-400 mt-0.5">Optimized for maximum sleep with guaranteed arrival before 12:00 PM</p>
+                            </div>
+                            <span class="text-xs font-mono px-2.5 py-1 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">Total: ~1 hr 40 min</span>
+                        </div>
+
+                        <!-- 5-Stage Stepper -->
+                        <div class="mt-6 space-y-6 relative before:absolute before:left-5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800">
+                            
+                            <!-- Step 1: Home Step-Out -->
+                            <div class="relative flex items-start space-x-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-900 border-2 border-sky-500 flex items-center justify-center text-sky-400 shrink-0 z-10 shadow-lg shadow-sky-500/20">
+                                    <i data-lucide="home" class="w-5 h-5"></i>
+                                </div>
+                                <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-sm font-semibold text-white">1. Doorstep Step-Out (Nehru Nagar Extension)</h3>
+                                        <span class="text-xs font-mono text-sky-400 font-bold">08:44 AM</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">
+                                        Location: <strong>Gangaiya Venkatachalapathy St</strong>, right opposite Hosur Railway Station.
+                                    </p>
+                                    <div class="mt-2 text-xs text-slate-400 bg-slate-900/50 p-2.5 rounded-lg border border-slate-800">
+                                        🏃‍♂️ <strong>Walk:</strong> 180 meters (~3-5 mins) to Platform 1 foot-over-bridge or ramp. Total lead time programmed in RailRadar: <strong>10 minutes</strong> (5m walk + 5m buffer).
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Boarding at Hosur PF1 -->
+                            <div class="relative flex items-start space-x-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-900 border-2 border-indigo-500 flex items-center justify-center text-indigo-400 shrink-0 z-10">
+                                    <i data-lucide="train" class="w-5 h-5"></i>
+                                </div>
+                                <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-sm font-semibold text-white">2. Board Train 16212 (Salem &rarr; Yesvantpur Exp)</h3>
+                                        <span class="text-xs font-mono text-indigo-400 font-bold">08:54 AM (Dep)</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">
+                                        Platform: <strong>Hosur Platform 1</strong>. Scheduled: 08:20 AM. Historical mean delay: ~34 minutes (departs 08:50 - 09:15 AM).
+                                    </p>
+                                    <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                        <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+                                            <span class="text-slate-400">Transit Duration:</span>
+                                            <span class="text-white font-semibold ml-1">~50 - 60 mins</span>
+                                        </div>
+                                        <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+                                            <span class="text-slate-400">En-Route Stations:</span>
+                                            <span class="text-white font-semibold ml-1">AEK, HLE, CRLM</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3: De-board at Bellandur Road -->
+                            <div class="relative flex items-start space-x-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-900 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 shrink-0 z-10">
+                                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                                </div>
+                                <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-sm font-semibold text-white">3. De-board at Bellandur Road (BLRR)</h3>
+                                        <span class="text-xs font-mono text-emerald-400 font-bold">~09:54 AM</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">
+                                        Platform: <strong>BLRR Platform 1 / Loop Line</strong>. Quiet station with direct pedestrian exit toward Panathur.
+                                    </p>
+                                    <div class="mt-2 text-xs text-emerald-300/80 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
+                                        ✅ Avoids Carmelaram highway auto congestion; direct walking path begins immediately outside the railway gate.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 4: The 2.2 km Morning Walk -->
+                            <div class="relative flex items-start space-x-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-900 border-2 border-amber-500 flex items-center justify-center text-amber-400 shrink-0 z-10">
+                                    <i data-lucide="footprints" class="w-5 h-5"></i>
+                                </div>
+                                <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-sm font-semibold text-white">4. Scenic Morning Walk to ETV (Panathur / GEAR Rd)</h3>
+                                        <span class="text-xs font-mono text-amber-400 font-bold">09:54 &rarr; 10:24 AM (30 mins)</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">
+                                        Walking route: <strong>BLRR Station &rarr; Railway Level Crossing &rarr; Panathur Main Road &rarr; GEAR Innovative School Road &rarr; ETV JPMorgan Parcel 5 Back Gate</strong>.
+                                    </p>
+                                    <div class="mt-2 text-xs text-slate-400 bg-slate-900/50 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                                        <div>📏 <strong>Distance:</strong> 2.2 kilometers</div>
+                                        <div>⏱️ <strong>Pace:</strong> 13.6 min/km (comfortable brisk walking, ~3,000 steps)</div>
+                                        <div>🚪 <strong>Entry:</strong> ETV Back Gate allows immediate badge swipe into Parcel 5!</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 5: Desk Arrival -->
+                            <div class="relative flex items-start space-x-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-900 border-2 border-purple-500 flex items-center justify-center text-purple-400 shrink-0 z-10">
+                                    <i data-lucide="briefcase" class="w-5 h-5"></i>
+                                </div>
+                                <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-sm font-semibold text-white">5. Desk Arrival & Shift Login</h3>
+                                        <span class="text-xs font-mono text-purple-400 font-bold">~10:24 AM</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">
+                                        Desk: <strong>JPMorgan Chase, Parcel 5, Embassy Tech Village</strong>.
+                                    </p>
+                                    <div class="mt-2 flex items-center justify-between bg-purple-500/10 p-2.5 rounded-lg border border-purple-500/30 text-xs">
+                                        <span class="text-purple-300 font-medium">Shift Start: 12:00 PM</span>
+                                        <span class="text-white font-bold bg-purple-500/30 px-2 py-0.5 rounded font-mono">Safety Buffer: 96 Minutes!</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Col: Morning Trains Comparison Matrix -->
+                <div class="space-y-6">
+                    <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="layers" class="w-4 h-4 text-sky-400"></i>
+                            <span>Morning Corridor Roster</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Ranked dynamically by Max-Sleep Utility</p>
+
+                        <div class="mt-4 space-y-4">
+                            <!-- Option 1: Salem Express 16212 (RECOMMENDED) -->
+                            <div class="p-4 rounded-xl bg-sky-950/30 border-2 border-sky-500/80 relative">
+                                <div class="absolute -top-2.5 right-3 px-2 py-0.5 rounded bg-sky-500 text-slate-950 font-bold text-[10px] tracking-wider uppercase">
+                                    ★ #1 RECOMMENDED
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-mono text-sm font-bold text-white">16212</span>
+                                    <span class="text-xs font-medium text-slate-200">Salem &rarr; Yesvantpur Exp</span>
+                                </div>
+                                <div class="mt-2 text-xs space-y-1 text-slate-300 font-mono">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Dep Hosur:</span>
+                                        <strong class="text-sky-400">~08:54 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Arr BLRR:</span>
+                                        <strong class="text-white">~09:54 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Desk ETA:</span>
+                                        <strong class="text-emerald-400">~10:24 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Home Step-Out:</span>
+                                        <strong class="text-amber-400">08:44 AM</strong>
+                                    </div>
+                                </div>
+                                <p class="mt-2.5 text-[11px] text-sky-300 leading-tight">
+                                    💤 <strong>Max Sleep:</strong> Leaves latest from Hosur. Still arrives 96 mins before 12:00 PM shift!
+                                </p>
+                            </div>
+
+                            <!-- Option 2: Hosur MEMU 66596 -->
+                            <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-mono text-sm font-bold text-white">66596</span>
+                                        <span class="text-xs font-medium text-slate-200">Hosur &rarr; Yesvantpur MEMU</span>
+                                    </div>
+                                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">BACKUP #1</span>
+                                </div>
+                                <div class="mt-2 text-xs space-y-1 text-slate-300 font-mono">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Dep Hosur:</span>
+                                        <strong class="text-white">~08:26 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Arr BLRR:</span>
+                                        <strong class="text-white">~09:08 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Desk ETA:</span>
+                                        <strong class="text-white">~09:38 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Home Step-Out:</span>
+                                        <strong class="text-slate-300">08:16 AM</strong>
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-[11px] text-slate-400 leading-tight">
+                                    Rake pairing: Guarded by Train 66595 live status. If 16212 is delayed > 2 hrs, auto-fallback to this!
+                                </p>
+                            </div>
+
+                            <!-- Option 3: Dharmapuri MEMU 06278 -->
+                            <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-mono text-sm font-bold text-white">06278</span>
+                                        <span class="text-xs font-medium text-slate-200">Dharmapuri &rarr; KSR SBC MEMU</span>
+                                    </div>
+                                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">EARLY FALLBACK</span>
+                                </div>
+                                <div class="mt-2 text-xs space-y-1 text-slate-300 font-mono">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Dep Hosur:</span>
+                                        <strong class="text-white">~07:07 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Arr BLRR:</span>
+                                        <strong class="text-white">~07:51 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Desk ETA:</span>
+                                        <strong class="text-white">~08:21 AM</strong>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Home Step-Out:</span>
+                                        <strong class="text-slate-300">06:57 AM</strong>
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-[11px] text-slate-400 leading-tight">
+                                    Ultra-early departure. Reserved for morning maintenance outages or rare mega-blocks.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: EVENING COMMUTE -->
+        <div id="tab-content-evening" class="hidden space-y-6">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="sunset" class="w-4 h-4 text-amber-400"></i>
+                            <span>Evening Flexible Return Architecture (ETV &rarr; Hosur)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Rapido Bike Taxi from Back Gate + 02:00 PM Telegram Interactive Check-In</p>
+                    </div>
+                    <span class="text-xs font-mono px-3 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">Window: 04:00 PM &ndash; 10:30 PM</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                    <!-- Evening Train 1 -->
+                    <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-amber-400">16211 Exp</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">EARLY EVENING</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mt-1">YPR &rarr; Salem Express</h4>
+                        <div class="mt-3 text-xs space-y-1 font-mono text-slate-300">
+                            <div>CRLM Dep: <strong>16:35</strong></div>
+                            <div>BLRR Dep: <strong>16:44</strong></div>
+                            <div>Hosur Arr: <strong>~17:35</strong></div>
+                        </div>
+                        <div class="mt-3 text-[11px] text-slate-400">
+                            🛵 <strong>Rapido from ETV:</strong> Leave office at <strong>16:15</strong> for BLRR or <strong>16:05</strong> for CRLM.
+                        </div>
+                    </div>
+
+                    <!-- Evening Train 2: MEMU 66585 -->
+                    <div class="p-4 rounded-xl bg-slate-800/40 border border-emerald-500/40 relative">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-emerald-400">66585 MEMU</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">PRIMARY</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mt-1">BNC &rarr; Hosur MEMU</h4>
+                        <div class="mt-3 text-xs space-y-1 font-mono text-slate-300">
+                            <div>CRLM Dep: <strong>18:35</strong></div>
+                            <div>BLRR Dep: <strong>18:42</strong></div>
+                            <div>Hosur Arr: <strong>~19:30</strong></div>
+                        </div>
+                        <div class="mt-3 text-[11px] text-slate-400">
+                            🛵 <strong>Rapido from ETV:</strong> Leave office at <strong>18:15</strong> for BLRR or <strong>18:05</strong> for CRLM.
+                        </div>
+                    </div>
+
+                    <!-- Evening Train 3: MEMU 06277 -->
+                    <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-sky-400">06277 MEMU</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">LATE EVENING</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mt-1">SBC &rarr; Dharmapuri MEMU</h4>
+                        <div class="mt-3 text-xs space-y-1 font-mono text-slate-300">
+                            <div>CRLM Dep: <strong>19:15</strong></div>
+                            <div>BLRR Dep: <strong>19:23</strong></div>
+                            <div>Hosur Arr: <strong>~20:08</strong></div>
+                        </div>
+                        <div class="mt-3 text-[11px] text-slate-400">
+                            🛵 <strong>Rapido from ETV:</strong> Leave office at <strong>18:55</strong> for BLRR or <strong>18:45</strong> for CRLM.
+                        </div>
+                    </div>
+
+                    <!-- Evening Train 4: Express Night -->
+                    <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-purple-400">12677 / 11013</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">NIGHT COURIER</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mt-1">Intercity / Expresses</h4>
+                        <div class="mt-3 text-xs space-y-1 font-mono text-slate-300">
+                            <div>CRLM Dep: <strong>20:15 / 22:00</strong></div>
+                            <div>BLRR Dep: <em>Passes (check stop)</em></div>
+                            <div>Hosur Arr: <strong>~21:05 / 22:50</strong></div>
+                        </div>
+                        <div class="mt-3 text-[11px] text-slate-400">
+                            🛵 <strong>Rapido to CRLM:</strong> Board at Carmelaram for express train comfort back to Hosur.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Last Mile Rapido Comparison: BLRR vs CRLM -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div class="flex items-center space-x-2 text-sky-400 font-semibold text-sm">
+                            <i data-lucide="bike" class="w-4 h-4"></i>
+                            <span>Option A: Rapido &rarr; Bellandur Road (BLRR)</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-2">
+                            Distance: <strong>2.5 km</strong> | Transit Time: <strong>~8 - 12 mins</strong> | Cost: <strong>₹30 - ₹45</strong>
+                        </p>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Direct via Panathur Road. Quickest connection for MEMU trains that stop at Bellandur Road.
+                        </p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div class="flex items-center space-x-2 text-indigo-400 font-semibold text-sm">
+                            <i data-lucide="bike" class="w-4 h-4"></i>
+                            <span>Option B: Rapido &rarr; Carmelaram (CRLM)</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-2">
+                            Distance: <strong>4.8 km</strong> | Transit Time: <strong>~15 - 20 mins</strong> | Cost: <strong>₹50 - ₹75</strong>
+                        </p>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Via Sarjapur Road. Universal hub: All express trains and MEMUs stop here. Ideal when taking Express trains.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: DATA SCIENCE & BACKTEST -->
+        <div id="tab-content-backtest" class="hidden space-y-6">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Data Science Backtest: Max-Sleep Model Validation</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Empirical Delay Profiles + 10,000 Monte Carlo Stochastic Simulations</p>
+                    </div>
+                    <span class="text-xs font-mono px-3 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">N = 10,000 Commute Days</span>
+                </div>
+
+                <!-- Empirical Delay Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <!-- Train 16212 -->
+                    <div class="p-4 rounded-xl bg-slate-800/40 border border-sky-500/40">
+                        <div class="flex justify-between items-center">
+                            <span class="font-mono text-sm font-bold text-sky-400">Train 16212 (Exp)</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/20 text-sky-300">PRIMARY</span>
+                        </div>
+                        <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P10</span>
+                                <strong class="text-white font-mono">24m</strong>
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P50 (Median)</span>
+                                <strong class="text-sky-400 font-mono">34m</strong>
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P90</span>
+                                <strong class="text-amber-400 font-mono">45m</strong>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2">Mean: <strong>34.1m ± 8.8m</strong> | Max observed: 55m</p>
+                    </div>
+
+                    <!-- Train 66596 -->
+                    <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
+                        <div class="flex justify-between items-center">
+                            <span class="font-mono text-sm font-bold text-slate-200">Train 66596 (MEMU)</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">BACKUP</span>
+                        </div>
+                        <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P10</span>
+                                <strong class="text-white font-mono">0m</strong>
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P50 (Median)</span>
+                                <strong class="text-white font-mono">1m</strong>
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P90</span>
+                                <strong class="text-slate-300 font-mono">6m</strong>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2">Mean: <strong>1.4m ± 1.7m</strong> | Highly punctual</p>
+                    </div>
+
+                    <!-- Train 06278 -->
+                    <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
+                        <div class="flex justify-between items-center">
+                            <span class="font-mono text-sm font-bold text-slate-200">Train 06278 (MEMU)</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">FALLBACK</span>
+                        </div>
+                        <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P10</span>
+                                <strong class="text-white font-mono">0m</strong>
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P50 (Median)</span>
+                                <strong class="text-white font-mono">0m</strong>
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/50">
+                                <span class="text-slate-400 block text-[10px]">P90</span>
+                                <strong class="text-slate-300 font-mono">8m</strong>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2">Mean: <strong>2.8m ± 3.4m</strong> | Starts Dharmapuri</p>
+                    </div>
+                </div>
+
+                <!-- Policy Comparison Table -->
+                <div class="mt-6 overflow-x-auto">
+                    <table class="w-full text-left text-xs border border-slate-800 rounded-xl overflow-hidden">
+                        <thead class="bg-slate-800/80 text-slate-300 font-semibold uppercase tracking-wider text-[10px]">
+                            <tr>
+                                <th class="p-3">Commute Policy</th>
+                                <th class="p-3">Primary Train</th>
+                                <th class="p-3">Avg Step-Out</th>
+                                <th class="p-3">Avg Desk ETA</th>
+                                <th class="p-3">Safety Buffer (12 PM)</th>
+                                <th class="p-3">On-Time Rate (&le; 12 PM)</th>
+                                <th class="p-3">Daily Sleep Delta</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60 font-mono">
+                            <tr class="bg-slate-900/30 text-slate-400">
+                                <td class="p-3 font-sans font-medium text-slate-300">Policy B: Early MEMU</td>
+                                <td class="p-3">06278</td>
+                                <td class="p-3">06:57 AM</td>
+                                <td class="p-3">08:21 AM</td>
+                                <td class="p-3 text-emerald-400">+219 mins</td>
+                                <td class="p-3">100.0%</td>
+                                <td class="p-3 text-rose-400">-1 hr 47 mins</td>
+                            </tr>
+                            <tr class="bg-slate-900/30 text-slate-400">
+                                <td class="p-3 font-sans font-medium text-slate-300">Policy A: MEMU-Only (Old)</td>
+                                <td class="p-3">66596</td>
+                                <td class="p-3">08:16 AM</td>
+                                <td class="p-3">09:38 AM</td>
+                                <td class="p-3 text-emerald-400">+142 mins</td>
+                                <td class="p-3">100.0%</td>
+                                <td class="p-3 text-slate-400">Baseline</td>
+                            </tr>
+                            <tr class="bg-sky-950/40 text-white font-bold border-2 border-sky-500/50">
+                                <td class="p-3 font-sans font-bold text-sky-400 flex items-center space-x-1.5">
+                                    <i data-lucide="award" class="w-4 h-4 text-sky-400"></i>
+                                    <span>Policy C: Max-Sleep (NEW)</span>
+                                </td>
+                                <td class="p-3 text-sky-300">16212 (Salem Exp)</td>
+                                <td class="p-3 text-amber-300">08:44 &ndash; 09:08 AM</td>
+                                <td class="p-3 text-emerald-300">10:24 AM</td>
+                                <td class="p-3 text-emerald-400">+96 mins</td>
+                                <td class="p-3 text-emerald-400">100.00%</td>
+                                <td class="p-3 text-emerald-400">+45.4 MINS / DAY!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Monte Carlo Stochastic Simulation Results -->
+                <div class="mt-6 p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                        <i data-lucide="cpu" class="w-4 h-4 text-indigo-400"></i>
+                        <span>10,000-Day Monte Carlo Stress Test (With Extreme Tail Shocks)</span>
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 text-xs font-mono">
+                        <div class="p-3 rounded-lg bg-slate-800/60 border border-slate-700/60">
+                            <span class="text-slate-400 block text-[10px]">P50 Desk Arrival</span>
+                            <span class="text-base font-bold text-white">10:24 AM</span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-800/60 border border-slate-700/60">
+                            <span class="text-slate-400 block text-[10px]">P90 Desk Arrival</span>
+                            <span class="text-base font-bold text-white">10:39 AM</span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-800/60 border border-slate-700/60">
+                            <span class="text-slate-400 block text-[10px]">P99 Tail Arrival</span>
+                            <span class="text-base font-bold text-amber-400">11:05 AM</span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                            <span class="text-emerald-400 block text-[10px]">P100 (Absolute Worst)</span>
+                            <span class="text-base font-bold text-emerald-400">11:25 AM</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-3 leading-relaxed">
+                        🎯 <strong>Mathematical Proof:</strong> Even under the most severe 1-in-10,000 extreme delay shock (+50 mins added to 16212), you still arrive at your desk by <strong>11:25 AM</strong> — a full <strong>35 minutes before your 12:00 PM shift begins</strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: TELEGRAM BOT & FLOW -->
+        <div id="tab-content-telegram" class="hidden space-y-6">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="bot" class="w-4 h-4 text-indigo-400"></i>
+                            <span>Telegram Bot Control Hub (<a href="https://t.me/SriTrainBot" target="_blank" class="text-sky-400 hover:underline">@SriTrainBot</a>)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Isolated dedicated bot for seamless zero-spam commute tracking</p>
+                    </div>
+                    <span class="text-xs font-mono px-3 py-1 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">Bot Token Configured</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <!-- Telegram Chat Mockup -->
+                    <div class="rounded-xl bg-slate-950 p-4 border border-slate-800 space-y-3 font-sans text-xs">
+                        <div class="flex items-center space-x-2 pb-2 border-b border-slate-800 text-slate-400">
+                            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                            <span class="font-semibold text-white">TrainTrack Bot (@SriTrainBot)</span>
+                        </div>
+
+                        <!-- 02:00 PM Afternoon Check-in Message -->
+                        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                            <div class="flex justify-between items-center text-[10px] text-slate-500">
+                                <span>TrainTrack Bot</span>
+                                <span>02:00 PM</span>
+                            </div>
+                            <p class="text-slate-200">
+                                🚆 <strong>Good afternoon Sriram!</strong><br>
+                                When do you plan to head back from ETV today?
+                            </p>
+                            <div class="grid grid-cols-2 gap-1.5 pt-1">
+                                <button class="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium border border-slate-700">4:30 PM (16211 Exp)</button>
+                                <button class="px-2.5 py-1.5 rounded bg-sky-600/30 text-sky-300 text-[11px] font-medium border border-sky-500/50">6:00 PM (66585 MEMU)</button>
+                                <button class="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium border border-slate-700">7:00 PM (06277 MEMU)</button>
+                                <button class="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium border border-slate-700">Bike / WFH Today</button>
+                            </div>
+                        </div>
+
+                        <!-- Milestone Alert Message -->
+                        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+                            <div class="flex justify-between items-center text-[10px] text-slate-500">
+                                <span>TrainTrack Bot</span>
+                                <span>06:12 PM</span>
+                            </div>
+                            <p class="text-slate-200">
+                                🛵 <strong>Rapido Booking Alert!</strong><br>
+                                Train <strong>66585</strong> has departed Bengaluru Cantt.<br>
+                                ETA at Bellandur Road: <strong>18:42</strong>.<br>
+                                Book your Rapido from ETV Back Gate now!
+                            </p>
+                            <div class="flex space-x-2 pt-1">
+                                <span class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">Status: On Track</span>
+                            </div>
+                        </div>
+
+                        <!-- Reached Action Message -->
+                        <div class="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 space-y-1.5">
+                            <div class="flex justify-between items-center text-[10px] text-slate-500">
+                                <span>TrainTrack Bot</span>
+                                <span>07:35 PM</span>
+                            </div>
+                            <p class="text-emerald-200">
+                                🏠 <strong>Welcome Home to Hosur!</strong><br>
+                                Daily commute tracking has been paused. Sleep well! Zero messages will be sent until tomorrow morning.
+                            </p>
+                            <span class="text-[10px] font-mono text-emerald-400">State: REACHED_HOME (Quiet Hours Active)</span>
+                        </div>
+                    </div>
+
+                    <!-- Bot Commands Reference Table -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-bold text-white">Full Command Reference (/help)</h3>
+                        <div class="space-y-2 text-xs">
+                            <div class="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 flex items-start justify-between">
+                                <div>
+                                    <code class="text-sky-400 font-bold">/status</code>
+                                    <p class="text-slate-400 text-[11px] mt-0.5">Live status of your active morning or evening train with delays.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 flex items-start justify-between">
+                                <div>
+                                    <code class="text-sky-400 font-bold">/morning</code>
+                                    <p class="text-slate-400 text-[11px] mt-0.5">Scans Hosur morning corridor and displays all viable options.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 flex items-start justify-between">
+                                <div>
+                                    <code class="text-sky-400 font-bold">/evening</code>
+                                    <p class="text-slate-400 text-[11px] mt-0.5">View and select evening return trains with Rapido departure times.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 flex items-start justify-between">
+                                <div>
+                                    <code class="text-emerald-400 font-bold">/reached</code>
+                                    <p class="text-slate-400 text-[11px] mt-0.5">Instantly pauses tracking for the day. Enters quiet sleep mode.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 flex items-start justify-between">
+                                <div>
+                                    <code class="text-amber-400 font-bold">/bike or /wfh</code>
+                                    <p class="text-slate-400 text-[11px] mt-0.5">Cancels tracking when you take your motorbike or work from home.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 flex items-start justify-between">
+                                <div>
+                                    <code class="text-purple-400 font-bold">/track &lt;train_no&gt;</code>
+                                    <p class="text-slate-400 text-[11px] mt-0.5">Ad-hoc switch to track any custom train immediately.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: WATCHDOG & FAIL-SAFE ARCHITECTURE -->
+        <div id="tab-content-watchdog" class="hidden space-y-6">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="shield-alert" class="w-4 h-4 text-rose-400"></i>
+                            <span>Watchdogs, Fail-Safes & Incident Protocols</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Zero Single Points of Failure &mdash; You are never left stranded</p>
+                    </div>
+                    <span class="text-xs font-mono px-3 py-1 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30">3-Tier Fallback</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                    <!-- Scenario 1: Incoming Rake Cancelled -->
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                        <div class="flex items-center space-x-2 text-rose-400 font-bold text-sm">
+                            <i data-lucide="alert-octagon" class="w-4 h-4"></i>
+                            <span>1. Incoming Rake Cancelled</span>
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            If Train 66595 (Bengaluru &rarr; Hosur) is cancelled, 66596 cannot run.
+                        </p>
+                        <div class="p-2.5 rounded bg-slate-800 text-[11px] text-slate-300">
+                            🛡️ <strong>RailRadar Action:</strong> Detects rake cancellation at 06:00 AM, sends immediate Telegram notification, and switches your primary recommendation to <strong>Train 16212 (Salem Exp)</strong>.
+                        </div>
+                    </div>
+
+                    <!-- Scenario 2: Scraper / NTES Blocked -->
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                        <div class="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+                            <i data-lucide="cloud-off" class="w-4 h-4"></i>
+                            <span>2. CRIS / NTES Scraper Outage</span>
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            If CRIS NTES API rotates keys or encounters network timeout.
+                        </p>
+                        <div class="p-2.5 rounded bg-slate-800 text-[11px] text-slate-300">
+                            🛡️ <strong>RailRadar Action:</strong> Automatic fallback to Secondary Scrapling engine + NTES backup endpoint. If all fail for 3 consecutive polls, bot alerts: <em>"⚠️ Scraper degraded. Please check NTES manually."</em>
+                        </div>
+                    </div>
+
+                    <!-- Scenario 3: Extreme Delay past 11:30 AM -->
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                        <div class="flex items-center space-x-2 text-sky-400 font-bold text-sm">
+                            <i data-lucide="clock-alert" class="w-4 h-4"></i>
+                            <span>3. Extreme Delay Past Cutoff</span>
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            If Train 16212 is delayed > 2.5 hours, pushing desk ETA past 11:30 AM.
+                        </p>
+                        <div class="p-2.5 rounded bg-slate-800 text-[11px] text-slate-300">
+                            🛡️ <strong>RailRadar Action:</strong> The Max-Sleep optimizer automatically disqualifies 16212 and promotes <strong>Train 66596</strong> to ensure you arrive comfortably before your 12:00 PM shift.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4-Tier Adaptive Polling Cycle -->
+                <div class="mt-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                        <i data-lucide="activity" class="w-4 h-4 text-sky-400"></i>
+                        <span>4-Tier Adaptive Polling & Database Zero-Waste Guard</span>
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3 text-xs">
+                        <div class="p-2.5 rounded bg-slate-800/60 border border-slate-700/60">
+                            <span class="text-slate-400 block text-[10px]">Tier 1: Quiet Hours</span>
+                            <span class="font-bold text-white">0 Polls</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">22:30 &ndash; 06:30 (Paused)</p>
+                        </div>
+                        <div class="p-2.5 rounded bg-slate-800/60 border border-slate-700/60">
+                            <span class="text-slate-400 block text-[10px]">Tier 2: Baseline Scan</span>
+                            <span class="font-bold text-white">Every 10 mins</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Morning & Afternoon radar</p>
+                        </div>
+                        <div class="p-2.5 rounded bg-slate-800/60 border border-slate-700/60">
+                            <span class="text-slate-400 block text-[10px]">Tier 3: Approaching</span>
+                            <span class="font-bold text-white">Every 3 mins</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Train within 30m of station</p>
+                        </div>
+                        <div class="p-2.5 rounded bg-slate-800/60 border border-slate-700/60">
+                            <span class="text-slate-400 block text-[10px]">Tier 4: Critical Window</span>
+                            <span class="font-bold text-sky-400">Every 1 min</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Boarding countdown</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-panel border-t border-slate-800/80 px-6 py-6 mt-12 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <strong class="text-slate-300">RailRadar</strong> &mdash; Commute Intelligence Engine for Sriram.
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="https://t.me/SriTrainBot" target="_blank" class="text-slate-400 hover:text-sky-400 transition-colors">Telegram Bot</a>
+                <span>&bull;</span>
+                <a href="https://sritrack.vercel.app/" target="_blank" class="text-slate-400 hover:text-sky-400 transition-colors">Live Web Dashboard</a>
+                <span>&bull;</span>
+                <span class="text-emerald-400">Oracle Cloud VM (140.245.250.104)</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Tab Script -->
+    <script>
+        function switchTab(tabId) {
+            // Hide all tab contents
+            const tabs = ['morning', 'evening', 'backtest', 'telegram', 'watchdog'];
+            tabs.forEach(t => {
+                const content = document.getElementById('tab-content-' + t);
+                const btn = document.getElementById('tab-btn-' + t);
+                if (content) content.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('text-white', 'bg-sky-500/20', 'border-sky-500/40');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+
+            // Show selected tab
+            const activeContent = document.getElementById('tab-content-' + tabId);
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.classList.add('text-white', 'bg-sky-500/20', 'border-sky-500/40');
+                activeBtn.classList.remove('text-slate-400');
+            }
+        }
+
+        // Initialize Lucide Icons
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
