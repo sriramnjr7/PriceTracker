@@ -4235,6 +4235,22 @@
                 </div>
                 <span class="nav-item-badge badge-logs" id="nav-logs-badge">Live</span>
               </a>
+
+              <a class="nav-link-dashboard" id="nav-btn-rail" onclick="switchNavTab('rail')">
+                <div class="nav-link-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="3" width="16" height="16" rx="2"></rect>
+                    <path d="M4 11h16"></path>
+                    <path d="M12 3v8"></path>
+                    <circle cx="8" cy="15" r="1.5"></circle>
+                    <circle cx="16" cy="15" r="1.5"></circle>
+                    <path d="M8 19l-2 3"></path>
+                    <path d="M16 19l2 3"></path>
+                  </svg>
+                  <span>Rail Radar</span>
+                </div>
+                <span class="nav-item-badge badge-rail" id="nav-rail-badge">Live</span>
+              </a>
             </nav>
 
             <!-- Telemetry & Background Status -->
@@ -5329,6 +5345,158 @@
 
           </div> <!-- /#tab-content-logs -->
 
+          <!-- TAB 5: RAIL RADAR & LIVE COMMUTE INTELLIGENCE -->
+          <div id="tab-content-rail" class="workspace-tab-page" style="display: none;">
+            
+            <!-- Page Title Section with Quick Actions -->
+            <div class="page-title-section">
+              <div class="page-breadcrumb">PriceTracker / Rail Commute Intelligence</div>
+              <div class="page-header-row">
+                <div>
+                  <h1 class="page-heading">RailRadar Commute Engine</h1>
+                  <p class="page-subheading">Autonomous Hosur &harr; JPMorgan Chase ETV tracking with CRIS NTES wire decoding &amp; dynamic rake turnaround prediction.</p>
+                </div>
+                <div class="logs-header-actions">
+                  <div class="daemon-live-chip" id="rail-daemon-chip">
+                    <span class="status-pulse-dot"></span>
+                    <span id="rail-daemon-chip-text">NTES Live Stream</span>
+                  </div>
+                  <button class="btn-ui btn-ui-secondary" onclick="fetchRailRadarData(true)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 4v6h-6"></path>
+                      <path d="M1 20v-6h6"></path>
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- LIVE HERO COMMUTE CARD -->
+            <div class="rail-hero-card" id="rail-hero-card" style="background: linear-gradient(135deg, rgba(20,24,36,0.95), rgba(12,15,24,0.98)); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.4);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                    <span id="rail-state-badge" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Active Tracking</span>
+                    <span id="rail-delay-badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">On Schedule</span>
+                  </div>
+                  <h2 id="rail-hero-title" style="font-size: 24px; font-weight: 700; color: #fff; margin: 0 0 4px 0;">Train 66596: Hosur &rarr; Yesvantpur MEMU</h2>
+                  <p id="rail-hero-subtitle" style="font-size: 13px; color: var(--text-muted); margin: 0;">Hosur (08:25 AM) &rarr; Carmelaram (08:57 AM) &rarr; Bellandur Road (09:03 AM) &rarr; ETV Desk (~09:35 AM)</p>
+                </div>
+                
+                <!-- Countdown Pill -->
+                <div style="text-align: right; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 14px 20px; border-radius: 10px;">
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 4px;">Dynamic Step-Out Time</div>
+                  <div id="rail-step-out-display" style="font-size: 26px; font-weight: 800; color: #38bdf8; font-variant-numeric: tabular-nums;">08:15 AM</div>
+                  <div id="rail-countdown-text" style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Step out in 14 mins (10m lead time)</div>
+                </div>
+              </div>
+
+              <!-- Rake Status & Corridor Banner -->
+              <div id="rail-rake-banner" style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div style="font-size: 13px; color: #fbbf24;" id="rail-rake-text">
+                  Incoming rake (66595) is currently en route. Scheduled Hosur turnaround: 08:00 AM &rarr; 08:25 AM.
+                </div>
+              </div>
+
+              <!-- Commute Action Control Buttons -->
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn-ui btn-ui-secondary" onclick="sendRailAction('reached')" style="border-color: rgba(16,185,129,0.3); color: #10b981;">
+                  <span>🏁 Reached Platform</span>
+                </button>
+                <button class="btn-ui btn-ui-secondary" onclick="sendRailAction('bike')">
+                  <span>🏍️ Taking Bike</span>
+                </button>
+                <button class="btn-ui btn-ui-secondary" onclick="sendRailAction('wfh')">
+                  <span>🏠 WFH Today</span>
+                </button>
+                <button class="btn-ui btn-ui-secondary" onclick="sendRailAction('reset')">
+                  <span>🔄 Reset State</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- CORRIDOR OPTIONS & EMPIRICAL CHARTS GRID -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+              
+              <!-- Morning Multi-Train Scanner Card -->
+              <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                  <h3 style="font-size: 16px; font-weight: 600; color: #fff; margin: 0;">🌅 Morning Corridor (07:30 &ndash; 09:30 AM)</h3>
+                  <span style="font-size: 11px; color: var(--text-muted);">Hosur &rarr; BLRR / CRLM</span>
+                </div>
+                <div id="rail-morning-options-container">
+                  <!-- Dynamically rendered -->
+                  <div style="color: var(--text-muted); font-size: 13px; padding: 10px 0;">Scanning morning trains...</div>
+                </div>
+              </div>
+
+              <!-- Evening Commute & Desk Triggers Card -->
+              <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                  <h3 style="font-size: 16px; font-weight: 600; color: #fff; margin: 0;">🌆 Evening Return Corridor (15:30 &ndash; 22:00)</h3>
+                  <span style="font-size: 11px; color: var(--text-muted);">ETV &rarr; Hosur</span>
+                </div>
+                <div id="rail-evening-options-container">
+                  <!-- Dynamically rendered -->
+                  <div style="color: var(--text-muted); font-size: 13px; padding: 10px 0;">Loading evening timetable...</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 14-DAY PUNCTUALITY CHART & METRICS -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <h3 style="font-size: 16px; font-weight: 600; color: #fff; margin: 0;">📊 14-Day Empirical Punctuality &amp; Delay Quantiles</h3>
+                  <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0 0 0;">Historical delay distribution across key corridor trains at Bellandur Road &amp; Carmelaram.</p>
+                </div>
+                <div style="display: flex; gap: 16px; font-size: 12px;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; background: #38bdf8; border-radius: 2px;"></span> MEMU 66596</span>
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; background: #f59e0b; border-radius: 2px;"></span> Express 16212</span>
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; background: #10b981; border-radius: 2px;"></span> Express 16232</span>
+                </div>
+              </div>
+
+              <!-- KPI Metrics Row -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px;">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">P50 Median Delay</div>
+                  <div id="rail-kpi-p50" style="font-size: 22px; font-weight: 700; color: #38bdf8; margin-top: 4px;">7 mins</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Train 66596 @ BLRR</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px;">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">P90 Peak Delay</div>
+                  <div id="rail-kpi-p90" style="font-size: 22px; font-weight: 700; color: #f59e0b; margin-top: 4px;">12 mins</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">90% arrive within 12m</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px;">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">On-Time Reliability</div>
+                  <div id="rail-kpi-ontime" style="font-size: 22px; font-weight: 700; color: #10b981; margin-top: 4px;">85.7%</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">&le; 5 mins at Carmelaram</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px;">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">ETV Arrival Window</div>
+                  <div id="rail-kpi-etv" style="font-size: 22px; font-weight: 700; color: #a855f7; margin-top: 4px;">09:40 AM</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">80 min safety cushion</div>
+                </div>
+              </div>
+
+              <!-- Chart.js Canvas -->
+              <div style="position: relative; height: 260px; width: 100%;">
+                <canvas id="rail-punctuality-chart"></canvas>
+              </div>
+            </div>
+
+          </div> <!-- /#tab-content-rail -->
+
         </div> <!-- /workspace-body -->
 
         <!-- Floating Action Button for Mobile Screens -->
@@ -5756,22 +5924,31 @@
       const tabCol = document.getElementById("tab-content-collection");
       const tabShoes = document.getElementById("tab-content-shoes");
       const tabLogs = document.getElementById("tab-content-logs");
+      const tabRail = document.getElementById("tab-content-rail");
       const btnDash = document.getElementById("nav-btn-dashboard");
       const btnCol = document.getElementById("nav-btn-collection");
       const btnShoes = document.getElementById("nav-btn-shoes");
       const btnLogs = document.getElementById("nav-btn-logs");
+      const btnRail = document.getElementById("nav-btn-rail");
 
       if (tabDash) tabDash.style.display = tabName === "dashboard" ? "block" : "none";
       if (tabCol) tabCol.style.display = tabName === "collection" ? "block" : "none";
       if (tabShoes) tabShoes.style.display = tabName === "shoes" ? "block" : "none";
       if (tabLogs) tabLogs.style.display = tabName === "logs" ? "block" : "none";
+      if (tabRail) tabRail.style.display = tabName === "rail" ? "block" : "none";
 
       if (btnDash) btnDash.classList.toggle("active", tabName === "dashboard");
       if (btnCol) btnCol.classList.toggle("active", tabName === "collection");
       if (btnShoes) btnShoes.classList.toggle("active", tabName === "shoes");
       if (btnLogs) btnLogs.classList.toggle("active", tabName === "logs");
+      if (btnRail) btnRail.classList.toggle("active", tabName === "rail");
 
-      if (tabName === "collection") {
+      if (tabName === "rail") {
+        if (window.location.pathname !== "/rail-radar" && window.location.pathname !== "/rail") {
+          try { window.history.pushState({ tab: "rail" }, "Rail Radar | PriceTracker", "/rail-radar"); } catch (e) {}
+        }
+        fetchRailRadarData();
+      } else if (tabName === "collection") {
         if (window.location.pathname !== "/my-collection" && window.location.pathname !== "/collection") {
           try { window.history.pushState({ tab: "collection" }, "My Collection | PriceTracker", "/my-collection"); } catch (e) {}
         }
@@ -5808,7 +5985,9 @@
     // Handle browser back/forward buttons
     window.addEventListener("popstate", (e) => {
       const path = window.location.pathname.toLowerCase();
-      if (path.includes("collection")) {
+      if (path.includes("rail") || path.includes("commute")) {
+        switchNavTab("rail");
+      } else if (path.includes("collection")) {
         switchNavTab("collection");
       } else if (path.includes("shoes") || path.includes("radar")) {
         switchNavTab("shoes");
@@ -7653,9 +7832,11 @@
 
       // Check current URL route
       const route = (window.location.pathname + window.location.hash).toLowerCase();
-      if (route.includes("collection")) {
+      if (route.includes("rail") || route.includes("commute")) {
+        switchNavTab("rail");
+      } else if (route.includes("collection")) {
         switchNavTab("collection");
-      } else if (route.includes("shoes") || route.includes("radar")) {
+      } else if (route.includes("shoes") || route.includes("running")) {
         switchNavTab("shoes");
       } else if (route.includes("logs")) {
         switchNavTab("logs");
@@ -9134,6 +9315,282 @@
         }
       }
     });
+
+    // ==========================================================================
+    // RAIL RADAR CONTROLLER (Autonomous CRIS NTES Live Commute Assistant)
+    // ==========================================================================
+    let railRadarState = {
+      status: null,
+      history: null,
+      chartInstance: null,
+      loading: false,
+    };
+
+    async function fetchRailRadarData(showToastFeedback = false) {
+      if (railRadarState.loading) return;
+      railRadarState.loading = true;
+      const chipText = document.getElementById("rail-daemon-chip-text");
+      if (chipText) chipText.textContent = "Syncing NTES Wire...";
+
+      try {
+        const [statusRes, histRes] = await Promise.all([
+          fetch("/api/rail/status"),
+          fetch("/api/rail/history?days=14")
+        ]);
+
+        if (statusRes.ok) {
+          railRadarState.status = await statusRes.json();
+          renderRailHero(railRadarState.status);
+          renderRailMorningOptions(railRadarState.status.morning_scan);
+          renderRailEveningOptions(railRadarState.status.evening_options);
+        }
+
+        if (histRes.ok) {
+          railRadarState.history = await histRes.json();
+          renderRailPunctualityChart(railRadarState.history);
+        }
+
+        if (chipText) chipText.textContent = "NTES Live Stream";
+        if (showToastFeedback) showToast("RailRadar telemetry synchronized.");
+      } catch (err) {
+        console.error("RailRadar fetch error:", err);
+        if (chipText) chipText.textContent = "Offline Fallback";
+        if (showToastFeedback) showToast("Failed to fetch rail telemetry.");
+      } finally {
+        railRadarState.loading = false;
+      }
+    }
+
+    function renderRailHero(data) {
+      if (!data) return;
+      const scan = data.morning_scan || {};
+      const rec = scan.recommended_train || {};
+      const rake = data.rake_turnaround || {};
+
+      // Badges
+      const stateBadge = document.getElementById("rail-state-badge");
+      if (stateBadge) stateBadge.textContent = data.state || "ACTIVE";
+
+      const delayBadge = document.getElementById("rail-delay-badge");
+      const delay = rec.delay_mins || 0;
+      if (delayBadge) {
+        if (delay > 0) {
+          delayBadge.textContent = `+${delay}m Delayed`;
+          delayBadge.style.background = "rgba(245, 158, 11, 0.15)";
+          delayBadge.style.color = "#f59e0b";
+          delayBadge.style.borderColor = "rgba(245, 158, 11, 0.3)";
+        } else {
+          delayBadge.textContent = "On Schedule";
+          delayBadge.style.background = "rgba(16, 185, 129, 0.15)";
+          delayBadge.style.color = "#10b981";
+          delayBadge.style.borderColor = "rgba(16, 185, 129, 0.3)";
+        }
+      }
+
+      // Title & Subtitle
+      const title = document.getElementById("rail-hero-title");
+      if (title) title.textContent = `Train ${rec.train_no || "66596"}: ${rec.train_name || "Hosur MEMU"}`;
+
+      const subtitle = document.getElementById("rail-hero-subtitle");
+      if (subtitle) {
+        subtitle.textContent = `Hosur (${rec.projected_departure || "08:25"}) → Bellandur Road (${rec.dest_eta || "09:03"}) → ETV Desk (~${rec.desk_eta || "09:35"})`;
+      }
+
+      // Countdown
+      const stepOutDisplay = document.getElementById("rail-step-out-display");
+      if (stepOutDisplay) stepOutDisplay.textContent = `${rec.step_out_time || data.step_out_time || "08:15"} AM`;
+
+      const countdownText = document.getElementById("rail-countdown-text");
+      const cd = data.step_out_countdown_mins;
+      if (countdownText) {
+        if (cd !== undefined && cd !== null) {
+          if (cd > 0) {
+            countdownText.textContent = `Step out in ${cd} mins (10m walk buffer)`;
+            countdownText.style.color = "#94a3b8";
+          } else if (cd >= -10) {
+            countdownText.textContent = `🚨 STEP OUT NOW! Train departs in ${10 + cd}m`;
+            countdownText.style.color = "#ef4444";
+          } else {
+            countdownText.textContent = `Train departed Hosur Platform 1`;
+            countdownText.style.color = "#64748b";
+          }
+        }
+      }
+
+      // Rake Banner
+      const rakeText = document.getElementById("rail-rake-text");
+      if (rakeText) {
+        if (rake.is_delayed) {
+          rakeText.textContent = `⚠️ Turnaround Alert: Incoming rake (${rake.incoming_rake_train}) is at ${rake.rake_current_station_name} delayed by ${rake.rake_delay_mins}m. Projected Hosur departure shifted to ${rake.projected_hsra_departure} AM.`;
+        } else {
+          rakeText.textContent = `Incoming rake (${rake.incoming_rake_train || "66595"}) is on schedule near ${rake.rake_current_station_name || "Heelalige"}. Normal 08:25 AM turnaround departure.`;
+        }
+      }
+    }
+
+    function renderRailMorningOptions(scan) {
+      const container = document.getElementById("rail-morning-options-container");
+      if (!container || !scan || !scan.options) return;
+
+      let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
+      scan.options.forEach((opt) => {
+        const isRec = scan.recommended_train && scan.recommended_train.train_no === opt.train_no;
+        html += `
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid ${isRec ? 'rgba(56,189,248,0.4)' : 'var(--border-subtle)'}; border-radius: 8px; padding: 14px; position:relative;">
+            ${isRec ? '<span style="position:absolute; top:10px; right:12px; font-size:10px; background:#38bdf8; color:#0b0f19; font-weight:700; padding:2px 8px; border-radius:12px;">RECOMMENDED</span>' : ''}
+            <div style="font-weight:600; color:#fff; font-size:14px; margin-bottom:4px;">${opt.train_name} (${opt.train_no})</div>
+            <div style="font-size:12px; color:var(--text-muted); display:flex; gap:14px; flex-wrap:wrap; margin-bottom:8px;">
+              <span>Hosur Dep: <strong style="color:#e2e8f0;">${opt.projected_departure}</strong></span>
+              <span>BLRR Arr: <strong style="color:#e2e8f0;">${opt.dest_eta}</strong></span>
+              <span>Desk Arr: <strong style="color:#38bdf8;">${opt.desk_eta}</strong></span>
+              <span>Delay: <strong style="color:${opt.delay_mins > 0 ? '#f59e0b' : '#10b981'};">${opt.delay_mins}m</strong></span>
+            </div>
+            <div style="font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
+              <span>Step-out at: <strong style="color:#38bdf8;">${opt.step_out_time} AM</strong></span>
+              <button class="btn-ui btn-ui-secondary btn-sm" onclick="sendRailAction('select_train', '${opt.train_no}')" style="font-size:11px; padding:3px 10px;">Track This</button>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function renderRailEveningOptions(options) {
+      const container = document.getElementById("rail-evening-options-container");
+      if (!container || !options) return;
+
+      let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+      options.slice(0, 5).forEach((opt) => {
+        html += `
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              <div style="font-weight:600; color:#fff; font-size:13px;">${opt.train_no} - ${opt.train_name}</div>
+              <div style="font-size:11px; color:var(--text-muted);">Board at <strong>${opt.boarding_station}</strong> • Sch: ${opt.scheduled_departure} • Delay: ${opt.delay_mins}m</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:11px; color:#f59e0b; font-weight:600;">Leave desk: ~${opt.leave_desk_time}</div>
+              <button class="btn-ui btn-ui-secondary btn-sm" onclick="sendRailAction('select_train', '${opt.train_no}')" style="font-size:10px; padding:2px 8px; margin-top:4px;">Set Track</button>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function renderRailPunctualityChart(hist) {
+      if (!hist || !hist.stats) return;
+      const ctx = document.getElementById("rail-punctuality-chart");
+      if (!ctx) return;
+
+      const stats = hist.stats;
+      const train66596 = stats["66596"] ? stats["66596"].stations["BLRR"] || {} : {};
+      const train16212 = stats["16212"] ? stats["16212"].stations["BLRR"] || {} : {};
+      const train16232 = stats["16232"] ? stats["16232"].stations["CRLM"] || {} : {};
+
+      // Update KPI cards
+      const kpiP50 = document.getElementById("rail-kpi-p50");
+      if (kpiP50) kpiP50.textContent = `${Math.round(train66596.P50 || 7)} mins`;
+
+      const kpiP90 = document.getElementById("rail-kpi-p90");
+      if (kpiP90) kpiP90.textContent = `${Math.round(train66596.P90 || 12)} mins`;
+
+      const kpiOntime = document.getElementById("rail-kpi-ontime");
+      if (kpiOntime) kpiOntime.textContent = `${Math.round(train16232.OnTimePct || 85.7)}%`;
+
+      if (railRadarState.chartInstance) {
+        railRadarState.chartInstance.destroy();
+      }
+
+      const labels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"];
+      const d66596 = (train66596.RawDelays || [7, 7, 4, 6, 7, 4, 19]).slice(0, 7);
+      const d16212 = (train16212.RawDelays || [49, 62, 60, 65, 58, 62, 58]).slice(0, 7);
+      const d16232 = (train16232.RawDelays || [0, 0, 0, 0, 0, 0, 10]).slice(0, 7);
+
+      railRadarState.chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "MEMU 66596 (BLRR)",
+              data: d66596,
+              borderColor: "#38bdf8",
+              backgroundColor: "rgba(56, 189, 248, 0.1)",
+              borderWidth: 2,
+              tension: 0.3,
+              fill: true,
+            },
+            {
+              label: "Express 16212 (BLRR)",
+              data: d16212,
+              borderColor: "#f59e0b",
+              backgroundColor: "transparent",
+              borderWidth: 2,
+              borderDash: [4, 4],
+              tension: 0.3,
+            },
+            {
+              label: "Evening 16232 (CRLM)",
+              data: d16232,
+              borderColor: "#10b981",
+              backgroundColor: "transparent",
+              borderWidth: 2,
+              tension: 0.3,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "rgba(11, 15, 25, 0.95)",
+              titleColor: "#fff",
+              bodyColor: "#94a3b8",
+              borderColor: "rgba(255,255,255,0.1)",
+              borderWidth: 1,
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw} mins delay`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: "rgba(255,255,255,0.04)" },
+              ticks: { color: "#64748b", font: { size: 11 } }
+            },
+            y: {
+              grid: { color: "rgba(255,255,255,0.04)" },
+              ticks: {
+                color: "#64748b",
+                font: { size: 11 },
+                callback: (val) => `${val}m`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function sendRailAction(actionName, trainNo = null) {
+      try {
+        const payload = { action: actionName };
+        if (trainNo) payload.train_no = trainNo;
+        const res = await fetch("/api/rail/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const out = await res.json();
+        showToast(out.message || "Action updated.");
+        fetchRailRadarData();
+      } catch (e) {
+        showToast("Error updating rail action: " + e.message);
+      }
+    }
 
     // Boot
     if (document.readyState === "loading") {

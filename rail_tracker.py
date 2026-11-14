@@ -1,0 +1,1264 @@
+"""rail_tracker.py — Railway Intelligence & Live Commute Engine.
+
+Features:
+- Direct CRIS NTES Wire Protocol (AES-128-CBC PKCS7 + MD5 signature + legacy SSL)
+- Robust delay and station parsing (handling '**UA**', computing ETAs)
+- Multi-tier fallback (CRIS Wire -> Scrapling ConfirmTkt -> Empirical Static Schedule)
+- Rake Turnaround Inspector (tracking incoming rake 66595 to predict 66596 departure)
+- Morning Multi-Train Opportunity Scanner (07:30 - 09:30 HSRA -> BLRR/CRLM corridor)
+- Evening Commute Tracker & Desk Departure Milestones (BLRR/CRLM -> HSRA)
+- 14-Day P10 / P50 / P90 delay quantile analytics & punctuality metrics
+- 2-Strike Watchdog fail-safe monitor with 1-tap manual check links
+"""
+
+from __future__ import annotations
+
+import base64
+import binascii
+import hashlib
+import json
+import logging
+import os
+import re
+import ssl
+import urllib.parse
+import urllib.request
+from datetime import datetime, time as dtime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+logger = logging.getLogger("rail_tracker")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+# =============================================================================
+# 1. CORE CONSTANTS & COMMUTE CONFIGURATION
+# =============================================================================
+
+CRIS_KEY = b"8EA4DB2CC1EB3DC5"
+CRIS_IV = b"7DC5EB3BB4DB6EA8"
+CRIS_SCKEY = "645fbc1e56e23365f2f3c204ae0899f6"
+CRIS_URL = "https://enquiry.indianrail.gov.in/crisns/AppServAnd"
+
+# Commute lead times & buffers (in minutes)
+LEAD_TIME_HOME_HOSUR = 10       # 5m walk + 5m buffer from Gangaiya Venkatachalapathy St to PF1
+LEAD_TIME_DESK_CRLM = 25        # 25m from ETV JPMC Parcel 5 to Carmelaram PF1
+LEAD_TIME_DESK_BLRR = 20        # 20m from ETV JPMC Parcel 5 to Bellandur Road PF1
+WALK_TIME_BLRR_DESK = 30        # 2.2 km walk from BLRR to ETV desk (~30 mins)
+RAKE_TURNAROUND_MIN_BUFFER = 10 # Minimum turnaround time needed at Hosur platform for MEMU
+
+# Target Stations
+STN_HOSUR = "HSRA"
+STN_BELLANDUR = "BLRR"
+STN_CARMELARAM = "CRLM"
+STN_BNC = "BNC"
+STN_SBC = "SBC"
+STN_BYPL = "BYPL"
+STN_YPR = "YPR"
+
+# Morning corridor trains from Hosur
+MORNING_TRAIN_MEMU = "66596"
+INCOMING_RAKE_MEMU = "66595"
+MORNING_TRAIN_EARLIER_MEMU = "06278"
+MORNING_TRAIN_EXP = "16212"
+
+# Minimum physical transit times (in minutes) to Hosur (HSRA) from corridor stations
+MIN_TRANSIT_TO_HSRA_66595: Dict[str, int] = {
+    "YPR": 80,
+    "LOGH": 75,
+    "HEB": 70,
+    "BAND": 55,
+    "BYPL": 50,
+    "BLRR": 40,
+    "CRLM": 35,
+    "HLE": 25,
+    "AEK": 15,
+    "HSRA": 0,
+}
+
+MIN_TRANSIT_TO_HSRA_06278: Dict[str, int] = {
+    "DPJ": 90,
+    "PCV": 75,
+    "MZU": 65,
+    "RYC": 50,
+    "KMLM": 13,
+    "HSRA": 0,
+}
+
+# Static Corridor Schedules
+CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
+    "06278": {
+        "train_no": "06278",
+        "train_name": "Dharmapuri - KSR Bengaluru MEMU",
+        "direction": "MORNING",
+        "origin": "DPJ",
+        "destination": "SBC",
+        "stations": [
+            {"code": "DPJ", "name": "DHARMAPURI", "sta": "Source", "std": "05:00", "halt": 0, "day": 1},
+            {"code": "PCV", "name": "PALAKKODU", "sta": "05:21", "std": "05:22", "halt": 1, "day": 1},
+            {"code": "MZU", "name": "MARANDAHALLI", "sta": "05:34", "std": "05:35", "halt": 1, "day": 1},
+            {"code": "RYC", "name": "RAYAKKOTTAI", "sta": "05:51", "std": "05:52", "halt": 1, "day": 1},
+            {"code": "KMLM", "name": "KELAMANGALAM", "sta": "06:12", "std": "06:13", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "07:05", "std": "07:07", "halt": 2, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "07:22", "std": "07:23", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "07:33", "std": "07:34", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "07:44", "std": "07:45", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "07:51", "std": "07:52", "halt": 1, "day": 1},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "08:08", "std": "08:10", "halt": 2, "day": 1},
+            {"code": "BNCE", "name": "BENGALURU EAST", "sta": "08:15", "std": "08:16", "halt": 1, "day": 1},
+            {"code": "BNC", "name": "BANGALORE CANT", "sta": "08:24", "std": "08:25", "halt": 1, "day": 1},
+            {"code": "SBC", "name": "KSR BENGALURU", "sta": "08:50", "std": "Destination", "halt": 0, "day": 1},
+        ],
+    },
+    "66596": {
+        "train_no": "66596",
+        "train_name": "Hosur - Yesvantpur MEMU",
+        "direction": "MORNING",
+        "origin": "HSRA",
+        "destination": "YPR",
+        "rake_train": "66595",
+        "stations": [
+            {"code": "HSRA", "name": "HOSUR", "sta": "Source", "std": "08:25", "halt": 0, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "08:37", "std": "08:38", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "08:48", "std": "08:49", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "08:57", "std": "08:58", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "09:03", "std": "09:04", "halt": 1, "day": 1},
+            {"code": "BAND", "name": "BANASWADI", "sta": "09:15", "std": "09:16", "halt": 1, "day": 1},
+            {"code": "HEB", "name": "HEBBAL", "sta": "09:26", "std": "09:27", "halt": 1, "day": 1},
+            {"code": "LOGH", "name": "LOTTEGOLLAHALLI", "sta": "09:33", "std": "09:34", "halt": 1, "day": 1},
+            {"code": "YPR", "name": "YESVANTPUR JN", "sta": "10:05", "std": "Destination", "halt": 0, "day": 1},
+        ],
+    },
+    "66595": {
+        "train_no": "66595",
+        "train_name": "Yesvantpur - Hosur MEMU",
+        "direction": "INCOMING_RAKE",
+        "origin": "YPR",
+        "destination": "HSRA",
+        "stations": [
+            {"code": "YPR", "name": "YESVANTPUR JN", "sta": "Source", "std": "06:10", "halt": 0, "day": 1},
+            {"code": "LOGH", "name": "LOTTEGOLLAHALLI", "sta": "06:19", "std": "06:20", "halt": 1, "day": 1},
+            {"code": "HEB", "name": "HEBBAL", "sta": "06:25", "std": "06:26", "halt": 1, "day": 1},
+            {"code": "BAND", "name": "BANASWADI", "sta": "06:36", "std": "06:37", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "06:49", "std": "06:50", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "06:54", "std": "06:55", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "07:04", "std": "07:05", "halt": 1, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "07:14", "std": "07:15", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "08:00", "std": "Destination", "halt": 0, "day": 1},
+        ],
+    },
+    "16212": {
+        "train_no": "16212",
+        "train_name": "Salem - Yesvantpur Express",
+        "direction": "MORNING",
+        "origin": "SA",
+        "destination": "YPR",
+        "stations": [
+            {"code": "SA", "name": "SALEM JN", "sta": "Source", "std": "05:20", "halt": 0, "day": 1},
+            {"code": "DPJ", "name": "DHARMAPURI", "sta": "06:38", "std": "06:40", "halt": 2, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "08:18", "std": "08:20", "halt": 2, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "08:52", "std": "08:53", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "08:59", "std": "09:00", "halt": 1, "day": 1},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "09:11", "std": "09:12", "halt": 1, "day": 1},
+            {"code": "BAND", "name": "BANASWADI", "sta": "09:21", "std": "09:22", "halt": 1, "day": 1},
+            {"code": "HEB", "name": "HEBBAL", "sta": "09:34", "std": "09:35", "halt": 1, "day": 1},
+            {"code": "YPR", "name": "YESVANTPUR JN", "sta": "10:10", "std": "Destination", "halt": 0, "day": 1},
+        ],
+    },
+    "66585": {
+        "train_no": "66585",
+        "train_name": "Bangalore Cant - Hosur MEMU",
+        "direction": "EVENING",
+        "origin": "BNC",
+        "destination": "HSRA",
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "sta": "Source", "std": "15:30", "halt": 0, "day": 1},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "15:40", "std": "15:41", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "15:48", "std": "15:49", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "15:53", "std": "15:54", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "16:03", "std": "16:04", "halt": 1, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "16:14", "std": "16:15", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "16:40", "std": "Destination", "halt": 0, "day": 1},
+        ],
+    },
+    "16211": {
+        "train_no": "16211",
+        "train_name": "Yesvantpur - Salem Express",
+        "direction": "EVENING",
+        "origin": "YPR",
+        "destination": "SA",
+        "stations": [
+            {"code": "YPR", "name": "YESVANTPUR JN", "sta": "Source", "std": "15:55", "halt": 0, "day": 1},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "16:32", "std": "16:33", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "16:42", "std": "16:43", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "16:50", "std": "16:51", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "17:35", "std": "17:37", "halt": 2, "day": 1},
+        ],
+    },
+    "66583": {
+        "train_no": "66583",
+        "train_name": "Bangalore Cant - Hosur MEMU",
+        "direction": "EVENING",
+        "origin": "BNC",
+        "destination": "HSRA",
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "sta": "Source", "std": "18:40", "halt": 0, "day": 1},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "18:50", "std": "18:51", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "19:00", "std": "19:01", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "19:07", "std": "19:08", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "19:17", "std": "19:18", "halt": 1, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "19:28", "std": "19:29", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "19:55", "std": "Destination", "halt": 0, "day": 1},
+        ],
+    },
+    "16232": {
+        "train_no": "16232",
+        "train_name": "Mailaduturai Express",
+        "direction": "EVENING",
+        "origin": "SBC",
+        "destination": "MV",
+        "milestone_station": "BNC",
+        "stations": [
+            {"code": "SBC", "name": "KSR BENGALURU", "sta": "Source", "std": "19:00", "halt": 0, "day": 1},
+            {"code": "BNC", "name": "BANGALORE CANT", "sta": "19:08", "std": "19:10", "halt": 2, "day": 1},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "19:18", "std": "19:20", "halt": 2, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "19:35", "std": "19:36", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "20:30", "std": "20:32", "halt": 2, "day": 1},
+        ],
+    },
+    "16527": {
+        "train_no": "16527",
+        "train_name": "Yesvantpur - Kannur Express",
+        "direction": "EVENING",
+        "origin": "YPR",
+        "destination": "CAN",
+        "stations": [
+            {"code": "YPR", "name": "YESVANTPUR JN", "sta": "Source", "std": "20:00", "halt": 0, "day": 1},
+            {"code": "BAND", "name": "BANASWADI", "sta": "20:20", "std": "20:21", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "20:45", "std": "20:46", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "21:35", "std": "21:37", "halt": 2, "day": 1},
+        ],
+    },
+    "16236": {
+        "train_no": "16236",
+        "train_name": "Tuticorin Express",
+        "direction": "EVENING",
+        "origin": "SBC",
+        "destination": "TN",
+        "stations": [
+            {"code": "SBC", "name": "KSR BENGALURU", "sta": "Source", "std": "21:15", "halt": 0, "day": 1},
+            {"code": "BNC", "name": "BANGALORE CANT", "sta": "21:26", "std": "21:28", "halt": 2, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "21:50", "std": "21:51", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "22:50", "std": "22:52", "halt": 2, "day": 1},
+        ],
+    },
+}
+
+# =============================================================================
+# 2. CRYPTOGRAPHIC ENGINE FOR CRIS NTES WIRE PROTOCOL
+# =============================================================================
+
+def encrypt_cris_payload(data_str: str) -> str:
+    """Encrypt payload string using AES-128-CBC with PKCS7 padding and return hex string."""
+    padder = padding.PKCS7(128).padder()
+    padded = padder.update(data_str.encode("utf-8")) + padder.finalize()
+    cipher = Cipher(algorithms.AES(CRIS_KEY), modes.CBC(CRIS_IV))
+    encryptor = cipher.encryptor()
+    ct = encryptor.update(padded) + encryptor.finalize()
+    b64 = base64.b64encode(ct)
+    return binascii.hexlify(b64).decode().upper()
+
+
+def decrypt_cris_payload(enc_str: str) -> str:
+    """Decrypt CRIS NTES response string from hex/base64 AES-128-CBC."""
+    if "#" in enc_str:
+        enc_str = enc_str.split("#", 1)[1]
+    raw = binascii.unhexlify(enc_str)
+    b64 = raw.decode("utf-8", errors="ignore")
+    cipher_bytes = base64.b64decode(b64)
+    cipher = Cipher(algorithms.AES(CRIS_KEY), modes.CBC(CRIS_IV))
+    decryptor = cipher.decryptor()
+    padded = decryptor.update(cipher_bytes) + decryptor.finalize()
+    unpadder = padding.PKCS7(128).unpadder()
+    data = unpadder.update(padded) + unpadder.finalize()
+    return data.decode("utf-8")
+
+
+def query_cris(payload_str: str, timeout: int = 10) -> dict:
+    """Directly query the Indian Railways CRIS NTES endpoint."""
+    h = hashlib.md5((payload_str + CRIS_SCKEY).encode()).hexdigest().upper()
+    wire = f"{h}#{encrypt_cris_payload(payload_str)}"
+    body = json.dumps({"jsonIn": wire}).encode("utf-8")
+
+    ctx = ssl.create_default_context()
+    try:
+        ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+    except Exception:
+        pass
+
+    req = urllib.request.Request(
+        CRIS_URL,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "charset": "utf-8",
+            "User-Agent": "Dalvik/2.1.0 (Linux; Android 11)",
+        },
+    )
+    with urllib.request.urlopen(req, context=ctx, timeout=timeout) as resp:
+        resp_data = resp.read().decode("utf-8")
+        resp_json = json.loads(resp_data)
+        enc_out = resp_json.get("jsonIn") or resp_json.get("response") or ""
+        if not enc_out:
+            raise ValueError(f"Empty encrypted payload from CRIS: {resp_json}")
+        decrypted = decrypt_cris_payload(enc_out)
+        return json.loads(decrypted)
+
+
+# =============================================================================
+# 3. ROBUST DELAY, TIME, & STATION PARSING
+# =============================================================================
+
+def parse_delay_minutes(val: Any) -> int:
+    """Parse delay values like '00:07', '01:15', 'On Time', 'Right Time', None, 15 into integer minutes."""
+    if val is None or val == "":
+        return 0
+    if isinstance(val, (int, float)):
+        return int(val)
+    s = str(val).strip()
+    if not s or s.lower() in ("on time", "right time", "rt", "none", "0"):
+        return 0
+    
+    # Check for HH:MM format (positive or negative)
+    neg = False
+    if s.startswith("-"):
+        neg = True
+        s = s[1:].strip()
+    
+    if ":" in s:
+        parts = s.split(":")
+        try:
+            mins = int(parts[0]) * 60 + int(parts[1])
+            return -mins if neg else mins
+        except Exception:
+            pass
+
+    # Check for text patterns e.g. "1 hr 15 min" or "25 mins"
+    hr_match = re.search(r"(\d+)\s*(?:hr|hour)", s, re.IGNORECASE)
+    min_match = re.search(r"(\d+)\s*(?:min|m)", s, re.IGNORECASE)
+    if hr_match or min_match:
+        hrs = int(hr_match.group(1)) if hr_match else 0
+        mns = int(min_match.group(1)) if min_match else 0
+        total = hrs * 60 + mns
+        return -total if neg else total
+
+    try:
+        return int(float(s))
+    except Exception:
+        return 0
+
+
+def clean_time_str(time_val: Any) -> str:
+    """Extract clean HH:MM from strings like '08:25 13-Nov', '08:25:00', or 'Source'."""
+    if not time_val:
+        return ""
+    s = str(time_val).strip()
+    m = re.search(r"(\d{1,2}:\d{2})", s)
+    if m:
+        return m.group(1).zfill(5)
+    return s
+
+
+def add_minutes_to_time(base_time: str, minutes_to_add: int) -> str:
+    """Add minutes to HH:MM string and return updated HH:MM."""
+    clean = clean_time_str(base_time)
+    if not clean or ":" not in clean:
+        return base_time
+    try:
+        parts = clean.split(":")
+        base_dt = datetime(2026, 1, 1, int(parts[0]), int(parts[1]))
+        res_dt = base_dt + timedelta(minutes=minutes_to_add)
+        return res_dt.strftime("%H:%M")
+    except Exception:
+        return base_time
+
+
+def minutes_difference(t_from: str, t_to: str) -> int:
+    """Calculate signed minutes difference between t_from and t_to (t_to - t_from)."""
+    c1 = clean_time_str(t_from)
+    c2 = clean_time_str(t_to)
+    if not c1 or not c2 or ":" not in c1 or ":" not in c2:
+        return 0
+    try:
+        p1 = [int(x) for x in c1.split(":")]
+        p2 = [int(x) for x in c2.split(":")]
+        dt1 = datetime(2026, 1, 1, p1[0], p1[1])
+        dt2 = datetime(2026, 1, 1, p2[0], p2[1])
+        # Handle day wraparound if diff is large
+        diff = int((dt2 - dt1).total_seconds() / 60)
+        return diff
+    except Exception:
+        return 0
+
+
+def resolve_eta(sta: str, eta_raw: Any, delay_mins: int) -> str:
+    """Resolve ETAs when CRIS returns '**UA**' or unavailable by applying delay to STA."""
+    clean_eta = clean_time_str(eta_raw)
+    clean_sta = clean_time_str(sta)
+    if clean_eta and clean_eta not in ("**UA**", "UA", "Source", "Destination") and ":" in clean_eta:
+        return clean_eta
+    if clean_sta and ":" in clean_sta:
+        if delay_mins != 0:
+            return add_minutes_to_time(clean_sta, delay_mins)
+        return clean_sta
+    return clean_sta or "On Schedule"
+
+
+# =============================================================================
+# 4. MULTI-TIER DATA EXTRACTION (CRIS -> CONFIRMTKT -> STATIC)
+# =============================================================================
+
+def normalize_station_entry(s: dict, running_delay: int = 0) -> dict:
+    """Normalize station entries across CRIS and ConfirmTkt into a unified dictionary."""
+    code = s.get("SC") or s.get("StationCode") or s.get("stnCode") or ""
+    name = s.get("SN") or s.get("StationName") or s.get("stnName") or code
+    sta_raw = s.get("STA") or s.get("ArrivalTime") or s.get("arr") or ""
+    std_raw = s.get("STD") or s.get("DepartureTime") or s.get("dep") or ""
+    eta_raw = s.get("ETA") or s.get("ExpectedArrivalTime") or ""
+    etd_raw = s.get("ETD") or s.get("ExpectedDepartureTime") or ""
+    
+    darr_raw = s.get("DARR") or s.get("DelayInArrival") or s.get("arrDelay") or ""
+    ddep_raw = s.get("DDEP") or s.get("DelayInDeparture") or s.get("depDelay") or ""
+    
+    delay_arr = parse_delay_minutes(darr_raw)
+    delay_dep = parse_delay_minutes(ddep_raw)
+    effective_delay = delay_dep or delay_arr or running_delay
+    
+    resolved_sta = clean_time_str(sta_raw)
+    resolved_std = clean_time_str(std_raw)
+    resolved_eta = resolve_eta(resolved_sta, eta_raw, effective_delay)
+    resolved_etd = resolve_eta(resolved_std, etd_raw, effective_delay)
+    
+    has_arrived = bool(s.get("ISA") or s.get("HasArrived") or s.get("isArrived"))
+    has_departed = bool(s.get("ISD") or s.get("HasDeparted") or s.get("isDeparted"))
+    platform = str(s.get("PF") or s.get("Platform") or s.get("platform") or "1")
+
+    return {
+        "code": code.upper().strip(),
+        "name": name.strip(),
+        "sta": resolved_sta,
+        "std": resolved_std,
+        "eta": resolved_eta,
+        "etd": resolved_etd,
+        "delay_arr": delay_arr,
+        "delay_dep": delay_dep,
+        "effective_delay": effective_delay,
+        "has_arrived": has_arrived,
+        "has_departed": has_departed,
+        "platform": platform,
+    }
+
+
+def fetch_cris_status(train_no: str, date_str: Optional[str] = None) -> dict:
+    """Fetch live running status directly from CRIS NTES Wire Protocol."""
+    if not date_str:
+        date_str = datetime.now().strftime("%d-%b-%Y")
+    payload = f"service=TrainRunningMob&subService=ShowFullRunJson&trainNo={train_no}&startDate={date_str}"
+    raw = query_cris(payload)
+
+    raw_stns = raw.get("STNS", [])
+    stations = []
+    last_known_delay = parse_delay_minutes(raw.get("LDEL", 0))
+    
+    for s in raw_stns:
+        entry = normalize_station_entry(s, last_known_delay)
+        stations.append(entry)
+        if entry["has_departed"] or entry["has_arrived"]:
+            last_known_delay = entry["effective_delay"]
+
+    current_station = raw.get("LSTN") or (stations[0]["code"] if stations else "")
+    current_station_name = raw.get("LSTNN") or (stations[0]["name"] if stations else "")
+    current_status = raw.get("CPOS") or raw.get("LASTUPD") or f"Running with delay {last_known_delay} mins"
+
+    return {
+        "train_no": str(train_no),
+        "train_name": raw.get("TNM") or f"Train {train_no}",
+        "source": "CRIS_NTES",
+        "current_station": current_station,
+        "current_station_name": current_station_name,
+        "current_status": current_status,
+        "delay_minutes": last_known_delay,
+        "last_updated": raw.get("LTIME") or datetime.now().strftime("%H:%M"),
+        "stations": stations,
+        "raw": raw,
+    }
+
+
+def fetch_confirmtkt_status(train_no: str) -> dict:
+    """Fetch live running status using ConfirmTkt fallback."""
+    url = f"https://www.confirmtkt.com/train-running-status/{train_no}"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=12) as resp:
+        html = resp.read().decode("utf-8", errors="ignore")
+    
+    m = re.search(r"var\s+data\s*=\s*(\{.*?\});", html, re.DOTALL)
+    if not m:
+        raise ValueError(f"Could not parse JSON state from ConfirmTkt page for train {train_no}")
+    
+    data = json.loads(m.group(1))
+    raw_stns = data.get("Schedule", []) or data.get("Stations", [])
+    overall_delay = parse_delay_minutes(data.get("Delay", 0))
+
+    stations = []
+    last_delay = overall_delay
+    for s in raw_stns:
+        entry = normalize_station_entry(s, last_delay)
+        stations.append(entry)
+        if entry["has_departed"] or entry["has_arrived"]:
+            last_delay = entry["effective_delay"]
+
+    current_station = data.get("CurrentStationCode") or (stations[0]["code"] if stations else "")
+    current_station_name = data.get("CurrentStationName") or (stations[0]["name"] if stations else "")
+    current_status = data.get("CurrentPositionDetails") or f"Near {current_station_name} | Delay: {overall_delay}m"
+
+    return {
+        "train_no": str(train_no),
+        "train_name": data.get("TrainName") or f"Train {train_no}",
+        "source": "ConfirmTkt",
+        "current_station": current_station,
+        "current_station_name": current_station_name,
+        "current_status": current_status,
+        "delay_minutes": overall_delay,
+        "last_updated": datetime.now().strftime("%H:%M"),
+        "stations": stations,
+        "raw": data,
+    }
+
+
+def fetch_static_fallback_status(train_no: str, empirical_delay: int = 0) -> dict:
+    """Return offline static schedule fallback when live scraping fails, seeded with empirical P50 delay."""
+    sched = CORRIDOR_SCHEDULES.get(str(train_no))
+    if not sched:
+        return {
+            "train_no": str(train_no),
+            "train_name": f"Train {train_no}",
+            "source": "STATIC_EMPTY",
+            "current_station": "HSRA",
+            "current_station_name": "HOSUR",
+            "current_status": "Scheduled timetable (Static fallback)",
+            "delay_minutes": empirical_delay,
+            "last_updated": datetime.now().strftime("%H:%M"),
+            "stations": [],
+        }
+
+    stations = []
+    for s in sched["stations"]:
+        sta = s.get("sta", "")
+        std = s.get("std", "")
+        eta = add_minutes_to_time(sta, empirical_delay) if sta not in ("Source", "") else sta
+        etd = add_minutes_to_time(std, empirical_delay) if std not in ("Destination", "") else std
+        stations.append({
+            "code": s["code"],
+            "name": s["name"],
+            "sta": sta,
+            "std": std,
+            "eta": eta,
+            "etd": etd,
+            "delay_arr": empirical_delay,
+            "delay_dep": empirical_delay,
+            "effective_delay": empirical_delay,
+            "has_arrived": False,
+            "has_departed": False,
+            "platform": "1",
+        })
+
+    return {
+        "train_no": str(train_no),
+        "train_name": sched.get("train_name", f"Train {train_no}"),
+        "source": "STATIC_FALLBACK",
+        "current_station": stations[0]["code"] if stations else "HSRA",
+        "current_station_name": stations[0]["name"] if stations else "HOSUR",
+        "current_status": f"Scheduled timetable + {empirical_delay}m empirical P50 delay",
+        "delay_minutes": empirical_delay,
+        "last_updated": datetime.now().strftime("%H:%M"),
+        "stations": stations,
+    }
+
+
+class RailWatchdog:
+    """2-Strike Watchdog monitor sending fail-safe alert with 1-tap manual check links if scraping fails."""
+
+    def __init__(self, failure_threshold: int = 2):
+        self.failure_threshold = failure_threshold
+        self.consecutive_failures = 0
+        self.last_failure_reason = ""
+        self.alert_triggered = False
+        self._pending_alert: Optional[Dict[str, Any]] = None
+
+    def record_success(self) -> None:
+        self.consecutive_failures = 0
+        self.last_failure_reason = ""
+        self.alert_triggered = False
+        self._pending_alert = None
+
+    def get_pending_alert(self) -> Optional[Dict[str, Any]]:
+        """Retrieve and consume any pending watchdog fail-safe alert for Telegram dispatch."""
+        alert = self._pending_alert
+        if alert:
+            self._pending_alert = None
+            return alert
+        return None
+
+    def record_failure(self, train_no: str, error: Exception | str) -> Optional[Dict[str, Any]]:
+        self.consecutive_failures += 1
+        self.last_failure_reason = str(error)
+        logger.warning(
+            "RailWatchdog: Scraping failure #%d for train %s: %s",
+            self.consecutive_failures,
+            train_no,
+            error,
+        )
+
+        if self.consecutive_failures >= self.failure_threshold and not self.alert_triggered:
+            self.alert_triggered = True
+            msg = (
+                f"⚠️ *RailRadar Watchdog Fail-Safe Triggered*\n"
+                f"Both Indian Railways CRIS NTES and ConfirmTkt were unresponsive after {self.consecutive_failures} consecutive queries.\n\n"
+                f"Falling back to *Empirical P50 Timetables*. Click below for 1-tap manual inspection:\n"
+                f"• [Direct CRIS NTES Portal](https://enquiry.indianrail.gov.in/crisns/)\n"
+                f"• [ConfirmTkt Live Status](https://www.confirmtkt.com/train-running-status/{train_no})\n"
+                f"• [Where Is My Train Live](https://www.whereismytrain.in/)"
+            )
+            alert_dict = {
+                "triggered": True,
+                "consecutive_failures": self.consecutive_failures,
+                "train_no": train_no,
+                "message": msg,
+                "links": [
+                    {"label": "CRIS NTES", "url": "https://enquiry.indianrail.gov.in"},
+                    {"label": "ConfirmTkt", "url": f"https://www.confirmtkt.com/train-running-status/{train_no}"},
+                ],
+            }
+            self._pending_alert = alert_dict
+            return alert_dict
+        return None
+
+
+# Global watchdog instance
+watchdog = RailWatchdog(failure_threshold=2)
+
+
+def get_live_train_status(train_no: str, date_str: Optional[str] = None) -> dict:
+    """Multi-tier resolver: CRIS -> ConfirmTkt -> Static Schedule with Watchdog supervision."""
+    train_no_str = str(train_no).strip()
+
+    # Tier 1: CRIS NTES Wire Protocol
+    try:
+        status = fetch_cris_status(train_no_str, date_str)
+        if status.get("stations") and len(status["stations"]) > 0:
+            watchdog.record_success()
+            return status
+    except Exception as exc_cris:
+        logger.warning("CRIS query failed for train %s: %s. Falling back to ConfirmTkt...", train_no_str, exc_cris)
+
+    # Tier 2: ConfirmTkt Web Scrape
+    try:
+        status = fetch_confirmtkt_status(train_no_str)
+        if status.get("stations") and len(status["stations"]) > 0:
+            watchdog.record_success()
+            return status
+    except Exception as exc_ctkt:
+        logger.warning("ConfirmTkt scrape failed for train %s: %s. Falling back to Static...", train_no_str, exc_ctkt)
+        watchdog.record_failure(train_no_str, f"ConfirmTkt: {exc_ctkt}")
+
+    # Tier 3: Static Empirical Fallback
+    stats = get_train_delay_stats(train_no_str, STN_HOSUR)
+    p50_delay = int(round(stats.get("P50", 0)))
+    static_status = fetch_static_fallback_status(train_no_str, empirical_delay=p50_delay)
+    if watchdog.alert_triggered:
+        static_status["watchdog_alert"] = True
+    return static_status
+
+
+# =============================================================================
+# 5. EMPIRICAL DELAY ANALYTICS & QUANTILES
+# =============================================================================
+
+DELAY_STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scratch", "delay_summary_stats.json")
+DELAY_HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scratch", "delay_history_14d.json")
+
+_cached_stats: Optional[Dict[str, Any]] = None
+
+
+def load_delay_statistics() -> Dict[str, Any]:
+    """Load precalculated 14-day delay statistics from disk or compute them."""
+    global _cached_stats
+    if _cached_stats is not None:
+        return _cached_stats
+
+    if os.path.exists(DELAY_STATS_FILE):
+        try:
+            with open(DELAY_STATS_FILE, "r", encoding="utf-8") as f:
+                _cached_stats = json.load(f)
+                return _cached_stats
+        except Exception as e:
+            logger.error("Error reading delay_summary_stats.json: %s", e)
+
+    # If summary file missing, try computing from history
+    if os.path.exists(DELAY_HISTORY_FILE):
+        try:
+            with open(DELAY_HISTORY_FILE, "r", encoding="utf-8") as f:
+                history_data = json.load(f)
+            stats = {}
+            for t_no, info in history_data.items():
+                label = info.get("label", f"Train {t_no}")
+                history = info.get("history", [])
+                stns_found = set()
+                for h in history:
+                    for k in h.keys():
+                        if k.endswith("_delay"):
+                            stns_found.add(k.replace("_delay", ""))
+                stats[t_no] = {"label": label, "stations": {}}
+                for stn in sorted(stns_found):
+                    delays = [h[f"{stn}_delay"] for h in history if f"{stn}_delay" in h]
+                    if not delays:
+                        continue
+                    arr = np.array(delays)
+                    stats[t_no]["stations"][stn] = {
+                        "N": len(delays),
+                        "P10": float(np.percentile(arr, 10)),
+                        "P50": float(np.percentile(arr, 50)),
+                        "P90": float(np.percentile(arr, 90)),
+                        "Mean": round(float(np.mean(arr)), 1),
+                        "Std": round(float(np.std(arr)), 1),
+                        "OnTimePct": round(float(np.mean(arr <= 5) * 100), 1),
+                        "RawDelays": delays,
+                    }
+            _cached_stats = stats
+            return _cached_stats
+        except Exception as exc:
+            logger.error("Failed to compute delay statistics: %s", exc)
+
+    return {}
+
+
+def get_train_delay_stats(train_no: str, station_code: Optional[str] = None) -> dict:
+    """Retrieve P10, P50, P90, Mean, Std, and OnTime% for a given train and station."""
+    stats = load_delay_statistics()
+    t_info = stats.get(str(train_no), {})
+    stations_data = t_info.get("stations", {})
+    if not stations_data:
+        # Default baseline if no history exists
+        return {"N": 0, "P10": 0.0, "P50": 5.0, "P90": 20.0, "Mean": 7.0, "Std": 5.0, "OnTimePct": 75.0}
+
+    if station_code and station_code.upper() in stations_data:
+        return stations_data[station_code.upper()]
+
+    # Return primary corridor station (BLRR or CRLM)
+    for preferred in ["BLRR", "CRLM", "HSRA"]:
+        if preferred in stations_data:
+            return stations_data[preferred]
+
+    # Return first available station
+    first_stn = next(iter(stations_data.values()))
+    return first_stn
+
+
+# =============================================================================
+# 6. RAKE TURNAROUND INSPECTOR & DYNAMIC STEP-OUT SHIFTING
+# =============================================================================
+
+def inspect_rake_turnaround(
+    morning_train: str = MORNING_TRAIN_MEMU,
+    rake_train: str = INCOMING_RAKE_MEMU,
+    date_str: Optional[str] = None,
+    reference_time: Optional[str] = None,
+) -> dict:
+    """
+    Rake Turnaround Inspector:
+    Tracks incoming train 66595 (YPR -> HSRA) to determine actual platform availability
+    and departure time for morning MEMU 66596 (HSRA -> YPR).
+    
+    If 66595 is delayed arriving at Hosur, 66596 cannot depart at 08:25 AM.
+    Physical turnaround requires at least RAKE_TURNAROUND_MIN_BUFFER (10 mins).
+    Revised Step-Out Time = Projected_HSRA_Departure - LEAD_TIME_HOME_HOSUR (10 mins).
+    """
+    if not reference_time:
+        reference_time = datetime.now().strftime("%H:%M")
+
+    rake_status = get_live_train_status(rake_train, date_str)
+    memu_status = get_live_train_status(morning_train, date_str)
+
+    # Find Hosur station info for both trains
+    rake_hsra = next((s for s in rake_status.get("stations", []) if s["code"] == STN_HOSUR), None)
+    memu_hsra = next((s for s in memu_status.get("stations", []) if s["code"] == STN_HOSUR), None)
+
+    scheduled_rake_arr = rake_hsra.get("sta", "08:00") if rake_hsra else "08:00"
+    scheduled_memu_dep = memu_hsra.get("std", "08:25") if memu_hsra else "08:25"
+
+    # Check for cancellation or short-termination before Hosur
+    raw_status = (rake_status.get("current_status") or "").lower()
+    raw_details = str(rake_status.get("raw", "")).lower()
+    curr_stn = rake_status.get("current_station", "").upper()
+    is_cancelled = "cancel" in raw_status or "cancel" in raw_details
+    is_short_terminated = (
+        ("terminate" in raw_status or "short" in raw_status)
+        and curr_stn != STN_HOSUR
+    )
+
+    if is_cancelled or is_short_terminated:
+        reason = "CANCELLED" if is_cancelled else f"TERMINATED SHORT at {curr_stn}"
+        return {
+            "morning_train": morning_train,
+            "incoming_rake_train": rake_train,
+            "scheduled_hsra_departure": scheduled_memu_dep,
+            "projected_hsra_departure": "CANCELLED",
+            "effective_delay_mins": 999,
+            "revised_step_out_time": "CANCELLED",
+            "is_delayed": True,
+            "rake_cancelled": True,
+            "rake_current_station": curr_stn,
+            "rake_current_station_name": rake_status.get("current_station_name", curr_stn),
+            "rake_delay_mins": 999,
+            "rake_eta_hsra": "CANCELLED",
+            "rake_status_text": f"Rake {rake_train} {reason}",
+            "delay_summary": f"🚨 Rake {rake_train} is {reason}! Train {morning_train} will not run. Switch to alternative train immediately.",
+            "memu_status": memu_status,
+            "rake_status": rake_status,
+        }
+
+    # Incoming rake ETA at Hosur from reported delay / schedule
+    rake_delay = rake_status.get("delay_minutes", 0)
+    if rake_hsra:
+        reported_rake_eta = rake_hsra.get("eta") or add_minutes_to_time(scheduled_rake_arr, rake_delay)
+    else:
+        reported_rake_eta = add_minutes_to_time(scheduled_rake_arr, rake_delay)
+
+    # Physical transit constraint from rake's current location:
+    # If the train is still at station S, it physically requires MIN_TRANSIT_TO_HSRA_66595[S] minutes to reach Hosur!
+    min_transit = MIN_TRANSIT_TO_HSRA_66595.get(curr_stn)
+    rake_has_arrived = (curr_stn == STN_HOSUR) or bool(rake_hsra and rake_hsra.get("has_arrived"))
+
+    location_min_arrival = scheduled_rake_arr
+    if not rake_has_arrived and min_transit is not None and reference_time:
+        location_min_arrival = add_minutes_to_time(reference_time, min_transit)
+
+    # Take whichever ETA is later: reported ETA or physical location-based arrival
+    rake_eta_hsra = reported_rake_eta
+    if minutes_difference(rake_eta_hsra, location_min_arrival) > 0:
+        rake_eta_hsra = location_min_arrival
+
+    # Physical constraint: MEMU cannot depart before (Rake_ETA + 10 mins turnaround)
+    min_physical_dep = add_minutes_to_time(rake_eta_hsra, RAKE_TURNAROUND_MIN_BUFFER)
+
+    # Directly reported MEMU ETD from CRIS if available
+    direct_memu_etd = memu_hsra.get("etd", "") if (memu_hsra and memu_hsra.get("etd") not in ("Destination", "")) else ""
+    
+    # Take whichever departure is later: physical turnaround, direct reported ETD, or scheduled
+    projected_departure = scheduled_memu_dep
+    if minutes_difference(scheduled_memu_dep, min_physical_dep) > 0:
+        projected_departure = min_physical_dep
+    if direct_memu_etd and minutes_difference(projected_departure, direct_memu_etd) > 0:
+        projected_departure = direct_memu_etd
+
+    effective_delay = max(0, minutes_difference(scheduled_memu_dep, projected_departure))
+    revised_step_out = add_minutes_to_time(projected_departure, -LEAD_TIME_HOME_HOSUR)
+
+    is_delayed = effective_delay > 0
+    current_rake_loc = f"{rake_status.get('current_station_name', 'En route')} ({rake_status.get('current_station', '')})"
+    
+    delay_summary = (
+        f"Hey Sriram, there is a delay! Incoming rake ({rake_train}) is still at {current_rake_loc}, "
+        f"so possible delay from Hosur. ETA Hosur: ~{rake_eta_hsra}. Minimum turnaround departure: ~{min_physical_dep}."
+        if is_delayed
+        else f"Incoming rake ({rake_train}) is on time near {current_rake_loc}. Scheduled Hosur departure: {scheduled_memu_dep}."
+    )
+
+    return {
+        "morning_train": morning_train,
+        "incoming_rake_train": rake_train,
+        "scheduled_hsra_departure": scheduled_memu_dep,
+        "projected_hsra_departure": projected_departure,
+        "effective_delay_mins": effective_delay,
+        "revised_step_out_time": revised_step_out,
+        "is_delayed": is_delayed,
+        "rake_cancelled": False,
+        "rake_current_station": rake_status.get("current_station", ""),
+        "rake_current_station_name": rake_status.get("current_station_name", ""),
+        "rake_delay_mins": rake_delay,
+        "rake_eta_hsra": rake_eta_hsra,
+        "rake_status_text": rake_status.get("current_status", ""),
+        "delay_summary": delay_summary,
+        "memu_status": memu_status,
+        "rake_status": rake_status,
+    }
+
+
+# =============================================================================
+# 7. MORNING MULTI-TRAIN OPPORTUNITY SCANNER (07:30 - 09:30 WINDOW)
+# =============================================================================
+
+def scan_morning_commute_options(
+    reference_time: Optional[str] = None,
+    date_str: Optional[str] = None,
+) -> dict:
+    """
+    Morning Multi-Train Opportunity Scanner:
+    Scans all candidate morning trains (07:30 - 09:30 AM) heading HSRA -> BLRR / CRLM.
+    
+    Evaluates:
+    - Train 66596 (08:25 AM MEMU) via Rake Turnaround Inspector
+    - Train 06278 (07:07 AM Dharmapuri - Bengaluru MEMU, if delayed into morning window)
+    - Train 16212 (08:20 AM Salem Express)
+    
+    If 66596 is delayed, or another train arrives/departs Hosur earlier or in the optimal window,
+    it dynamically recommends the best train, calculating revised step-out times and arrival at ETV desk.
+    """
+    if not reference_time:
+        reference_time = datetime.now().strftime("%H:%M")
+
+    # 1. Inspect Rake Turnaround for Train 66596
+    memu_rake = inspect_rake_turnaround(MORNING_TRAIN_MEMU, INCOMING_RAKE_MEMU, date_str, reference_time=reference_time)
+    
+    # 2. Inspect Train 06278 (Dharmapuri - KSR Bengaluru MEMU)
+    memu2_status = get_live_train_status(MORNING_TRAIN_EARLIER_MEMU, date_str)
+    memu2_hsra = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_HOSUR), None)
+    memu2_blrr = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
+    memu2_crlm = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
+
+    memu2_sch_dep = memu2_hsra.get("std", "07:07") if memu2_hsra else "07:07"
+    memu2_delay = memu2_status.get("delay_minutes", 0)
+    memu2_projected_dep = memu2_hsra.get("etd", "") if (memu2_hsra and memu2_hsra.get("etd") not in ("Destination", "")) else add_minutes_to_time(memu2_sch_dep, memu2_delay)
+
+    # Physical transit check for 06278 if still en route to Hosur
+    memu2_curr_stn = memu2_status.get("current_station", "").upper()
+    memu2_transit = MIN_TRANSIT_TO_HSRA_06278.get(memu2_curr_stn)
+    memu2_has_arrived = (memu2_curr_stn == STN_HOSUR) or bool(memu2_hsra and memu2_hsra.get("has_arrived"))
+    if not memu2_has_arrived and memu2_transit is not None and reference_time:
+        loc_dep = add_minutes_to_time(reference_time, memu2_transit + 2)
+        if minutes_difference(memu2_projected_dep, loc_dep) > 0:
+            memu2_projected_dep = loc_dep
+
+    memu2_effective_delay = max(0, minutes_difference(memu2_sch_dep, memu2_projected_dep))
+    memu2_step_out = add_minutes_to_time(memu2_projected_dep, -LEAD_TIME_HOME_HOSUR)
+
+    # BLRR arrival for 06278
+    if memu2_blrr:
+        memu2_dest_eta = memu2_blrr.get("eta") or add_minutes_to_time(memu2_blrr.get("sta", "07:51"), memu2_effective_delay)
+    elif memu2_crlm:
+        memu2_dest_eta = memu2_crlm.get("eta") or add_minutes_to_time(memu2_crlm.get("sta", "07:44"), memu2_effective_delay)
+    else:
+        memu2_dest_eta = add_minutes_to_time("07:51", memu2_effective_delay)
+
+    memu2_desk_eta = add_minutes_to_time(memu2_dest_eta, WALK_TIME_BLRR_DESK)
+    memu2_minutes_until_dep = minutes_difference(reference_time, memu2_projected_dep)
+
+    # 3. Inspect Train 16212 (Salem - Yesvantpur Express)
+    exp_status = get_live_train_status(MORNING_TRAIN_EXP, date_str)
+    exp_hsra = next((s for s in exp_status.get("stations", []) if s["code"] == STN_HOSUR), None)
+    exp_blrr = next((s for s in exp_status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
+    exp_crlm = next((s for s in exp_status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
+
+    exp_sch_dep = exp_hsra.get("std", "08:20") if exp_hsra else "08:20"
+    exp_delay = exp_status.get("delay_minutes", 0)
+    exp_projected_dep = exp_hsra.get("etd", "") if (exp_hsra and exp_hsra.get("etd") not in ("Destination", "")) else add_minutes_to_time(exp_sch_dep, exp_delay)
+    exp_step_out = add_minutes_to_time(exp_projected_dep, -LEAD_TIME_HOME_HOSUR)
+
+    if exp_blrr:
+        exp_dest_eta = exp_blrr.get("eta") or add_minutes_to_time(exp_blrr.get("sta", "08:59"), exp_delay)
+    elif exp_crlm:
+        exp_dest_eta = exp_crlm.get("eta") or add_minutes_to_time(exp_crlm.get("sta", "09:05"), exp_delay)
+    else:
+        exp_dest_eta = add_minutes_to_time("08:59", exp_delay)
+
+    exp_desk_eta = add_minutes_to_time(exp_dest_eta, WALK_TIME_BLRR_DESK)
+    exp_minutes_until_dep = minutes_difference(reference_time, exp_projected_dep)
+
+    # 4. MEMU 66596 destination arrival (BLRR)
+    memu_blrr = next((s for s in memu_rake["memu_status"].get("stations", []) if s["code"] == STN_BELLANDUR), None)
+    memu_delay = memu_rake["effective_delay_mins"]
+    if memu_blrr:
+        memu_blrr_eta = memu_blrr.get("eta") or add_minutes_to_time(memu_blrr.get("sta", "09:03"), memu_delay)
+    else:
+        memu_blrr_eta = add_minutes_to_time("09:03", memu_delay)
+
+    memu_desk_eta = add_minutes_to_time(memu_blrr_eta, WALK_TIME_BLRR_DESK)
+    memu_minutes_until_dep = (
+        minutes_difference(reference_time, memu_rake["projected_hsra_departure"])
+        if not memu_rake.get("rake_cancelled")
+        else -999
+    )
+
+    def determine_status(mins: int, has_departed: bool = False, cancelled: bool = False) -> str:
+        if cancelled:
+            return "CANCELLED"
+        if has_departed or mins < -2:
+            return "DEPARTED"
+        if -2 <= mins < 5:
+            return "BOARDING"
+        return "VIABLE"
+
+    options = [
+        {
+            "train_no": MORNING_TRAIN_MEMU,
+            "train_name": "Hosur - Yesvantpur MEMU",
+            "type": "MEMU",
+            "scheduled_departure": memu_rake["scheduled_hsra_departure"],
+            "projected_departure": memu_rake["projected_hsra_departure"],
+            "step_out_time": memu_rake["revised_step_out_time"],
+            "dest_station": STN_BELLANDUR,
+            "dest_eta": memu_blrr_eta,
+            "desk_eta": memu_desk_eta,
+            "delay_mins": memu_delay,
+            "current_location": f"Rake: {memu_rake['rake_current_station_name']} ({memu_rake['rake_current_station']})",
+            "is_delayed": memu_rake["is_delayed"],
+            "minutes_until_dep": memu_minutes_until_dep,
+            "door_to_door_duration": minutes_difference(memu_rake["revised_step_out_time"], memu_desk_eta) if not memu_rake.get("rake_cancelled") else 0,
+            "status": determine_status(memu_minutes_until_dep, cancelled=memu_rake.get("rake_cancelled")),
+            "details": memu_rake["delay_summary"],
+        },
+        {
+            "train_no": MORNING_TRAIN_EARLIER_MEMU,
+            "train_name": "Dharmapuri - KSR Bengaluru MEMU",
+            "type": "MEMU",
+            "scheduled_departure": memu2_sch_dep,
+            "projected_departure": memu2_projected_dep,
+            "step_out_time": memu2_step_out,
+            "dest_station": STN_BELLANDUR,
+            "dest_eta": memu2_dest_eta,
+            "desk_eta": memu2_desk_eta,
+            "delay_mins": memu2_effective_delay,
+            "current_location": f"{memu2_status.get('current_station_name', '')} ({memu2_curr_stn})",
+            "is_delayed": memu2_effective_delay > 0,
+            "minutes_until_dep": memu2_minutes_until_dep,
+            "door_to_door_duration": minutes_difference(memu2_step_out, memu2_desk_eta),
+            "status": determine_status(memu2_minutes_until_dep, has_departed=bool(memu2_hsra and memu2_hsra.get("has_departed"))),
+            "details": f"Dharmapuri MEMU currently near {memu2_status.get('current_station_name', '')} (Delay: {memu2_effective_delay}m).",
+        },
+        {
+            "train_no": MORNING_TRAIN_EXP,
+            "train_name": "Salem - Yesvantpur Express",
+            "type": "EXPRESS",
+            "scheduled_departure": exp_sch_dep,
+            "projected_departure": exp_projected_dep,
+            "step_out_time": exp_step_out,
+            "dest_station": STN_BELLANDUR,
+            "dest_eta": exp_dest_eta,
+            "desk_eta": exp_desk_eta,
+            "delay_mins": exp_delay,
+            "current_location": f"{exp_status.get('current_station_name', '')} ({exp_status.get('current_station', '')})",
+            "is_delayed": exp_delay > 0,
+            "minutes_until_dep": exp_minutes_until_dep,
+            "door_to_door_duration": minutes_difference(exp_step_out, exp_desk_eta),
+            "status": determine_status(exp_minutes_until_dep, has_departed=bool(exp_hsra and exp_hsra.get("has_departed"))),
+            "details": f"Salem Express currently near {exp_status.get('current_station_name', '')} (Delay: {exp_delay}m).",
+        },
+    ]
+
+    # Intelligent Recommendation Logic:
+    # Viable options include trains currently viable or in boarding
+    viable = [o for o in options if o["status"] in ("VIABLE", "BOARDING")]
+
+    if not viable:
+        recommended = options[0]
+        rec_reason = "All morning trains appear to have departed or are in departure."
+    else:
+        # Check specific user requirement:
+        # "I am okay in taking any of the morning MEMU, I believe there are two.
+        # Whichever comes the last for me, I am okay taking it"
+        memu2_opt = next((o for o in viable if o["train_no"] == MORNING_TRAIN_EARLIER_MEMU), None)
+        memu_opt = next((o for o in viable if o["train_no"] == MORNING_TRAIN_MEMU), None)
+        exp_opt = next((o for o in viable if o["train_no"] == MORNING_TRAIN_EXP), None)
+
+        # 1. If incoming rake 66595 is cancelled, immediately recommend alternative
+        if memu_rake.get("rake_cancelled"):
+            if memu2_opt:
+                recommended = memu2_opt
+                rec_reason = (
+                    f"Train {MORNING_TRAIN_MEMU} rake is cancelled! Recommend taking Train {MORNING_TRAIN_EARLIER_MEMU} "
+                    f"({memu2_opt['train_name']}) departing Hosur at ~{memu2_opt['projected_departure']} (ETV Desk: ~{memu2_opt['desk_eta']})."
+                )
+            elif exp_opt:
+                recommended = exp_opt
+                rec_reason = (
+                    f"Train {MORNING_TRAIN_MEMU} rake is cancelled! Recommend taking Train {MORNING_TRAIN_EXP} "
+                    f"({exp_opt['train_name']}) departing Hosur at ~{exp_opt['projected_departure']} (ETV Desk: ~{exp_opt['desk_eta']})."
+                )
+            else:
+                recommended = viable[0]
+                rec_reason = f"Train {MORNING_TRAIN_MEMU} cancelled. {viable[0]['train_name']} is available."
+
+        # 2. Both MEMUs are viable -> Select whichever departs LATEST (the last MEMU) as requested!
+        elif memu_opt and memu2_opt:
+            # Check which MEMU departs later from Hosur
+            # If 06278 departs LATER than 66596 (e.g. 66596 @ 08:25, 06278 delayed to 08:45)
+            if minutes_difference(memu_opt["projected_departure"], memu2_opt["projected_departure"]) > 0:
+                recommended = memu2_opt
+                rec_reason = (
+                    f"Both morning MEMUs are running. Train {MORNING_TRAIN_EARLIER_MEMU} ({memu2_opt['train_name']}) "
+                    f"is delayed by {memu2_opt['delay_mins']}m and departs Hosur at ~{memu2_opt['projected_departure']}, "
+                    f"which is the LATEST morning MEMU. Reaches BLRR ~{memu2_opt['dest_eta']} (ETV Desk: ~{memu2_opt['desk_eta']} - before 11 AM!)."
+                )
+            else:
+                recommended = memu_opt
+                delay_note = f" (delayed by {memu_opt['delay_mins']}m)" if memu_opt['is_delayed'] else ""
+                rec_reason = (
+                    f"Train {MORNING_TRAIN_MEMU} departs Hosur at ~{memu_opt['projected_departure']}{delay_note}, "
+                    f"which is the LATEST morning MEMU. (Earlier MEMU {MORNING_TRAIN_EARLIER_MEMU} departs at ~{memu2_opt['projected_departure']}). "
+                    f"Reaches BLRR ~{memu_opt['dest_eta']} (ETV Desk: ~{memu_opt['desk_eta']} - before 11 AM!)."
+                )
+
+        # 3. Only Earlier MEMU 06278 is viable
+        elif memu2_opt:
+            recommended = memu2_opt
+            rec_reason = (
+                f"Train {MORNING_TRAIN_EARLIER_MEMU} ({memu2_opt['train_name']}) is delayed by {memu2_opt['delay_mins']}m "
+                f"and departing Hosur at ~{memu2_opt['projected_departure']} (reaches BLRR ~{memu2_opt['dest_eta']}, ETV Desk: ~{memu2_opt['desk_eta']})."
+            )
+
+        # 4. Only MEMU 66596 is viable
+        elif memu_opt:
+            recommended = memu_opt
+            delay_text = f"Delayed by {memu_opt['delay_mins']}m" if memu_opt['is_delayed'] else "On schedule"
+            rec_reason = (
+                f"Train {MORNING_TRAIN_MEMU} is {delay_text}. Departs HSRA at ~{memu_opt['projected_departure']}, "
+                f"arrives BLRR at ~{memu_opt['dest_eta']} (ETV Desk: ~{memu_opt['desk_eta']})."
+            )
+
+        # 5. Fallback to Express if no MEMU is viable
+        elif exp_opt:
+            recommended = exp_opt
+            rec_reason = (
+                f"No MEMU available. Train {MORNING_TRAIN_EXP} is departing at ~{exp_opt['projected_departure']} "
+                f"and reaches BLRR at ~{exp_opt['dest_eta']} (Desk: ~{exp_opt['desk_eta']})."
+            )
+
+        else:
+            recommended = viable[0]
+            rec_reason = f"Train {recommended['train_name']} ({recommended['train_no']}) is your primary viable option at this time."
+            rec_reason = f"Train {recommended['train_name']} ({recommended['train_no']}) is your primary viable option at this time."
+
+    return {
+        "reference_time": reference_time,
+        "recommended_train": recommended,
+        "recommendation_reason": rec_reason,
+        "options": options,
+        "rake_turnaround": memu_rake,
+    }
+
+
+# =============================================================================
+# 8. EVENING COMMUTE SCANNER & MILESTONE MONITORS
+# =============================================================================
+
+def scan_evening_commute_options(
+    reference_time: Optional[str] = None,
+    date_str: Optional[str] = None,
+) -> list[dict]:
+    """Scan evening trains from BLRR / CRLM corridor to Hosur and compute desk departure advisories."""
+    if not reference_time:
+        reference_time = datetime.now().strftime("%H:%M")
+
+    evening_trains = ["66585", "16211", "66583", "16232", "16527", "16236"]
+    results = []
+
+    for t_no in evening_trains:
+        status = get_live_train_status(t_no, date_str)
+        sched = CORRIDOR_SCHEDULES.get(t_no, {})
+        
+        # Check if train stops at BLRR (+11m advantage) or CRLM
+        blrr_stn = next((s for s in status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
+        crlm_stn = next((s for s in status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
+        hsra_stn = next((s for s in status.get("stations", []) if s["code"] == STN_HOSUR), None)
+
+        if not blrr_stn and not crlm_stn and sched:
+            static_st = fetch_static_fallback_status(t_no)
+            blrr_stn = next((s for s in static_st.get("stations", []) if s["code"] == STN_BELLANDUR), None)
+            crlm_stn = next((s for s in static_st.get("stations", []) if s["code"] == STN_CARMELARAM), None)
+            hsra_stn = next((s for s in static_st.get("stations", []) if s["code"] == STN_HOSUR), None)
+            status = static_st
+
+        if blrr_stn:
+            board_stn = STN_BELLANDUR
+            sch_dep = blrr_stn["std"]
+            est_dep = blrr_stn["etd"]
+            lead_time = LEAD_TIME_DESK_BLRR
+        elif crlm_stn:
+            board_stn = STN_CARMELARAM
+            sch_dep = crlm_stn["std"]
+            est_dep = crlm_stn["etd"]
+            lead_time = LEAD_TIME_DESK_CRLM
+        else:
+            continue
+
+        delay = status.get("delay_minutes", 0)
+        leave_desk_time = add_minutes_to_time(est_dep, -lead_time)
+        hsra_eta = hsra_stn["eta"] if hsra_stn else ""
+
+        results.append({
+            "train_no": t_no,
+            "train_name": sched.get("train_name", f"Train {t_no}"),
+            "boarding_station": board_stn,
+            "scheduled_departure": sch_dep,
+            "estimated_departure": est_dep,
+            "leave_desk_time": leave_desk_time,
+            "lead_time_mins": lead_time,
+            "hosur_eta": hsra_eta,
+            "delay_mins": delay,
+            "current_location": f"{status.get('current_station_name', '')} ({status.get('current_station', '')})",
+            "status_text": status.get("current_status", ""),
+        })
+
+    return results
+
+
+def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:
+    """
+    Evaluate if an evening train has cleared its milestone station.
+    For Train 16232 (CRLM 19:35): Originates SBC / departs Bangalore Cant (BNC) ~19:08.
+    When BNC has departed, fires milestone trigger: 'LEAVE DESK NOW'.
+    """
+    t_no = str(train_no).strip()
+    sched = CORRIDOR_SCHEDULES.get(t_no)
+    if not sched:
+        return None
+
+    milestone_code = sched.get("milestone_station")
+    if not milestone_code and t_no == "16232":
+        milestone_code = "BNC"
+
+    if not milestone_code:
+        return None
+
+    stations = status_dict.get("stations", [])
+    m_stn = next((s for s in stations if s["code"] == milestone_code), None)
+    crlm_stn = next((s for s in stations if s["code"] == STN_CARMELARAM), None)
+
+    if m_stn and (m_stn["has_departed"] or m_stn["effective_delay"] is not None):
+        if m_stn["has_departed"]:
+            crlm_eta = crlm_stn["eta"] if crlm_stn else "19:38"
+            return {
+                "triggered": True,
+                "train_no": t_no,
+                "train_name": sched.get("train_name", f"Train {t_no}"),
+                "milestone_station": milestone_code,
+                "departure_time": m_stn.get("etd", m_stn.get("std", "")),
+                "crlm_eta": crlm_eta,
+                "action": "LEAVE_DESK_NOW",
+                "message": (
+                    f"🚨 *MILESTONE TRIGGER: Train {t_no}*\n"
+                    f"Train {t_no} has officially departed {milestone_code} at {m_stn.get('etd')}!\n"
+                    f"Expected Carmelaram (CRLM) arrival: ~{crlm_eta}.\n\n"
+                    f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 -> CRLM: ~25 mins lead time)."
+                ),
+            }
+    return None

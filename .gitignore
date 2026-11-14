@@ -16,6 +16,7 @@ price_tracker.db
 *.log
 radar_daemon.log
 running_shoes_deals.json
+commute_daily_state.json
 
 # Python
 __pycache__/

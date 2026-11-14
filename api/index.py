@@ -17,6 +17,7 @@ Provides:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import re
@@ -44,6 +45,8 @@ from telegram_bot import TelegramAssistant
 from tracker import Tracker
 from running_shoes_radar import shoes_radar
 from collection_data import collection_mgr
+import rail_tracker
+import rail_daemon
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("vercel_api")
@@ -153,7 +156,7 @@ async def root(request: Request):
             headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
         )
 
-    if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs"):
+    if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs", "rail-radar", "rail", "commute", "railradar"):
         return HTMLResponse(
             content=get_dashboard_html(),
             status_code=200,
@@ -185,6 +188,19 @@ async def root(request: Request):
         return await get_dashboard_data()
     elif clean == "api/status":
         return await get_status()
+    elif "rail" in clean or "commute" in clean:
+        if clean in ("rail-radar", "rail", "commute", "railradar") or (is_browser_request(request) and not clean.startswith("api/")):
+            return HTMLResponse(
+                content=get_dashboard_html(),
+                status_code=200,
+                headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
+            )
+        if "action" in clean and method == "POST":
+            return await api_rail_action(request)
+        elif "history" in clean:
+            days = int(request.query_params.get("days", 14))
+            return await api_rail_history(days=days)
+        return await api_rail_status()
     elif "running-shoes" in clean or "running_shoes" in clean:
         if clean in ("running-shoes", "running_shoes", "shoes") or (is_browser_request(request) and not clean.startswith("api/")):
             return HTMLResponse(
@@ -1150,6 +1166,129 @@ async def serve_collection_asset(filename: str):
         media_type = content_types.get(ext, "image/jpeg")
         return FileResponse(filepath, media_type=media_type, headers={"Cache-Control": "public, max-age=86400"})
     raise HTTPException(status_code=404, detail="Asset not found")
+
+
+# ==========================================
+# RAIL RADAR & COMMUTE API ENDPOINTS
+# ==========================================
+
+@app.get("/api/rail/status")
+@app.get("/api/index.py/api/rail/status")
+async def api_rail_status():
+    """Retrieve live commute status, active train tracking, incoming rake inspection, and morning recommendations."""
+    try:
+        now_time = datetime.now().strftime("%H:%M")
+        scan = rail_tracker.scan_morning_commute_options(reference_time=now_time)
+        evening_opts = rail_tracker.scan_evening_commute_options(reference_time=now_time)
+        rake = scan.get("rake_turnaround", {})
+
+        state_data = {
+            "state": "MORNING_TRACKING" if "07:30" <= now_time < "09:40" else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "STANDBY"),
+            "active_train": scan["recommended_train"]["train_no"],
+            "morning_step_out_time": scan["recommended_train"]["step_out_time"],
+            "morning_projected_dep": scan["recommended_train"]["projected_departure"],
+            "morning_delay_mins": scan["recommended_train"]["delay_mins"],
+        }
+        if os.path.exists(rail_daemon.LOCAL_STATE_FILE):
+            try:
+                with open(rail_daemon.LOCAL_STATE_FILE, "r", encoding="utf-8") as f:
+                    saved_state = json.load(f)
+                    state_data.update(saved_state)
+            except Exception:
+                pass
+
+        step_out = state_data.get("morning_step_out_time", "08:15")
+        countdown_mins = rail_tracker.minutes_difference(now_time, step_out)
+
+        return JSONResponse(
+            content={
+                "status": "ok",
+                "state": state_data.get("state", "STANDBY"),
+                "active_train": state_data.get("morning_train" if "MORNING" in state_data.get("state", "") else "evening_train", scan["recommended_train"]["train_no"]),
+                "current_time": now_time,
+                "step_out_time": step_out,
+                "step_out_countdown_mins": countdown_mins,
+                "morning_scan": scan,
+                "rake_turnaround": rake,
+                "evening_options": evening_opts,
+                "lead_times": {
+                    "home_to_pf1": rail_tracker.LEAD_TIME_HOME_HOSUR,
+                    "desk_to_crlm": rail_tracker.LEAD_TIME_DESK_CRLM,
+                    "desk_to_blrr": rail_tracker.LEAD_TIME_DESK_BLRR,
+                    "blrr_to_desk_walk": rail_tracker.WALK_TIME_BLRR_DESK,
+                },
+                "server_time": _now(),
+            }
+        )
+    except Exception as exc:
+        logger.error("Error generating rail status: %s", exc)
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
+
+
+@app.get("/api/rail/history")
+@app.get("/api/index.py/api/rail/history")
+async def api_rail_history(days: int = Query(default=14)):
+    """Retrieve 14-day train punctuality time-series data and empirical quantiles for charts."""
+    try:
+        stats = rail_tracker.load_delay_statistics()
+        raw_history = {}
+        if os.path.exists(rail_tracker.DELAY_HISTORY_FILE):
+            with open(rail_tracker.DELAY_HISTORY_FILE, "r", encoding="utf-8") as f:
+                raw_history = json.load(f)
+
+        return JSONResponse(
+            content={
+                "status": "ok",
+                "days": days,
+                "stats": stats,
+                "history": raw_history,
+                "corridor_trains": list(rail_tracker.CORRIDOR_SCHEDULES.keys()),
+            }
+        )
+    except Exception as exc:
+        logger.error("Error retrieving rail history: %s", exc)
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
+
+
+@app.post("/api/rail/action")
+@app.post("/api/index.py/api/rail/action")
+async def api_rail_action(request: Request):
+    """Execute manual commute action from dashboard (WFH, Bike, Select Train, Reached, Reset)."""
+    try:
+        data = await request.json()
+        action = data.get("action", "").lower()
+        store = rail_daemon.CommuteStateStore()
+
+        if action == "wfh":
+            store.transition_state(rail_daemon.STATE_WFH, "Marked WFH from dashboard")
+            msg = "Marked as Work From Home."
+        elif action == "bike":
+            store.transition_state(rail_daemon.STATE_BIKE, "Switched to Bike from dashboard")
+            msg = "Switched commute mode to Bike / Road."
+        elif action in ("select_train", "track"):
+            train_no = str(data.get("train_no", "66596")).strip()
+            state = store.state_data.get("state", "")
+            if "EVENING" in state:
+                store.state_data["evening_train"] = train_no
+                store.transition_state(rail_daemon.STATE_EVENING_TRACKING, f"Tracking evening train {train_no}")
+            else:
+                store.state_data["morning_train"] = train_no
+                store.transition_state(rail_daemon.STATE_MORNING_TRACKING, f"Tracking morning train {train_no}")
+            msg = f"Now tracking Train {train_no}."
+        elif action == "reached":
+            store.state_data["morning_completed"] = True
+            store.transition_state(rail_daemon.STATE_MIDDAY_STANDBY, "Reached station platform")
+            msg = "Reached station platform!"
+        elif action == "reset":
+            store.reset_today()
+            msg = "Commute state reset to default."
+        else:
+            return JSONResponse(status_code=400, content={"status": "error", "message": f"Unknown action: {action}"})
+
+        return JSONResponse(content={"status": "ok", "message": msg, "state": store.state_data})
+    except Exception as exc:
+        logger.error("Error handling rail action: %s", exc)
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
 
 
 
@@ -2328,7 +2467,7 @@ async def catch_all(request: Request, full_path: str):
     if is_browser_request(request) and not clean.startswith("api/") and not clean.startswith("assets/"):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)
 
-    if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs"):
+    if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs", "rail-radar", "rail", "commute", "railradar"):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)
 
     # 0. Auth Login
@@ -2367,6 +2506,17 @@ async def catch_all(request: Request, full_path: str):
     # 6. Status JSON
     if clean in ("api/status", "status"):
         return await get_status()
+
+    # 6b. Rail Commute Radar
+    if "rail" in clean or "commute" in clean:
+        if clean in ("rail-radar", "rail", "commute", "railradar") or (is_browser_request(request) and not clean.startswith("api/")):
+            return HTMLResponse(content=get_dashboard_html(), status_code=200)
+        if "action" in clean and method == "POST":
+            return await api_rail_action(request)
+        elif "history" in clean:
+            days = int(request.query_params.get("days", 14))
+            return await api_rail_history(days=days)
+        return await api_rail_status()
 
     # 7. Products Sub-routes
     prod_check_match = re.search(r"products/(\d+)/check", clean)
