@@ -15,3 +15,4 @@ def guard_telegram_network_calls():
     """Autouse fixture that patches TelegramClient.send_message across all test suites."""
     with patch.object(rail_daemon.TelegramClient, "send_message", return_value={"ok": True}) as mock_send:
         yield mock_send
+

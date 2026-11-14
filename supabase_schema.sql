@@ -70,10 +70,17 @@ ALTER TABLE price_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deal_alerts_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE custom_radar_rules ENABLE ROW LEVEL SECURITY;
 
--- Permissive policies for API operations
+-- Permissive policies for API operations (Idempotent: drops if already exists)
+DROP POLICY IF EXISTS "Allow public read/write on products" ON products;
 CREATE POLICY "Allow public read/write on products" ON products FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read/write on price_logs" ON price_logs;
 CREATE POLICY "Allow public read/write on price_logs" ON price_logs FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read/write on deal_alerts_log" ON deal_alerts_log;
 CREATE POLICY "Allow public read/write on deal_alerts_log" ON deal_alerts_log FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read/write on custom_radar_rules" ON custom_radar_rules;
 CREATE POLICY "Allow public read/write on custom_radar_rules" ON custom_radar_rules FOR ALL USING (true) WITH CHECK (true);
 
 -- Seed Initial Casio Bhawar Tracker rows
@@ -169,9 +176,17 @@ ALTER TABLE commute_daily_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commute_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE train_delay_analytics ENABLE ROW LEVEL SECURITY;
 
+-- Permissive policies for Rail Commute operations (Idempotent: drops if already exists)
+DROP POLICY IF EXISTS "Allow public read/write on commute_config" ON commute_config;
 CREATE POLICY "Allow public read/write on commute_config" ON commute_config FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read/write on commute_daily_state" ON commute_daily_state;
 CREATE POLICY "Allow public read/write on commute_daily_state" ON commute_daily_state FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read/write on commute_history" ON commute_history;
 CREATE POLICY "Allow public read/write on commute_history" ON commute_history FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read/write on train_delay_analytics" ON train_delay_analytics;
 CREATE POLICY "Allow public read/write on train_delay_analytics" ON train_delay_analytics FOR ALL USING (true) WITH CHECK (true);
 
 -- Seed Commute Configuration for Sriram
