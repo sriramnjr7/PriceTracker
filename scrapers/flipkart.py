@@ -109,11 +109,16 @@ class FlipkartScraper(BaseScraper):
 
         best_coins = 0
 
-        # 1. Percentage SuperCoins back / cashback (e.g. '100% SuperCoins back', 'Earn 100% cashback as SuperCoins')
+        # 1. Percentage SuperCoins back / cashback (e.g. 'SuperCoins back: ₹10,851 (99.01%)', '100% SuperCoins back', 'Earn 100% cashback as SuperCoins')
         pct_patterns = [
-            re.compile(r"(?:earn|get)\s*(?:up\s*to\s*)?(\d+)%\s*(?:cashback\s*(?:in|as|with)?\s*)?(?:super\s*coins?|supercoins?)(?:\s*(?:back|cashback|reward|on\s*(?:this\s*)?order))?", re.I),
-            re.compile(r"(\d+)%\s*(?:cashback\s*(?:in|as|with)?\s*)?(?:super\s*coins?|supercoins?)\s*(?:back|cashback|reward|on\s*(?:this\s*)?order)", re.I),
-            re.compile(r"(\d+)%\s*(?:super\s*coins?|supercoins?)\s*(?:back|cashback|reward)", re.I),
+            # SuperCoins [back]: ₹10,851 (99.01%) or SuperCoins ₹590 (99.16%)
+            re.compile(r"(?:super\s*coins?|supercoins?)[ \t]*(?:back|cashback|reward|earned)?[ \t]*[:\-–—·]?[ \t]*(?:₹|rs\.?)?[ \t]*[\d,]+(?:\.\d+)?[ \t]*\([ \t]*(\d+(?:\.\d+)?)[ \t]*%[ \t]*\)", re.I),
+            # Earn/Get up to 100% [cashback as] SuperCoins [back/reward/offer/on order]
+            re.compile(r"(?:earn|get)[ \t]*(?:up\s*to[ \t]*)?(\d+(?:\.\d+)?)[ \t]*%[ \t]*(?:cashback[ \t]*(?:in|as|with)?[ \t]*)?(?:super\s*coins?|supercoins?)(?:[ \t]*(?:back|cashback|reward|offer|deal|savings?|on[ \t]*(?:this[ \t]*)?order))?", re.I),
+            # 100% [cashback as] SuperCoins back / on this order / offer
+            re.compile(r"(\d+(?:\.\d+)?)[ \t]*%[ \t]*(?:cashback[ \t]*(?:in|as|with)?[ \t]*)?(?:super\s*coins?|supercoins?)[ \t]*(?:back|cashback|reward|offer|deal|savings?|on[ \t]*(?:this[ \t]*)?order)", re.I),
+            # 100% SuperCoins [back/offer/deal]
+            re.compile(r"(\d+(?:\.\d+)?)[ \t]*%[ \t]*(?:super\s*coins?|supercoins?)(?:[ \t]*(?:back|cashback|reward|offer|deal|savings?))?", re.I),
         ]
         for ppat in pct_patterns:
             for m in ppat.finditer(text):
@@ -124,43 +129,40 @@ class FlipkartScraper(BaseScraper):
                 last_delim = max(clause.rfind("."), clause.rfind("!"), clause.rfind(";"), clause.rfind("\n"))
                 if last_delim != -1:
                     clause = clause[last_delim + 1:]
-                if re.search(r"\b(?:pay|use|using|redeem|with|save)\b", clause):
+                if re.search(r"\b(?:pay\s*(?:using|with|via)?|use(?:\s+up\s+to)?|redeem(?:\s+up\s+to)?)\s*$", clause.strip()):
                     continue
-                pct = int(m.group(1))
+                pct = float(m.group(1))
                 if price and price > 0:
-                    coins = int(price * (pct / 100.0))
+                    coins = int(round(price * (pct / 100.0)))
                     if coins > best_coins:
                         best_coins = coins
 
-        # 2. Explicit earn / get callouts with coin amounts (e.g. 'Earn 700 SuperCoins on this order')
-        for m in re.finditer(r"(?:earn|get)\s*(?:up\s*to\s*)?(\d+)\s*(?:super\s*coins?|supercoins?)(?:\s*(?:back|on\s*(?:this\s*)?order|cashback|reward))?", text, re.I):
-            start, end = m.start(), m.end()
-            if any(rs <= start < re_end or rs < end <= re_end for rs, re_end in redeem_spans):
-                continue
-            clause = text[max(0, start - 50):start].lower()
-            last_delim = max(clause.rfind("."), clause.rfind("!"), clause.rfind(";"), clause.rfind("\n"))
-            if last_delim != -1:
-                clause = clause[last_delim + 1:]
-            if re.search(r"\b(?:pay|use|using|redeem|with|save)\b", clause):
-                continue
-            coins = int(m.group(1))
-            if coins > best_coins:
-                best_coins = coins
-
-        # 3. SuperCoins back / on order / cashback (e.g. '700 SuperCoins on this order', '700 SuperCoins back')
-        for m in re.finditer(r"(\d+)\s*(?:super\s*coins?|supercoins?)\s*(?:back|on\s*(?:this\s*)?order|cashback|reward)", text, re.I):
-            start, end = m.start(), m.end()
-            if any(rs <= start < re_end or rs < end <= re_end for rs, re_end in redeem_spans):
-                continue
-            clause = text[max(0, start - 50):start].lower()
-            last_delim = max(clause.rfind("."), clause.rfind("!"), clause.rfind(";"), clause.rfind("\n"))
-            if last_delim != -1:
-                clause = clause[last_delim + 1:]
-            if re.search(r"\b(?:pay|use|using|redeem|with|save)\b", clause):
-                continue
-            coins = int(m.group(1))
-            if coins > best_coins:
-                best_coins = coins
+        # 2. Coin amount patterns (e.g. 'SuperCoins back: ₹10,851', 'SuperCoins ₹590', 'Earn 700 SuperCoins on this order')
+        amt_patterns = [
+            # SuperCoins back: ₹10,851 or SuperCoins: 590 or SuperCoins ₹590
+            re.compile(r"(?:super\s*coins?|supercoins?)[ \t]*(?:back|cashback|reward|earned)?[ \t]*[:\-–—·]?[ \t]*(?:₹|rs\.?)?[ \t]*([0-9,]+)", re.I),
+            # Earn/Get [up to] [₹]700 SuperCoins [back/reward/on order]
+            re.compile(r"(?:earn|get)[ \t]*(?:up\s*to[ \t]*)?(?:₹|rs\.?)?[ \t]*([0-9,]+)[ \t]*(?:super\s*coins?|supercoins?)(?:[ \t]*(?:back|on[ \t]*(?:this[ \t]*)?order|cashback|reward))?", re.I),
+            # 700 SuperCoins back / on this order (must not be followed by colon which indicates 'SuperCoins back: <amount>')
+            re.compile(r"([0-9,]+)[ \t]*(?:super\s*coins?|supercoins?)[ \t]*(?:back|on[ \t]*(?:this[ \t]*)?order|cashback|reward)(?![:\-–—·])", re.I),
+        ]
+        for apat in amt_patterns:
+            for m in apat.finditer(text):
+                start, end = m.start(), m.end()
+                if any(rs <= start < re_end or rs < end <= re_end for rs, re_end in redeem_spans):
+                    continue
+                prefix = text[max(0, start - 5):start]
+                if re.search(r"[₹$]|rs\.?\s*$", prefix, re.I):
+                    continue
+                clause = text[max(0, start - 50):start].lower()
+                last_delim = max(clause.rfind("."), clause.rfind("!"), clause.rfind(";"), clause.rfind("\n"))
+                if last_delim != -1:
+                    clause = clause[last_delim + 1:]
+                if re.search(r"\b(?:pay\s*(?:using|with|via)?|use(?:\s+up\s+to)?|redeem(?:\s+up\s+to)?)\s*$", clause.strip()):
+                    continue
+                coins = int(m.group(1).replace(",", ""))
+                if coins > best_coins:
+                    best_coins = coins
 
         if best_coins <= 0:
             return 0, None, False
@@ -180,7 +182,7 @@ class FlipkartScraper(BaseScraper):
         """Extract SuperCoins earned on product order and determine >= 70% return deal."""
         if soup is None and html:
             soup = BeautifulSoup(html, "html.parser")
-        page_text = soup.get_text(" ", strip=True) if soup else ""
+        page_text = soup.get_text("\n", strip=True) if soup else ""
         coins, ratio, is_deal = self._extract_supercoins_from_text(page_text, price)
 
         # Fallback to script data (INITIAL_STATE or dlsData)
@@ -193,6 +195,15 @@ class FlipkartScraper(BaseScraper):
                     if c > 0:
                         coins, ratio, is_deal = c, r, d
                         break
+                    # Key-value structured extraction e.g. "coinReward": 10851 or "superCoins": 10851
+                    m_sc = re.search(r'"(?:superCoins?|coinReward|superCoinReward|coinValue|superCoinAmount)"\s*:\s*([0-9]+)', stxt, re.I)
+                    if m_sc:
+                        c_val = int(m_sc.group(1))
+                        if price and price > 0:
+                            r_val = round(c_val / price, 4)
+                            if r_val >= 0.70:
+                                coins, ratio, is_deal = c_val, r_val, True
+                                break
 
         if coins <= 0:
             return None, None, False
@@ -645,18 +656,35 @@ class FlipkartScraper(BaseScraper):
         negative_keywords: Optional[List[str]] = None,
         custom_url: Optional[str] = None,
         brand: Optional[str] = None,
+        brands: Optional[List[str]] = None,
+        apply_discount_facet: bool = True,
     ) -> List[dict[str, Any]]:
         """Search Flipkart for deals matching brand facet, discount, price ceiling, and negative filters."""
         if custom_url:
             url = custom_url
         else:
-            disc_tier = int(min_discount) if min_discount >= 10 else 10
-            url = f"https://www.flipkart.com/search?q={quote_plus(query)}&p%5B%5D=facets.discount_range_v1%255B%255D%3D{disc_tier}%2525%2Bor%2Bmore"
-            if brand:
-                url += f"&p%5B%5D=facets.brand%255B%255D%3D{quote_plus(brand.upper())}"
+            url = f"https://www.flipkart.com/search?q={quote_plus(query)}"
+            if apply_discount_facet and min_discount and min_discount >= 10:
+                disc_tier = int(min_discount)
+                url += f"&p%5B%5D=facets.discount_range_v1%255B%255D%3D{disc_tier}%2525%2Bor%2Bmore"
+
+            target_brands_list: List[str] = []
+            if brand and brand.strip():
+                target_brands_list.append(brand.strip())
+            if brands:
+                for b in brands:
+                    if b.strip() and b.strip() not in target_brands_list:
+                        target_brands_list.append(b.strip())
+            for b in target_brands_list:
+                url += f"&p%5B%5D=facets.brand%255B%255D%3D{quote_plus(b.upper())}"
 
         deals: List[dict[str, Any]] = []
         negative_set = [k.lower() for k in (negative_keywords or [])]
+        all_target_brands: List[str] = []
+        if brand and brand.strip():
+            all_target_brands.append(brand.strip())
+        if brands:
+            all_target_brands.extend([b.strip() for b in brands if b.strip()])
 
         html = await self._static_fetch(url)
         cards = []
@@ -745,26 +773,45 @@ class FlipkartScraper(BaseScraper):
                                     scraped_brand = txt
                                     break
 
-                    # Strict Brand Enforcement: Discard sponsored non-brand cards (e.g. Guess / Tommy Hilfiger on Casio pages)
-                    if brand:
-                        target_brand = brand.lower().strip()
+                    # Strategy C: Check target brands against title
+                    if not scraped_brand and all_target_brands:
+                        for tb in all_target_brands:
+                            tb_tokens = [tb.lower()]
+                            if tb.lower() in ("tommy hilfiger", "french connection", "da rake"):
+                                tb_tokens.extend([w for w in tb.lower().split() if len(w) >= 4])
+                            if any(re.search(rf"\b{re.escape(tok)}\b", title, re.I) for tok in tb_tokens):
+                                scraped_brand = tb.title()
+                                break
+
+                    # Strict Brand Enforcement: Discard sponsored non-brand cards
+                    if all_target_brands:
                         card_text = card.get_text(" ", strip=True).lower()
-                        brand_match = (
-                            (scraped_brand and target_brand in scraped_brand.lower())
-                            or target_brand in title_lower
-                            or target_brand in card_text
-                            or (
-                                target_brand == "casio"
-                                and any(
-                                    k in title_lower or k in card_text
-                                    for k in ["g-shock", "gshock", "edifice", "baby-g", "vintage"]
+                        brand_match = False
+                        matching_tb = None
+                        for tb in all_target_brands:
+                            tb_low = tb.lower().strip()
+                            tb_tokens = [tb_low]
+                            if tb_low in ("tommy hilfiger", "french connection", "da rake"):
+                                tb_tokens.extend([w for w in tb_low.split() if len(w) >= 4])
+                            if (
+                                (scraped_brand and any(tok in scraped_brand.lower() for tok in tb_tokens))
+                                or any(tok in title_lower for tok in tb_tokens)
+                                or any(tok in card_text for tok in tb_tokens)
+                                or (
+                                    tb_low == "casio"
+                                    and any(
+                                        k in title_lower or k in card_text
+                                        for k in ["g-shock", "gshock", "edifice", "baby-g", "vintage"]
+                                    )
                                 )
-                            )
-                        )
+                            ):
+                                brand_match = True
+                                matching_tb = tb
+                                break
                         if not brand_match:
                             continue
-                        if not scraped_brand:
-                            scraped_brand = brand.title() if brand else None
+                        if not scraped_brand and matching_tb:
+                            scraped_brand = matching_tb.title()
 
                     # 3. Extract Price & MRP
                     prices = []
@@ -790,7 +837,14 @@ class FlipkartScraper(BaseScraper):
                     else:
                         discount_percent = 0.0
 
-                    card_text = card.get_text(" ", strip=True)
+                    card_parts = [card.get_text("\n", strip=True)]
+                    for attr in ("aria-label", "title", "data-offer", "data-badge"):
+                        val = card.get(attr)
+                        if val:
+                            card_parts.append(str(val))
+                    for child in card.find_all(attrs={"aria-label": True}):
+                        card_parts.append(str(child["aria-label"]))
+                    card_text = "\n".join(card_parts)
                     sc_coins, sc_ratio, sc_is_deal = self._extract_supercoins_from_text(card_text, selling_price)
 
                     if discount_percent < min_discount and (max_price is None or selling_price > max_price):

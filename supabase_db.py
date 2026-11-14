@@ -277,8 +277,11 @@ class SupabaseDatabase:
         discount_percent: Optional[float] = None,
         coupon_text: Optional[str] = None,
         platform: Optional[str] = None,
+        supercoins_earned: Optional[int] = None,
+        supercoin_ratio: Optional[float] = None,
+        **kwargs: Any,
     ) -> None:
-        payload = {
+        payload: dict[str, Any] = {
             "product_url": product_url,
             "title": title,
             "price": price,
@@ -288,6 +291,10 @@ class SupabaseDatabase:
             "platform": platform,
             "notified_at": _now(),
         }
+        if supercoins_earned is not None:
+            payload["supercoins_earned"] = supercoins_earned
+        if supercoin_ratio is not None:
+            payload["supercoin_ratio"] = supercoin_ratio
         await self._request("POST", "/deal_alerts_log", json=payload)
 
     async def get_recent_deal_alerts(self, limit: int = 15) -> List[dict[str, Any]]:

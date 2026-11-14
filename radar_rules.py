@@ -18,6 +18,7 @@ class RadarRule:
     category: str
     query: str
     brand: Optional[str] = None  # Source-level brand facet filter (e.g. 'Casio', 'Apple', 'Samsung', 'Crocs')
+    brands: List[str] = field(default_factory=list)  # Multi-brand filter for broad categories (e.g. ['Titan', 'Tommy Hilfiger'])
     platforms: List[str] = field(default_factory=lambda: ["amazon", "flipkart"])
     min_discount: float = 70.0  # Percentage discount vs MRP
     max_price: Optional[float] = None  # Hard price ceiling in INR
@@ -26,6 +27,7 @@ class RadarRule:
     required_keywords: List[str] = field(default_factory=list)  # Must contain at least one of these genuine brand tokens
     negative_keywords: List[str] = field(default_factory=list)  # Rejects title if any of these match
     search_url_template: Optional[dict[str, str]] = None
+    apply_discount_facet: bool = True  # Omit server-side cash discount facet when hunting full-price SuperCoin loot deals
     is_active: bool = True
 
 
@@ -322,6 +324,178 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
         search_url_template={"flipkart": "https://www.flipkart.com/watches/~cs-fd7790a150c832e3c1dfaa90be003c4c/pr?sid=r18%2Cf13&marketplace=FLIPKART&restrictLocale=true&BU=Mixed&p%5B%5D=facets.brand%255B%255D%3DCASIO"},
         required_keywords=["casio", "g-shock", "gshock", "edifice", "vintage", "baby-g"],
         negative_keywords=["strap", "band", "bezel", "protector", "film"],
+        is_active=True,
+    ),
+
+    # 16. Flipkart Watches Category Surveillance (Deactivated by default in master list)
+    RadarRule(
+        name="Flipkart Watches 70%+ SuperCoin & Steal Deals",
+        category="Watches",
+        query="watches",
+        brands=[
+            "Tommy Hilfiger", "Hilfiger", "Titan", "French Connection",
+            "Slazenger", "Extri", "Fossil", "Timex", "Casio",
+            "Fastrack", "Citizen", "Seiko", "Guess",
+        ],
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=500.0,
+        required_keywords=["watch", "analog", "chronograph", "dial", "quartz", "digital"],
+        negative_keywords=[
+            "strap", "straps", "band", "bands", "battery", "bezel", "protector",
+            "film", "cover", "case cover", "link", "pin", "spring bar", "box only",
+        ],
+        search_url_template={
+            "flipkart": "https://www.flipkart.com/watches/pr?sid=r18,f13",
+        },
+        is_active=False,
+    ),
+
+    # 17. Flipkart Brillare 70%+ SuperCoin Loot (Deactivated by default in master list)
+    RadarRule(
+        name="Flipkart Brillare 70%+ SuperCoin Loot Deals",
+        category="Beauty & Personal Care",
+        query="brillare",
+        brand="Brillare",
+        brands=["Brillare"],
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=150.0,
+        negative_keywords=["empty bottle", "pouch only"],
+        search_url_template={
+            "flipkart": "https://www.flipkart.com/search?q=brillare",
+        },
+        is_active=False,
+    ),
+
+    # 18. Flipkart Luxury Perfumes (DA RAKE & Designer) (Deactivated by default in master list)
+    RadarRule(
+        name="Flipkart Luxury Perfumes (DA RAKE & EDP) 70%+ Steals",
+        category="Fragrances & Perfumes",
+        query="da rake perfume",
+        brands=["DA RAKE", "Da Rake"],
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=300.0,
+        negative_keywords=["empty bottle", "tester cap", "sample vial only"],
+        search_url_template={
+            "flipkart": "https://www.flipkart.com/search?q=da+rake+perfume",
+        },
+        is_active=False,
+    ),
+]
+
+
+# Active Flipkart SuperCoin Category Surveillance Rules
+SUPERCOIN_CATEGORY_RULES: List[RadarRule] = [
+    # 1. Broad Flipkart Watches Category Feed (Hilfiger, Titan, French Connection, Slazenger, Extri, etc.)
+    RadarRule(
+        name="Flipkart Watches 70%+ SuperCoin & Steal Deals",
+        category="Watches",
+        query="watches",
+        brands=[
+            "Tommy Hilfiger", "Hilfiger", "Titan", "French Connection",
+            "Slazenger", "Extri", "Fossil", "Timex", "Casio",
+            "Fastrack", "Citizen", "Seiko", "Guess",
+        ],
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=500.0,
+        required_keywords=["watch", "analog", "chronograph", "dial", "quartz", "digital"],
+        negative_keywords=[
+            "strap", "straps", "band", "bands", "battery", "bezel", "protector",
+            "film", "cover", "case cover", "link", "pin", "spring bar", "box only",
+        ],
+        search_url_template={
+            "flipkart": (
+                "https://www.flipkart.com/watches/pr?sid=r18%2Cf13"
+                "&p%5B%5D=facets.brand%255B%255D%3DTOMMY%2BHILFIGER"
+                "&p%5B%5D=facets.brand%255B%255D%3DTITAN"
+                "&p%5B%5D=facets.brand%255B%255D%3DFRENCH%2BCONNECTION"
+                "&p%5B%5D=facets.brand%255B%255D%3DSLAZENGER"
+                "&p%5B%5D=facets.brand%255B%255D%3DEXTRI"
+                "&p%5B%5D=facets.brand%255B%255D%3DCASIO"
+                "&p%5B%5D=facets.brand%255B%255D%3DFOSSIL"
+                "&p%5B%5D=facets.brand%255B%255D%3DTIMEX"
+            ),
+        },
+        apply_discount_facet=False,
+        is_active=True,
+    ),
+    # 2. Flipkart Premium Watches New Drops & Restocks (Recency Sort)
+    # Catches flash restocks and price drops (like NCTH1791382 Hilfiger, Extri X6066-C drop to 1869, Slazenger back in stock)
+    RadarRule(
+        name="Flipkart Premium Watches (Hilfiger, Titan, FC, Slazenger) SuperCoins",
+        category="Watches",
+        query="watches",
+        brands=[
+            "Tommy Hilfiger", "Hilfiger", "Titan", "French Connection",
+            "Slazenger", "Extri", "Fossil", "Timex",
+        ],
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=800.0,
+        required_keywords=["watch", "analog", "chronograph", "dial", "quartz", "digital"],
+        negative_keywords=["strap", "straps", "band", "bands", "battery", "bezel", "protector"],
+        search_url_template={
+            "flipkart": (
+                "https://www.flipkart.com/watches/pr?sid=r18%2Cf13&sort=recency_desc"
+                "&p%5B%5D=facets.brand%255B%255D%3DTOMMY%2BHILFIGER"
+                "&p%5B%5D=facets.brand%255B%255D%3DTITAN"
+                "&p%5B%5D=facets.brand%255B%255D%3DFRENCH%2BCONNECTION"
+                "&p%5B%5D=facets.brand%255B%255D%3DSLAZENGER"
+                "&p%5B%5D=facets.brand%255B%255D%3DEXTRI"
+            ),
+        },
+        apply_discount_facet=False,
+        is_active=True,
+    ),
+    # 3. Flipkart Brillare 70%+ / 100% SuperCoin Loot Drops
+    RadarRule(
+        name="Flipkart Brillare 70%+ SuperCoin Loot Deals",
+        category="Beauty & Personal Care",
+        query="brillare",
+        brand="Brillare",
+        brands=["Brillare"],
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=150.0,
+        negative_keywords=["empty bottle", "pouch only"],
+        search_url_template={
+            "flipkart": "https://www.flipkart.com/search?q=brillare",
+        },
+        apply_discount_facet=False,
+        is_active=True,
+    ),
+    # 4. Flipkart Luxury Perfumes & Fragrances (DA RAKE Classio Vibes, Ascot Oud, etc.)
+    RadarRule(
+        name="Flipkart Luxury Perfumes (DA RAKE & EDP) 70%+ Steals",
+        category="Fragrances & Perfumes",
+        query="da rake perfume",
+        brands=["DA RAKE", "Da Rake"],
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=300.0,
+        negative_keywords=["empty bottle", "tester cap", "sample vial only"],
+        search_url_template={
+            "flipkart": "https://www.flipkart.com/search?q=da+rake+perfume",
+        },
+        apply_discount_facet=False,
+        is_active=True,
+    ),
+    # 5. Flipkart Broad SuperCoin Offers Feed
+    RadarRule(
+        name="Flipkart 70%+ SuperCoin Loot & Clearance Glitches",
+        category="SuperCoins & Clearance",
+        query="supercoin offers",
+        platforms=["flipkart"],
+        min_discount=70.0,
+        min_price=300.0,
+        negative_keywords=["case", "cover", "cable", "screen guard", "tempered glass"],
+        search_url_template={
+            "flipkart": "https://www.flipkart.com/search?q=100%25+supercoins+offer",
+        },
+        apply_discount_facet=False,
         is_active=True,
     ),
 ]

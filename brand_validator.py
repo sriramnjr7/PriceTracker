@@ -160,6 +160,20 @@ _BRAND_ALIASES: dict[str, str] = {
     "amazon basics":         "amazonbasics",
     "yamaha music":          "yamaha",
     "yamaha india":          "yamaha",
+    "hilfiger":              "tommy hilfiger",
+    "tommy hilfiger":        "tommy hilfiger",
+    "tommy":                 "tommy hilfiger",
+    "french connection":     "french connection",
+    "fcuk":                  "french connection",
+    "titan company":         "titan",
+    "titan":                 "titan",
+    "fastrack":              "fastrack",
+    "slazenger":             "slazenger",
+    "extri":                 "extri",
+    "brillare":              "brillare",
+    "da rake":               "da rake",
+    "darake":                "da rake",
+    "darakeluxez":           "da rake",
 }
 
 
@@ -331,20 +345,36 @@ class BrandValidator:
             tb_lower = tb_raw.lower().strip()
             if not tb_lower:
                 continue
+
+            # Candidate names for this target brand (full name, canonical name, aliases, significant tokens)
+            candidates: set[str] = {tb_lower}
+            canon = normalize_brand(tb_raw)
+            if canon:
+                candidates.add(canon)
+                for alias, c in _BRAND_ALIASES.items():
+                    if c == canon:
+                        candidates.add(alias)
+            for w in tb_lower.split():
+                if len(w) >= 4 and w not in {"with", "watch", "india", "tech", "corp", "company"}:
+                    candidates.add(w)
+
             # Check if brand appears at the very start of the title (primary brand position)
-            if re.match(rf"^{re.escape(tb_lower)}\b", title_lower):
+            matched_primary = next((c for c in candidates if re.match(rf"^{re.escape(c)}\b", title_lower)), None)
+            if matched_primary:
                 signals.append(BrandSignal(
                     "TITLE_BRAND_PRIMARY", SCORE_TITLE_BRAND_PRIMARY,
-                    f"Brand '{tb_raw}' appears at start of title (primary position).",
+                    f"Brand '{tb_raw}' (matched: '{matched_primary}') appears at start of title (primary position).",
                 ))
                 score += SCORE_TITLE_BRAND_PRIMARY
                 brand_in_title = True
                 break
+
             # Check if brand appears anywhere in the title
-            elif re.search(rf"\b{re.escape(tb_lower)}\b", title_lower):
+            matched_any = next((c for c in candidates if re.search(rf"\b{re.escape(c)}\b", title_lower)), None)
+            if matched_any:
                 signals.append(BrandSignal(
                     "TITLE_CONTAINS_BRAND", SCORE_TITLE_CONTAINS_BRAND,
-                    f"Brand '{tb_raw}' mentioned in title (non-primary position).",
+                    f"Brand '{tb_raw}' (matched: '{matched_any}') mentioned in title (non-primary position).",
                 ))
                 score += SCORE_TITLE_CONTAINS_BRAND
                 brand_in_title = True

@@ -10,13 +10,14 @@ import asyncio
 import logging
 import os
 import random
+import re
 from typing import Any, List, Optional
 
 from brand_validator import BrandValidator, BrandStatus
 from config import Settings, settings
 from database import Database, get_database
 from notifier import Notifier
-from radar_rules import DEFAULT_RADAR_RULES, RadarRule
+from radar_rules import DEFAULT_RADAR_RULES, SUPERCOIN_CATEGORY_RULES, RadarRule
 from scrapers import get_scraper
 
 logger = logging.getLogger("radar")
@@ -64,6 +65,8 @@ class StealRadar:
                         negative_keywords=rule.negative_keywords,
                         custom_url=custom_url,
                         brand=rule.brand,
+                        brands=getattr(rule, "brands", None),
+                        apply_discount_facet=getattr(rule, "apply_discount_facet", True),
                     )
                     found_deals.extend(deals)
 
@@ -84,6 +87,8 @@ class StealRadar:
                         negative_keywords=rule.negative_keywords,
                         custom_url=custom_url,
                         brand=rule.brand,
+                        brands=getattr(rule, "brands", None),
+                        apply_discount_facet=getattr(rule, "apply_discount_facet", True),
                     )
                     found_deals.extend(deals)
 
@@ -104,6 +109,8 @@ class StealRadar:
                         negative_keywords=rule.negative_keywords,
                         custom_url=custom_url,
                         brand=rule.brand,
+                        brands=getattr(rule, "brands", None),
+                        apply_discount_facet=getattr(rule, "apply_discount_facet", True),
                     )
                     found_deals.extend(deals)
 
@@ -199,15 +206,15 @@ class StealRadar:
                 logger.warning("[radar] error scanning rule '%s' on %s: %s", rule.name, platform, exc)
 
         # Apply confidence-based brand validation (replaces simple substring matching)
-        if rule.required_keywords or rule.brand:
+        target_brands = []
+        if rule.brand:
+            target_brands.append(rule.brand)
+        if getattr(rule, "brands", None):
+            target_brands.extend(rule.brands)
+
+        if target_brands:
             validated_deals = []
             for d in found_deals:
-                target_brands = []
-                if rule.brand:
-                    target_brands.append(rule.brand)
-                if rule.required_keywords:
-                    target_brands.extend(rule.required_keywords)
-
                 is_trusted = d.get("platform") == "casio"
 
                 bv_result = self.brand_validator.validate(
@@ -250,13 +257,23 @@ class StealRadar:
                         bv_result.filter_reason,
                     )
             found_deals = validated_deals
+        elif rule.required_keywords:
+            req_deals = []
+            for d in found_deals:
+                title_lower = d["title"].lower()
+                if any(k.lower() in title_lower for k in rule.required_keywords):
+                    req_deals.append(d)
+            found_deals = req_deals
 
-        # Apply negative keywords filter if specified
+        # Apply negative keywords filter if specified (word boundary on short words to prevent 'pin' matching 'pink')
         if rule.negative_keywords:
-            neg_set = [k.lower() for k in rule.negative_keywords]
+            neg_patterns = [
+                re.compile(rf"\b{re.escape(k.lower())}\b") if len(k) <= 4 else re.compile(re.escape(k.lower()))
+                for k in rule.negative_keywords if k.strip()
+            ]
             found_deals = [
                 d for d in found_deals
-                if not any(neg in d["title"].lower() for neg in neg_set)
+                if not any(pat.search(d["title"].lower()) for pat in neg_patterns)
             ]
 
         # Apply price ceiling filter if specified
@@ -318,13 +335,15 @@ class StealRadar:
             deal_badge = "🪙 SUPERCOIN 70%+ LOOT DEAL" if is_sc else ("🔥 STEAL DEAL" if disc < 80 else "🚨 PRICING GLITCH / CLEARANCE")
             brand_tag = deal.get("scraped_brand") or "(verified)"
 
+            disc_line = f"🪙 *SuperCoin Return:* {round((sc_ratio or 0) * 100)}% BACK IN COINS (Cash Discount: {disc:.1f}% OFF)\n" if is_sc else f"📉 *Discount:* {disc:.1f}% OFF (Target: >={rule.min_discount}%)\n"
+
             msg = (
                 f"{deal_badge} [{rule.category.upper()}] {deal_badge}\n"
                 f"🏷️ *Rule:* {rule.name}\n"
                 f"📦 *Item:* {deal['title']}\n"
                 f"🏭 *Brand:* {brand_tag}\n"
                 f"💰 *Deal Price:* ₹{eff_price:g} (MRP: ₹{mrp:g}){coupon_line}{sc_line}\n"
-                f"📉 *Discount:* {disc:.1f}% OFF (Target: >={rule.min_discount}%)\n"
+                f"{disc_line}"
                 f"🏪 *Platform:* {deal.get('platform', 'Retailer').title()}\n"
                 f"🛒 *BUY NOW:* {url}"
             )
@@ -374,6 +393,11 @@ class StealRadar:
         await self.init()
         total_alerts = 0
         rules = [r for r in DEFAULT_RADAR_RULES if r.is_active]
+
+        # Include active SuperCoin category surveillance rules
+        for sc_rule in SUPERCOIN_CATEGORY_RULES:
+            if sc_rule.is_active and not any(r.name == sc_rule.name for r in rules):
+                rules.append(sc_rule)
 
         # Load custom rules from DB
         custom_db_rules = await self.db.get_custom_rules(active_only=True)

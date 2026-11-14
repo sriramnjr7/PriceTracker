@@ -35,21 +35,25 @@ logging.basicConfig(
 logger = logging.getLogger("radar_daemon")
 
 
-async def casio_deal_radar_loop(radar: StealRadar, interval_seconds: int = 90):
-    """Dedicated deal radar loop for Casio Bhawar & Flipkart (70%+ OFF & GBD-300)."""
+async def deal_radar_loop(radar: StealRadar, interval_seconds: int = 90):
+    """Dedicated deal radar loop for Casio Bhawar, Flipkart Watches, Beauty, Perfumes & SuperCoins (70%+ OFF)."""
     cycle_count = 0
     while True:
         cycle_count += 1
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"\n[{now_str}] ⚡ Starting Casio (Bhawar & Flipkart 70%+ / G300) Scan #{cycle_count}...")
+        print(f"\n[{now_str}] ⚡ Starting Universal Deals & SuperCoins Scan #{cycle_count} (Casio, Watches, Beauty, Perfumes)...")
         try:
             alerts = await radar.scan_all(only_platforms=["casio", "flipkart", "myntra"])
-            print(f"[{now_str}] ✅ Casio Scan #{cycle_count} completed. ({alerts} alert(s) dispatched)")
+            print(f"[{now_str}] ✅ Universal Deals Scan #{cycle_count} completed. ({alerts} alert(s) dispatched)")
         except Exception as exc:
-            logger.error("Error during Casio scan #%s: %s", cycle_count, exc)
+            logger.error("Error during deal radar scan #%s: %s", cycle_count, exc)
 
-        print(f"⚡ Sleeping {interval_seconds}s until next Casio scan...\n")
+        print(f"⚡ Sleeping {interval_seconds}s until next deal scan...\n")
         await asyncio.sleep(interval_seconds)
+
+
+# Alias for backward compatibility
+casio_deal_radar_loop = deal_radar_loop
 
 
 async def manual_tracker_loop(tracker: Tracker, interval_seconds: int = 120):
@@ -811,6 +815,7 @@ async def main():
     print("🎯 Target 2: Flipkart Casio Deals (70%+ Brand Facet)")
     print("🎯 Target 3: Tracked Products (Crocs LiteRide 360 All Variants / User Items)")
     print("🎯 Target 4: Running Shoes Radar (Myntra, Flipkart, Tata CLiQ, Ajio - 56 Whitelist Models)")
+    print("🎯 Target 5: Flipkart Category Surveillance (Watches, Brillare Beauty, Perfumes & SuperCoins)")
     print("🎯 VIP Sniper: Casio G-Shock GBD-H2000-1A9 (70% Member Restock) -> Every 60s")
     print("📱 Telegram 2-Way Bot: ACTIVE")
     print(f"⏰ VIP Sniper: Every 60s | Casio: Every {casio_interval}s | Tracked Items: Every {manual_interval}s | Shoes: Every {shoes_interval}s")
