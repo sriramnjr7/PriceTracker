@@ -45,11 +45,19 @@ from telegram_bot import TelegramAssistant
 from tracker import Tracker
 from running_shoes_radar import shoes_radar
 from collection_data import collection_mgr
-import rail_tracker
-import rail_daemon
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("vercel_api")
+
+try:
+    import rail_tracker
+    import rail_daemon
+    RAIL_MODULES_AVAILABLE = True
+except Exception as _rail_err:
+    logger.error("Blast-radius isolation: Failed to import auxiliary rail modules (rail_tracker/rail_daemon): %s", _rail_err, exc_info=True)
+    rail_tracker = None
+    rail_daemon = None
+    RAIL_MODULES_AVAILABLE = False
 
 app = FastAPI(
     title="PriceTracker // Deal Radar & Executive Tracking Engine",
@@ -1172,30 +1180,221 @@ async def serve_collection_asset(filename: str):
 # RAIL RADAR & COMMUTE API ENDPOINTS
 # ==========================================
 
+async def _fetch_supabase_commute_state() -> Optional[dict[str, Any]]:
+    """Fetch latest commute state from Supabase commute_daily_state table with 1.5s timeout."""
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not (supabase_url and supabase_key):
+        return None
+    try:
+        headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+        async with httpx.AsyncClient(timeout=1.5) as client:
+            resp = await client.get(
+                f"{supabase_url}/rest/v1/commute_daily_state?order=date.desc&limit=1",
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                rows = resp.json()
+                if rows and isinstance(rows, list) and len(rows) > 0:
+                    row = rows[0]
+                    parsed: dict[str, Any] = {}
+                    if row.get("state"):
+                        parsed["state"] = row["state"]
+                    if row.get("morning_train"):
+                        parsed["morning_train"] = row["morning_train"]
+                    if row.get("morning_step_out_time"):
+                        parsed["morning_step_out_time"] = row["morning_step_out_time"]
+                    if row.get("morning_revised_dep"):
+                        parsed["morning_projected_dep"] = row["morning_revised_dep"]
+                    if row.get("morning_delay_mins") is not None:
+                        parsed["morning_delay_mins"] = int(row["morning_delay_mins"])
+                    if row.get("evening_train"):
+                        parsed["evening_train"] = row["evening_train"]
+                    if row.get("notes"):
+                        parsed["notes"] = row["notes"]
+                    return parsed
+    except Exception as exc:
+        logger.warning("Supabase commute_daily_state fetch warning: %s", exc)
+    return None
+
+
+def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dict[str, Any]:
+    """Fast offline fallback status when rail modules cannot be loaded or network fails."""
+    step_out = state_data.get("morning_step_out_time", "08:15")
+    try:
+        cur_h, cur_m = map(int, now_time.split(":"))
+        so_h, so_m = map(int, step_out.split(":"))
+        countdown_mins = (so_h * 60 + so_m) - (cur_h * 60 + cur_m)
+    except Exception:
+        countdown_mins = 0
+
+    return {
+        "status": "ok",
+        "state": state_data.get("state", "STANDBY"),
+        "active_train": state_data.get("morning_train" if "MORNING" in state_data.get("state", "") else "evening_train", "66596"),
+        "current_time": now_time,
+        "step_out_time": step_out,
+        "step_out_countdown_mins": countdown_mins,
+        "morning_scan": {
+            "options": [
+                {
+                    "train_no": "66596",
+                    "train_name": "Hosur - Yesvantpur MEMU",
+                    "projected_departure": state_data.get("morning_projected_dep", "08:25"),
+                    "step_out_time": step_out,
+                    "dest_eta": "09:03",
+                    "desk_eta": "09:33",
+                    "delay_mins": state_data.get("morning_delay_mins", 0),
+                    "status": "VIABLE",
+                    "departure_delta_mins": countdown_mins,
+                }
+            ],
+            "recommended_train": {
+                "train_no": "66596",
+                "train_name": "Hosur - Yesvantpur MEMU",
+                "projected_departure": state_data.get("morning_projected_dep", "08:25"),
+                "step_out_time": step_out,
+                "dest_eta": "09:03",
+                "desk_eta": "09:33",
+                "delay_mins": state_data.get("morning_delay_mins", 0),
+                "status": "VIABLE",
+                "departure_delta_mins": countdown_mins,
+            },
+            "recommendation_reason": "Scheduled MEMU 66596 timetable fallback.",
+            "decision_reason": "Timetable schedule",
+            "rake_turnaround": {
+                "morning_train": "66596",
+                "incoming_rake_train": "66595",
+                "scheduled_hsra_departure": "08:25",
+                "projected_hsra_departure": state_data.get("morning_projected_dep", "08:25"),
+                "effective_delay_mins": state_data.get("morning_delay_mins", 0),
+                "revised_step_out_time": step_out,
+                "is_delayed": state_data.get("morning_delay_mins", 0) > 0,
+                "rake_cancelled": False,
+                "rake_current_station": "HSRA",
+                "rake_current_station_name": "HOSUR",
+                "delay_summary": "Schedule fallback",
+            },
+            "reference_time": now_time,
+        },
+        "rake_turnaround": {
+            "morning_train": "66596",
+            "incoming_rake_train": "66595",
+            "scheduled_hsra_departure": "08:25",
+            "projected_hsra_departure": state_data.get("morning_projected_dep", "08:25"),
+            "effective_delay_mins": state_data.get("morning_delay_mins", 0),
+            "revised_step_out_time": step_out,
+            "is_delayed": state_data.get("morning_delay_mins", 0) > 0,
+            "rake_cancelled": False,
+            "rake_current_station": "HSRA",
+            "rake_current_station_name": "HOSUR",
+            "delay_summary": "Schedule fallback",
+        },
+        "evening_options": [
+            {
+                "train_no": "16232",
+                "train_name": "MYS MV RANI EXP",
+                "boarding_station": "CRLM",
+                "scheduled_departure": "19:40",
+                "estimated_departure": "19:40",
+                "leave_desk_time": "19:15",
+                "lead_time_mins": 25,
+                "hosur_eta": "20:20",
+                "delay_mins": 0,
+                "current_location": "BNC (BNC)",
+                "status_text": "Scheduled",
+            }
+        ],
+        "lead_times": {
+            "home_to_pf1": 10,
+            "desk_to_crlm": 25,
+            "desk_to_blrr": 20,
+            "blrr_to_desk_walk": 30,
+        },
+        "server_time": _now(),
+    }
+
+
 @app.get("/api/rail/status")
 @app.get("/api/index.py/api/rail/status")
 async def api_rail_status():
     """Retrieve live commute status, active train tracking, incoming rake inspection, and morning recommendations."""
-    try:
-        now_time = datetime.now().strftime("%H:%M")
-        scan = rail_tracker.scan_morning_commute_options(reference_time=now_time)
-        evening_opts = rail_tracker.scan_evening_commute_options(reference_time=now_time)
-        rake = scan.get("rake_turnaround", {})
+    now_time = datetime.now().strftime("%H:%M")
 
+    # Blast-radius isolation guard: If auxiliary rail modules failed to import
+    if not RAIL_MODULES_AVAILABLE or rail_tracker is None:
         state_data = {
             "state": "MORNING_TRACKING" if "07:30" <= now_time < "09:40" else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "STANDBY"),
-            "active_train": scan["recommended_train"]["train_no"],
-            "morning_step_out_time": scan["recommended_train"]["step_out_time"],
-            "morning_projected_dep": scan["recommended_train"]["projected_departure"],
-            "morning_delay_mins": scan["recommended_train"]["delay_mins"],
+            "active_train": "66596",
+            "morning_step_out_time": "08:15",
+            "morning_projected_dep": "08:25",
+            "morning_delay_mins": 0,
         }
-        if os.path.exists(rail_daemon.LOCAL_STATE_FILE):
+        sb_state = await _fetch_supabase_commute_state()
+        if sb_state:
+            state_data.update(sb_state)
+        return JSONResponse(content=_build_offline_rail_status(now_time, state_data))
+
+    try:
+        state_data = {
+            "state": "MORNING_TRACKING" if "07:30" <= now_time < "09:40" else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "STANDBY"),
+            "active_train": "66596",
+            "morning_step_out_time": "08:15",
+            "morning_projected_dep": "08:25",
+            "morning_delay_mins": 0,
+        }
+        if rail_daemon and hasattr(rail_daemon, "LOCAL_STATE_FILE") and os.path.exists(rail_daemon.LOCAL_STATE_FILE):
             try:
                 with open(rail_daemon.LOCAL_STATE_FILE, "r", encoding="utf-8") as f:
                     saved_state = json.load(f)
                     state_data.update(saved_state)
             except Exception:
                 pass
+
+        # Serverless timeout guard: Quick 3.5s timeout for live CRIS queries
+        scan = None
+        evening_opts = None
+        try:
+            loop = asyncio.get_running_loop()
+            def _live_scan():
+                s = rail_tracker.scan_morning_commute_options(reference_time=now_time)
+                e = rail_tracker.scan_evening_commute_options(reference_time=now_time)
+                return s, e
+
+            scan, evening_opts = await asyncio.wait_for(
+                loop.run_in_executor(None, _live_scan),
+                timeout=3.5
+            )
+        except (asyncio.TimeoutError, Exception) as exc:
+            logger.warning("Live CRIS scan timed out or failed in serverless (%s). Falling back to Supabase cache / fast fallback.", exc)
+
+        # If live scan timed out or failed, retrieve Supabase cache & build fast fallback
+        if scan is None or evening_opts is None:
+            sb_state = await _fetch_supabase_commute_state()
+            if sb_state:
+                state_data.update(sb_state)
+
+            scan = rail_tracker.get_static_morning_commute_options(reference_time=now_time)
+            evening_opts = rail_tracker.get_static_evening_commute_options(reference_time=now_time)
+
+            # If Supabase or local state had updated delay/dep time, patch into recommended train
+            if state_data.get("morning_delay_mins"):
+                if "recommended_train" in scan:
+                    scan["recommended_train"]["delay_mins"] = state_data["morning_delay_mins"]
+            if state_data.get("morning_projected_dep"):
+                if "recommended_train" in scan:
+                    scan["recommended_train"]["projected_departure"] = state_data["morning_projected_dep"]
+            if state_data.get("morning_step_out_time"):
+                if "recommended_train" in scan:
+                    scan["recommended_train"]["step_out_time"] = state_data["morning_step_out_time"]
+
+        rake = scan.get("rake_turnaround", {})
+        if "recommended_train" in scan and scan["recommended_train"]:
+            rec = scan["recommended_train"]
+            state_data.setdefault("active_train", rec.get("train_no", "66596"))
+            state_data.setdefault("morning_step_out_time", rec.get("step_out_time", "08:15"))
+            state_data.setdefault("morning_projected_dep", rec.get("projected_departure", "08:25"))
+            state_data.setdefault("morning_delay_mins", rec.get("delay_mins", 0))
 
         step_out = state_data.get("morning_step_out_time", "08:15")
         countdown_mins = rail_tracker.minutes_difference(now_time, step_out)
@@ -1204,7 +1403,7 @@ async def api_rail_status():
             content={
                 "status": "ok",
                 "state": state_data.get("state", "STANDBY"),
-                "active_train": state_data.get("morning_train" if "MORNING" in state_data.get("state", "") else "evening_train", scan["recommended_train"]["train_no"]),
+                "active_train": state_data.get("morning_train" if "MORNING" in state_data.get("state", "") else "evening_train", scan.get("recommended_train", {}).get("train_no", "66596")),
                 "current_time": now_time,
                 "step_out_time": step_out,
                 "step_out_countdown_mins": countdown_mins,
@@ -1221,7 +1420,7 @@ async def api_rail_status():
             }
         )
     except Exception as exc:
-        logger.error("Error generating rail status: %s", exc)
+        logger.error("Error generating rail status: %s", exc, exc_info=True)
         return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
 
 
@@ -1230,11 +1429,25 @@ async def api_rail_status():
 async def api_rail_history(days: int = Query(default=14)):
     """Retrieve 14-day train punctuality time-series data and empirical quantiles for charts."""
     try:
+        if not RAIL_MODULES_AVAILABLE or rail_tracker is None:
+            return JSONResponse(
+                content={
+                    "status": "ok",
+                    "days": days,
+                    "stats": {},
+                    "history": {},
+                    "corridor_trains": ["66596", "06278", "16212", "16232", "16236", "16586", "16527", "11006"],
+                }
+            )
+
         stats = rail_tracker.load_delay_statistics()
         raw_history = {}
         if os.path.exists(rail_tracker.DELAY_HISTORY_FILE):
-            with open(rail_tracker.DELAY_HISTORY_FILE, "r", encoding="utf-8") as f:
-                raw_history = json.load(f)
+            try:
+                with open(rail_tracker.DELAY_HISTORY_FILE, "r", encoding="utf-8") as f:
+                    raw_history = json.load(f)
+            except Exception:
+                pass
 
         return JSONResponse(
             content={
@@ -1255,6 +1468,9 @@ async def api_rail_history(days: int = Query(default=14)):
 async def api_rail_action(request: Request):
     """Execute manual commute action from dashboard (WFH, Bike, Select Train, Reached, Reset)."""
     try:
+        if not RAIL_MODULES_AVAILABLE or rail_daemon is None:
+            return JSONResponse(status_code=503, content={"status": "error", "message": "Rail daemon module unavailable"})
+
         data = await request.json()
         action = data.get("action", "").lower()
         store = rail_daemon.CommuteStateStore()

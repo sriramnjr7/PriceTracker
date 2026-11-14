@@ -27,8 +27,16 @@ import math
 from datetime import datetime, time as dtime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+try:
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    CRYPTOGRAPHY_AVAILABLE = True
+except ImportError:
+    CRYPTOGRAPHY_AVAILABLE = False
+    padding = None
+    Cipher = None
+    algorithms = None
+    modes = None
 
 logger = logging.getLogger("rail_tracker")
 if not logger.handlers:
@@ -64,6 +72,9 @@ MORNING_TRAIN_MEMU = "66596"
 INCOMING_RAKE_MEMU = "66595"
 MORNING_TRAIN_EARLIER_MEMU = "06278"
 MORNING_TRAIN_EXP = "16212"
+
+# Global switch for fast offline fallback without network I/O
+ALLOW_NETWORK: bool = True
 
 # Minimum physical transit times (in minutes) to Hosur (HSRA) from corridor stations
 MIN_TRANSIT_TO_HSRA_66595: Dict[str, int] = {
@@ -263,6 +274,8 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
 
 def encrypt_cris_payload(data_str: str) -> str:
     """Encrypt payload string using AES-128-CBC with PKCS7 padding and return hex string."""
+    if not CRYPTOGRAPHY_AVAILABLE or padding is None or Cipher is None:
+        raise RuntimeError("cryptography package is required for CRIS AES encryption")
     padder = padding.PKCS7(128).padder()
     padded = padder.update(data_str.encode("utf-8")) + padder.finalize()
     cipher = Cipher(algorithms.AES(CRIS_KEY), modes.CBC(CRIS_IV))
@@ -274,6 +287,8 @@ def encrypt_cris_payload(data_str: str) -> str:
 
 def decrypt_cris_payload(enc_str: str) -> str:
     """Decrypt CRIS NTES response string from hex/base64 AES-128-CBC."""
+    if not CRYPTOGRAPHY_AVAILABLE or padding is None or Cipher is None:
+        raise RuntimeError("cryptography package is required for CRIS AES decryption")
     if "#" in enc_str:
         enc_str = enc_str.split("#", 1)[1]
     raw = binascii.unhexlify(enc_str)
@@ -287,7 +302,7 @@ def decrypt_cris_payload(enc_str: str) -> str:
     return data.decode("utf-8")
 
 
-def query_cris(payload_str: str, timeout: int = 10) -> dict:
+def query_cris(payload_str: str, timeout: int = 5) -> dict:
     """Directly query the Indian Railways CRIS NTES endpoint."""
     h = hashlib.md5((payload_str + CRIS_SCKEY).encode()).hexdigest().upper()
     wire = f"{h}#{encrypt_cris_payload(payload_str)}"
@@ -507,7 +522,7 @@ def fetch_confirmtkt_status(train_no: str) -> dict:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
     )
-    with urllib.request.urlopen(req, timeout=12) as resp:
+    with urllib.request.urlopen(req, timeout=5) as resp:
         html = resp.read().decode("utf-8", errors="ignore")
     
     m = re.search(r"var\s+data\s*=\s*(\{.*?\});", html, re.DOTALL)
@@ -661,24 +676,25 @@ def get_live_train_status(train_no: str, date_str: Optional[str] = None) -> dict
     """Multi-tier resolver: CRIS -> ConfirmTkt -> Static Schedule with Watchdog supervision."""
     train_no_str = str(train_no).strip()
 
-    # Tier 1: CRIS NTES Wire Protocol
-    try:
-        status = fetch_cris_status(train_no_str, date_str)
-        if status.get("stations") and len(status["stations"]) > 0:
-            watchdog.record_success()
-            return status
-    except Exception as exc_cris:
-        logger.warning("CRIS query failed for train %s: %s. Falling back to ConfirmTkt...", train_no_str, exc_cris)
+    if ALLOW_NETWORK:
+        # Tier 1: CRIS NTES Wire Protocol
+        try:
+            status = fetch_cris_status(train_no_str, date_str)
+            if status.get("stations") and len(status["stations"]) > 0:
+                watchdog.record_success()
+                return status
+        except Exception as exc_cris:
+            logger.warning("CRIS query failed for train %s: %s. Falling back to ConfirmTkt...", train_no_str, exc_cris)
 
-    # Tier 2: ConfirmTkt Web Scrape
-    try:
-        status = fetch_confirmtkt_status(train_no_str)
-        if status.get("stations") and len(status["stations"]) > 0:
-            watchdog.record_success()
-            return status
-    except Exception as exc_ctkt:
-        logger.warning("ConfirmTkt scrape failed for train %s: %s. Falling back to Static...", train_no_str, exc_ctkt)
-        watchdog.record_failure(train_no_str, f"ConfirmTkt: {exc_ctkt}")
+        # Tier 2: ConfirmTkt Web Scrape
+        try:
+            status = fetch_confirmtkt_status(train_no_str)
+            if status.get("stations") and len(status["stations"]) > 0:
+                watchdog.record_success()
+                return status
+        except Exception as exc_ctkt:
+            logger.warning("ConfirmTkt scrape failed for train %s: %s. Falling back to Static...", train_no_str, exc_ctkt)
+            watchdog.record_failure(train_no_str, f"ConfirmTkt: {exc_ctkt}")
 
     # Tier 3: Static Empirical Fallback
     stats = get_train_delay_stats(train_no_str, STN_HOSUR)
@@ -1234,6 +1250,34 @@ def scan_evening_commute_options(
         })
 
     return results
+
+
+def get_static_morning_commute_options(
+    reference_time: Optional[str] = None,
+    date_str: Optional[str] = None,
+) -> dict:
+    """Fast, offline static evaluation of morning commute options with zero network calls."""
+    global ALLOW_NETWORK
+    prev = ALLOW_NETWORK
+    try:
+        ALLOW_NETWORK = False
+        return scan_morning_commute_options(reference_time=reference_time, date_str=date_str)
+    finally:
+        ALLOW_NETWORK = prev
+
+
+def get_static_evening_commute_options(
+    reference_time: Optional[str] = None,
+    date_str: Optional[str] = None,
+) -> list[dict]:
+    """Fast, offline static evaluation of evening commute options with zero network calls."""
+    global ALLOW_NETWORK
+    prev = ALLOW_NETWORK
+    try:
+        ALLOW_NETWORK = False
+        return scan_evening_commute_options(reference_time=reference_time, date_str=date_str)
+    finally:
+        ALLOW_NETWORK = prev
 
 
 def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:
