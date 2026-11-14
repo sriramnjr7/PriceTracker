@@ -1,16 +1,16 @@
 [Unit]
 Description=RailRadar Autonomous Commute Intelligence Daemon (@SriTrainBot)
-Documentation=https://github.com/sriram/PriceTracker
+Documentation=https://github.com/sriramnjr7/PriceTracker
 After=network.target network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=srira
-WorkingDirectory=/home/srira/PriceTracker
+User=ubuntu
+WorkingDirectory=/home/ubuntu/PriceTracker
 Environment=PYTHONUNBUFFERED=1
-EnvironmentFile=-/home/srira/PriceTracker/.env
-ExecStart=/usr/bin/python3 /home/srira/PriceTracker/rail_daemon.py
+EnvironmentFile=-/home/ubuntu/PriceTracker/.env
+ExecStart=/usr/bin/python3 /home/ubuntu/PriceTracker/rail_daemon.py
 Restart=always
 RestartSec=10
 KillMode=process
