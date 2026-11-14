@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import ssl
+import time
 import urllib.parse
 import urllib.request
 import math
@@ -610,14 +611,23 @@ def fetch_static_fallback_status(train_no: str, empirical_delay: int = 0) -> dic
 
 
 class RailWatchdog:
-    """2-Strike Watchdog monitor sending fail-safe alert with 1-tap manual check links if scraping fails."""
+    """2-Strike Watchdog monitor with circuit-breaker protection and fail-safe alerts."""
 
-    def __init__(self, failure_threshold: int = 2):
+    def __init__(self, failure_threshold: int = 2, circuit_cooldown_seconds: float = 60.0):
         self.failure_threshold = failure_threshold
+        self.circuit_cooldown_seconds = circuit_cooldown_seconds
         self.consecutive_failures = 0
         self.last_failure_reason = ""
+        self.last_failure_timestamp = 0.0
         self.alert_triggered = False
         self._pending_alert: Optional[Dict[str, Any]] = None
+
+    def is_circuit_open(self) -> bool:
+        """Circuit breaker: If failures reach threshold within cooldown window, block network queries."""
+        if self.consecutive_failures >= self.failure_threshold:
+            if (time.time() - self.last_failure_timestamp) < self.circuit_cooldown_seconds:
+                return True
+        return False
 
     def record_success(self) -> None:
         self.consecutive_failures = 0
@@ -635,6 +645,7 @@ class RailWatchdog:
 
     def record_failure(self, train_no: str, error: Exception | str) -> Optional[Dict[str, Any]]:
         self.consecutive_failures += 1
+        self.last_failure_timestamp = time.time()
         self.last_failure_reason = str(error)
         logger.warning(
             "RailWatchdog: Scraping failure #%d for train %s: %s",
@@ -677,24 +688,27 @@ def get_live_train_status(train_no: str, date_str: Optional[str] = None) -> dict
     train_no_str = str(train_no).strip()
 
     if ALLOW_NETWORK:
-        # Tier 1: CRIS NTES Wire Protocol
-        try:
-            status = fetch_cris_status(train_no_str, date_str)
-            if status.get("stations") and len(status["stations"]) > 0:
-                watchdog.record_success()
-                return status
-        except Exception as exc_cris:
-            logger.warning("CRIS query failed for train %s: %s. Falling back to ConfirmTkt...", train_no_str, exc_cris)
+        if watchdog.is_circuit_open():
+            logger.info("RailWatchdog circuit breaker OPEN for %s — bypassing network, serving empirical schedule", train_no_str)
+        else:
+            # Tier 1: CRIS NTES Wire Protocol
+            try:
+                status = fetch_cris_status(train_no_str, date_str)
+                if status.get("stations") and len(status["stations"]) > 0:
+                    watchdog.record_success()
+                    return status
+            except Exception as exc_cris:
+                logger.warning("CRIS query failed for train %s: %s. Falling back to ConfirmTkt...", train_no_str, exc_cris)
 
-        # Tier 2: ConfirmTkt Web Scrape
-        try:
-            status = fetch_confirmtkt_status(train_no_str)
-            if status.get("stations") and len(status["stations"]) > 0:
-                watchdog.record_success()
-                return status
-        except Exception as exc_ctkt:
-            logger.warning("ConfirmTkt scrape failed for train %s: %s. Falling back to Static...", train_no_str, exc_ctkt)
-            watchdog.record_failure(train_no_str, f"ConfirmTkt: {exc_ctkt}")
+            # Tier 2: ConfirmTkt Web Scrape
+            try:
+                status = fetch_confirmtkt_status(train_no_str)
+                if status.get("stations") and len(status["stations"]) > 0:
+                    watchdog.record_success()
+                    return status
+            except Exception as exc_ctkt:
+                logger.warning("ConfirmTkt scrape failed for train %s: %s. Falling back to Static...", train_no_str, exc_ctkt)
+                watchdog.record_failure(train_no_str, f"ConfirmTkt: {exc_ctkt}")
 
     # Tier 3: Static Empirical Fallback
     stats = get_train_delay_stats(train_no_str, STN_HOSUR)
@@ -813,6 +827,7 @@ def inspect_rake_turnaround(
     rake_train: str = INCOMING_RAKE_MEMU,
     date_str: Optional[str] = None,
     reference_time: Optional[str] = None,
+    allow_network: bool = True,
 ) -> dict:
     """
     Rake Turnaround Inspector:
@@ -826,8 +841,12 @@ def inspect_rake_turnaround(
     if not reference_time:
         reference_time = datetime.now().strftime("%H:%M")
 
-    rake_status = get_live_train_status(rake_train, date_str)
-    memu_status = get_live_train_status(morning_train, date_str)
+    if allow_network:
+        rake_status = get_live_train_status(rake_train, date_str)
+        memu_status = get_live_train_status(morning_train, date_str)
+    else:
+        rake_status = fetch_static_fallback_status(rake_train)
+        memu_status = fetch_static_fallback_status(morning_train)
 
     # Find Hosur station info for both trains
     rake_hsra = next((s for s in rake_status.get("stations", []) if s["code"] == STN_HOSUR), None)
@@ -941,6 +960,7 @@ def inspect_rake_turnaround(
 def scan_morning_commute_options(
     reference_time: Optional[str] = None,
     date_str: Optional[str] = None,
+    allow_network: bool = True,
 ) -> dict:
     """
     Morning Multi-Train Opportunity Scanner:
@@ -958,10 +978,13 @@ def scan_morning_commute_options(
         reference_time = datetime.now().strftime("%H:%M")
 
     # 1. Inspect Rake Turnaround for Train 66596
-    memu_rake = inspect_rake_turnaround(MORNING_TRAIN_MEMU, INCOMING_RAKE_MEMU, date_str, reference_time=reference_time)
+    memu_rake = inspect_rake_turnaround(MORNING_TRAIN_MEMU, INCOMING_RAKE_MEMU, date_str, reference_time=reference_time, allow_network=allow_network)
     
     # 2. Inspect Train 06278 (Dharmapuri - KSR Bengaluru MEMU)
-    memu2_status = get_live_train_status(MORNING_TRAIN_EARLIER_MEMU, date_str)
+    if allow_network:
+        memu2_status = get_live_train_status(MORNING_TRAIN_EARLIER_MEMU, date_str)
+    else:
+        memu2_status = fetch_static_fallback_status(MORNING_TRAIN_EARLIER_MEMU)
     memu2_hsra = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_HOSUR), None)
     memu2_blrr = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
     memu2_crlm = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
@@ -994,7 +1017,10 @@ def scan_morning_commute_options(
     memu2_minutes_until_dep = minutes_difference(reference_time, memu2_projected_dep)
 
     # 3. Inspect Train 16212 (Salem - Yesvantpur Express)
-    exp_status = get_live_train_status(MORNING_TRAIN_EXP, date_str)
+    if allow_network:
+        exp_status = get_live_train_status(MORNING_TRAIN_EXP, date_str)
+    else:
+        exp_status = fetch_static_fallback_status(MORNING_TRAIN_EXP)
     exp_hsra = next((s for s in exp_status.get("stations", []) if s["code"] == STN_HOSUR), None)
     exp_blrr = next((s for s in exp_status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
     exp_crlm = next((s for s in exp_status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
@@ -1194,6 +1220,7 @@ def scan_morning_commute_options(
 def scan_evening_commute_options(
     reference_time: Optional[str] = None,
     date_str: Optional[str] = None,
+    allow_network: bool = True,
 ) -> list[dict]:
     """Scan evening trains from BLRR / CRLM corridor to Hosur and compute desk departure advisories."""
     if not reference_time:
@@ -1203,7 +1230,7 @@ def scan_evening_commute_options(
     results = []
 
     for t_no in evening_trains:
-        status = get_live_train_status(t_no, date_str)
+        status = get_live_train_status(t_no, date_str) if allow_network else fetch_static_fallback_status(t_no)
         sched = CORRIDOR_SCHEDULES.get(t_no, {})
         
         # Check if train stops at BLRR (+11m advantage) or CRLM
@@ -1257,13 +1284,7 @@ def get_static_morning_commute_options(
     date_str: Optional[str] = None,
 ) -> dict:
     """Fast, offline static evaluation of morning commute options with zero network calls."""
-    global ALLOW_NETWORK
-    prev = ALLOW_NETWORK
-    try:
-        ALLOW_NETWORK = False
-        return scan_morning_commute_options(reference_time=reference_time, date_str=date_str)
-    finally:
-        ALLOW_NETWORK = prev
+    return scan_morning_commute_options(reference_time=reference_time, date_str=date_str, allow_network=False)
 
 
 def get_static_evening_commute_options(
@@ -1271,13 +1292,7 @@ def get_static_evening_commute_options(
     date_str: Optional[str] = None,
 ) -> list[dict]:
     """Fast, offline static evaluation of evening commute options with zero network calls."""
-    global ALLOW_NETWORK
-    prev = ALLOW_NETWORK
-    try:
-        ALLOW_NETWORK = False
-        return scan_evening_commute_options(reference_time=reference_time, date_str=date_str)
-    finally:
-        ALLOW_NETWORK = prev
+    return scan_evening_commute_options(reference_time=reference_time, date_str=date_str, allow_network=False)
 
 
 def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:

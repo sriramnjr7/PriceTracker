@@ -206,7 +206,10 @@ async def root(request: Request):
         if "action" in clean and method == "POST":
             return await api_rail_action(request)
         elif "history" in clean:
-            days = int(request.query_params.get("days", 14))
+            try:
+                days = int(request.query_params.get("days", 14))
+            except (ValueError, TypeError):
+                days = 14
             return await api_rail_history(days=days)
         return await api_rail_status()
     elif "running-shoes" in clean or "running_shoes" in clean:
@@ -1220,7 +1223,8 @@ async def _fetch_supabase_commute_state() -> Optional[dict[str, Any]]:
 
 def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dict[str, Any]:
     """Fast offline fallback status when rail modules cannot be loaded or network fails."""
-    step_out = state_data.get("morning_step_out_time", "08:15")
+    is_evening = "EVENING" in state_data.get("state", "")
+    step_out = "19:15" if is_evening else state_data.get("morning_step_out_time", "08:15")
     try:
         cur_h, cur_m = map(int, now_time.split(":"))
         so_h, so_m = map(int, step_out.split(":"))
@@ -1396,7 +1400,13 @@ async def api_rail_status():
             state_data.setdefault("morning_projected_dep", rec.get("projected_departure", "08:25"))
             state_data.setdefault("morning_delay_mins", rec.get("delay_mins", 0))
 
-        step_out = state_data.get("morning_step_out_time", "08:15")
+        if "EVENING" in state_data.get("state", "") and evening_opts:
+            active_tno = state_data.get("evening_train", "16232")
+            matching_opt = next((o for o in evening_opts if o.get("train_no") == active_tno), evening_opts[0])
+            step_out = matching_opt.get("leave_desk_time", "19:15")
+        else:
+            step_out = state_data.get("morning_step_out_time", "08:15")
+
         countdown_mins = rail_tracker.minutes_difference(now_time, step_out)
 
         return JSONResponse(
@@ -1426,14 +1436,19 @@ async def api_rail_status():
 
 @app.get("/api/rail/history")
 @app.get("/api/index.py/api/rail/history")
-async def api_rail_history(days: int = Query(default=14)):
+async def api_rail_history(days: Any = Query(default=14)):
     """Retrieve 14-day train punctuality time-series data and empirical quantiles for charts."""
     try:
+        try:
+            days_int = int(days)
+        except (ValueError, TypeError):
+            days_int = 14
+
         if not RAIL_MODULES_AVAILABLE or rail_tracker is None:
             return JSONResponse(
                 content={
                     "status": "ok",
-                    "days": days,
+                    "days": days_int,
                     "stats": {},
                     "history": {},
                     "corridor_trains": ["66596", "06278", "16212", "16232", "16236", "16586", "16527", "11006"],
@@ -1452,7 +1467,7 @@ async def api_rail_history(days: int = Query(default=14)):
         return JSONResponse(
             content={
                 "status": "ok",
-                "days": days,
+                "days": days_int,
                 "stats": stats,
                 "history": raw_history,
                 "corridor_trains": list(rail_tracker.CORRIDOR_SCHEDULES.keys()),
@@ -1471,8 +1486,18 @@ async def api_rail_action(request: Request):
         if not RAIL_MODULES_AVAILABLE or rail_daemon is None:
             return JSONResponse(status_code=503, content={"status": "error", "message": "Rail daemon module unavailable"})
 
-        data = await request.json()
-        action = data.get("action", "").lower()
+        try:
+            data = await request.json()
+        except Exception:
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid or missing JSON payload"})
+
+        if not isinstance(data, dict):
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Request body must be a JSON object"})
+
+        action = str(data.get("action", "")).strip().lower()
+        if not action:
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Missing 'action' field"})
+
         store = rail_daemon.CommuteStateStore()
 
         if action == "wfh":
@@ -2730,7 +2755,10 @@ async def catch_all(request: Request, full_path: str):
         if "action" in clean and method == "POST":
             return await api_rail_action(request)
         elif "history" in clean:
-            days = int(request.query_params.get("days", 14))
+            try:
+                days = int(request.query_params.get("days", 14))
+            except (ValueError, TypeError):
+                days = 14
             return await api_rail_history(days=days)
         return await api_rail_status()
 

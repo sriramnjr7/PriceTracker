@@ -102,3 +102,81 @@ def test_cryptography_missing_guard_in_rail_tracker():
 
         with pytest.raises(RuntimeError, match="cryptography package is required"):
             rail_tracker.decrypt_cris_payload("test")
+
+
+def test_rail_action_invalid_payloads_return_400(client):
+    """Malformed or invalid payloads to /api/rail/action return 400 Bad Request, not 500."""
+    # Empty body
+    resp = client.post("/api/rail/action", content=b"")
+    assert resp.status_code == 400
+    assert resp.json()["status"] == "error"
+
+    # Malformed JSON
+    resp = client.post("/api/rail/action", content=b"{not_json")
+    assert resp.status_code == 400
+    assert resp.json()["status"] == "error"
+
+    # Non-dict JSON (array)
+    resp = client.post("/api/rail/action", json=["not", "a", "dict"])
+    assert resp.status_code == 400
+    assert resp.json()["status"] == "error"
+
+    # Missing action field
+    resp = client.post("/api/rail/action", json={"other": "value"})
+    assert resp.status_code == 400
+    assert resp.json()["status"] == "error"
+
+    # Unknown action
+    resp = client.post("/api/rail/action", json={"action": "unknown_action_xyz"})
+    assert resp.status_code == 400
+    assert resp.json()["status"] == "error"
+
+
+def test_rail_action_valid_actions(client):
+    """Valid commute actions transition state and return 200 OK."""
+    for action in ["wfh", "bike", "select_train", "reached", "reset"]:
+        resp = client.post("/api/rail/action", json={"action": action, "train_no": "66596"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert "state" in data
+
+
+def test_rail_history_invalid_query_param(client):
+    """Invalid 'days' parameter falls back safely to default without throwing ValueError."""
+    resp = client.get("/api/rail/history?days=invalid_string")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert data["days"] == 14
+
+
+def test_watchdog_circuit_breaker():
+    """Watchdog trips circuit breaker after reaching failure threshold, skipping network calls."""
+    import rail_tracker
+    from rail_tracker import RailWatchdog
+
+    wd = RailWatchdog(failure_threshold=2, circuit_cooldown_seconds=10.0)
+    assert not wd.is_circuit_open()
+
+    wd.record_failure("66596", "Simulated CRIS connection timeout")
+    assert not wd.is_circuit_open()
+
+    wd.record_failure("66596", "Simulated ConfirmTkt 503")
+    assert wd.is_circuit_open()
+
+    # Success resets breaker
+    wd.record_success()
+    assert not wd.is_circuit_open()
+
+
+def test_offline_rail_status_evening_step_out():
+    """_build_offline_rail_status uses evening desk departure time when in EVENING_TRACKING state."""
+    state_data = {
+        "state": "EVENING_TRACKING",
+        "evening_train": "16232",
+    }
+    status = _build_offline_rail_status("18:30", state_data)
+    assert status["state"] == "EVENING_TRACKING"
+    assert status["step_out_time"] == "19:15"
+    assert status["step_out_countdown_mins"] == 45

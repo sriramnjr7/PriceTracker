@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
@@ -50,7 +51,11 @@ TELEGRAM_CHAT_ID = os.getenv("TRAIN_CHAT_ID") or os.getenv("RAIL_TELEGRAM_CHAT_I
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-LOCAL_STATE_FILE = os.path.join(root_dir, "commute_daily_state.json")
+LOCAL_STATE_FILE = (
+    os.path.join(tempfile.gettempdir(), "commute_daily_state.json")
+    if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+    else os.path.join(root_dir, "commute_daily_state.json")
+)
 
 # State Machine Constants
 STATE_NIGHT_SLEEP = "NIGHT_SLEEP"
