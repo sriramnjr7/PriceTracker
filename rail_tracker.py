@@ -456,6 +456,7 @@ def add_minutes_to_time(base_time: str, minutes_to_add: int) -> str:
 def minutes_difference(t_from: str, t_to: str, allow_wraparound: bool = True) -> int:
     """Calculate signed minutes difference between t_from and t_to (t_to - t_from).
     Handles day wraparound when times cross midnight (e.g. 23:50 to 00:20 -> +30 mins; 00:20 to 23:50 -> -30 mins).
+    Preserves true positive daytime differences (e.g. 08:00 to 21:15 -> +795 mins).
     """
     c1 = clean_time_str(t_from)
     c2 = clean_time_str(t_to)
@@ -464,13 +465,11 @@ def minutes_difference(t_from: str, t_to: str, allow_wraparound: bool = True) ->
     try:
         p1 = [int(x) for x in c1.split(":")]
         p2 = [int(x) for x in c2.split(":")]
-        dt1 = datetime(2026, 1, 1, p1[0], p1[1])
-        dt2 = datetime(2026, 1, 1, p2[0], p2[1])
-        diff = int((dt2 - dt1).total_seconds() / 60)
+        diff = (p2[0] * 60 + p2[1]) - (p1[0] * 60 + p1[1])
         if allow_wraparound:
-            if diff < -720:
+            if p1[0] >= 18 and p2[0] <= 6 and diff < 0:
                 diff += 1440
-            elif diff > 720:
+            elif p1[0] <= 5 and p2[0] >= 19 and diff > 0:
                 diff -= 1440
         return diff
     except Exception:
@@ -1226,12 +1225,13 @@ def scan_morning_commute_options(
             "dest_eta": exp_dest_eta,
             "desk_eta": exp_desk_eta,
             "delay_mins": exp_delay,
+            "effective_delay_mins": exp_effective_delay,
             "current_location": f"{exp_status.get('current_station_name', '')} ({exp_status.get('current_station', '')})",
-            "is_delayed": exp_delay > 0,
+            "is_delayed": exp_effective_delay > 0,
             "minutes_until_dep": exp_minutes_until_dep,
             "door_to_door_duration": minutes_difference(exp_step_out, exp_desk_eta),
             "status": determine_status(exp_minutes_until_dep, has_departed=bool(exp_hsra and exp_hsra.get("has_departed")), cancelled=exp_cancelled),
-            "details": f"Salem Express currently near {exp_status.get('current_station_name', '')} (Delay: {exp_delay}m).",
+            "details": f"Salem Express currently near {exp_status.get('current_station_name', '')} (Delay: {exp_effective_delay}m).",
         },
     ]
 
@@ -1275,7 +1275,8 @@ def scan_morning_commute_options(
         recommended = max(pool, key=_dep_minutes)
 
         if not qualifying:
-            delay_note = f" (delay: +{recommended['delay_mins']}m)" if recommended.get("is_delayed") else ""
+            rec_delay = recommended.get("effective_delay_mins") or recommended.get("delay_mins") or 0
+            delay_note = f" (delay: +{rec_delay}m)" if recommended.get("is_delayed") else ""
             rec_reason = (
                 f"🚨 WARNING: Severe delays across all corridor trains! Even latest option Train {recommended['train_no']} "
                 f"({recommended['train_name']}) won't reach desk until ~{recommended['desk_eta']} AM{delay_note}, "
@@ -1288,7 +1289,8 @@ def scan_morning_commute_options(
                 f"Reaches BLRR at ~{recommended['dest_eta']} AM (ETV Desk: ~{recommended['desk_eta']} AM)."
             )
         elif len(pool) == 1:
-            delay_note = f" (delay: +{recommended['delay_mins']}m)" if recommended.get("is_delayed") else " (on schedule)"
+            rec_delay = recommended.get("effective_delay_mins") or recommended.get("delay_mins") or 0
+            delay_note = f" (delay: +{rec_delay}m)" if recommended.get("is_delayed") else " (on schedule)"
             rec_reason = (
                 f"Train {recommended['train_no']} ({recommended['train_name']}) is your sole qualifying option reaching desk before 11:30 AM "
                 f"(departs Hosur at ~{recommended['projected_departure']} AM{delay_note}, BLRR ~{recommended['dest_eta']} AM, Desk ~{recommended['desk_eta']} AM)."

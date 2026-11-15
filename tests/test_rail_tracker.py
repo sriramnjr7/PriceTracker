@@ -1216,8 +1216,13 @@ def test_morning_prompt_strict_guard_at_midday():
     assert daemon.bot.send_message.call_count == 0
     assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_TRACKING
 
-    # 4. At 23:00 PM (night), rejected and heals to NIGHT_SLEEP
+    # 4. At 23:00 PM (late evening), rejected and heals to EVENING_TRACKING
     daemon.handle_morning_prompt("23:00", now=datetime(2026, 11, 16, 23, 0, 0, tzinfo=rail_daemon.IST_TZ))
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_TRACKING
+
+    # 4b. At 23:45 PM (night past 23:30 cutoff), rejected and heals to NIGHT_SLEEP
+    daemon.handle_morning_prompt("23:45", now=datetime(2026, 11, 16, 23, 45, 0, tzinfo=rail_daemon.IST_TZ))
     assert daemon.bot.send_message.call_count == 0
     assert daemon.store.state_data["state"] == rail_daemon.STATE_NIGHT_SLEEP
 
@@ -1479,7 +1484,7 @@ def test_api_rail_status_enforces_weekend_rest():
 
 
 def test_minutes_difference_midnight_wraparound():
-    """Verify minutes_difference handles day wraparounds across midnight cleanly."""
+    """Verify minutes_difference handles day wraparounds across midnight cleanly and preserves wide daytime intervals."""
     # Crossing midnight forward (e.g. late night train arriving after midnight)
     assert rail_tracker.minutes_difference("23:50", "00:20") == 30
     assert rail_tracker.minutes_difference("23:30", "00:15") == 45
@@ -1492,6 +1497,11 @@ def test_minutes_difference_midnight_wraparound():
     # Same day normal differences
     assert rail_tracker.minutes_difference("08:15", "08:25") == 10
     assert rail_tracker.minutes_difference("08:25", "08:15") == -10
+
+    # Wide daytime spans (>12 hours) must NOT be inverted to negative
+    assert rail_tracker.minutes_difference("08:00", "21:15") == 795
+    assert rail_tracker.minutes_difference("06:45", "22:00") == 915
+    assert rail_tracker.minutes_difference("07:00", "20:00") == 780
 
 
 def test_station_code_alias_resolution():
@@ -1616,4 +1626,76 @@ def test_api_rail_action_smart_direction_and_reset():
             assert data["state"]["state"] == rail_daemon.STATE_MORNING_TRACKING
 
     asyncio.run(_run())
+
+
+def test_scan_morning_commute_effective_delay_flag():
+    """Verify Train 16212 sets is_delayed=True and correct delay note when physical transit lag applies."""
+    with patch("rail_tracker.inspect_rake_turnaround") as mock_rake, patch("rail_tracker.get_live_train_status") as mock_status:
+        mock_rake.return_value = {
+            "morning_train": "66596",
+            "incoming_rake_train": "66595",
+            "scheduled_hsra_departure": "08:25",
+            "projected_hsra_departure": "08:25",
+            "effective_delay_mins": 0,
+            "revised_step_out_time": "08:15",
+            "is_delayed": False,
+            "rake_cancelled": False,
+            "rake_current_station": "HSRA",
+            "rake_current_station_name": "HOSUR",
+            "delay_summary": "On time",
+            "memu_status": {"stations": [{"code": "BLRR", "sta": "09:03", "eta": "09:03"}]},
+        }
+        mock_status.side_effect = lambda t, d=None: {
+            "06278": {
+                "train_no": "06278",
+                "train_name": "Dharmapuri MEMU",
+                "current_station": "HSRA",
+                "delay_minutes": 0,
+                "stations": [
+                    {"code": "HSRA", "sta": "07:05", "std": "07:07", "eta": "07:05", "etd": "07:07", "has_arrived": True, "has_departed": True},
+                    {"code": "BLRR", "sta": "07:51", "std": "07:52", "eta": "07:51", "etd": "07:52", "has_arrived": True, "has_departed": True},
+                ],
+            },
+            "16212": {
+                "train_no": "16212",
+                "train_name": "Salem Express",
+                # Train reported 0 delay by NTES, but is physically still at DPJ (50m from Hosur) at 08:00 AM
+                "current_station": "DPJ",
+                "current_station_name": "DHARMAPURI",
+                "delay_minutes": 0,
+                "stations": [
+                    {"code": "HSRA", "sta": "08:18", "std": "08:20", "eta": "08:18", "etd": "08:20", "has_arrived": False, "has_departed": False},
+                    {"code": "BLRR", "sta": "08:59", "std": "09:00", "eta": "08:59", "etd": "09:00", "has_arrived": False, "has_departed": False},
+                ],
+            },
+        }[t]
+
+        scan = rail_tracker.scan_morning_commute_options(reference_time="08:00")
+        exp_opt = next(o for o in scan["options"] if o["train_no"] == "16212")
+        # Physical transit: 08:00 + 50m + 2m buffer = 08:52 departure -> +32m delay vs 08:20 schedule
+        assert exp_opt["is_delayed"] is True
+        assert exp_opt["effective_delay_mins"] == 32
+        assert "Delay: 32m" in exp_opt["details"]
+
+
+def test_rail_daemon_evening_tracking_extended_to_2330():
+    """Verify evening tracking remains active past 22:30 up to 23:30 to cover late trains (e.g. 16236)."""
+    import tempfile
+    import uuid
+    daemon = rail_daemon.RailDaemon(store=rail_daemon.CommuteStateStore(file_path=os.path.join(tempfile.gettempdir(), f"test_ev_{uuid.uuid4().hex}.json")))
+    daemon.bot.send_message = MagicMock()
+
+    # 1. At 22:45 IST on a weekday (Monday), state should remain EVENING_TRACKING, not NIGHT_SLEEP
+    now_2245 = datetime(2026, 11, 16, 22, 45, 0, tzinfo=rail_daemon.IST_TZ)
+    daemon.store.state_data["state"] = rail_daemon.STATE_EVENING_TRACKING
+    daemon.store.state_data["date"] = "2026-11-16"
+    interval = daemon.step(now=now_2245)
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_TRACKING
+
+    # 2. At 23:35 IST, state cleanly transitions to STATE_NIGHT_SLEEP
+    now_2335 = datetime(2026, 11, 16, 23, 35, 0, tzinfo=rail_daemon.IST_TZ)
+    interval_night = daemon.step(now=now_2335)
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_NIGHT_SLEEP
+    assert interval_night == rail_daemon.POLL_TIER_HIBERNATE
+
 

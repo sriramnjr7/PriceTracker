@@ -472,7 +472,7 @@ class RailDaemon:
                 self.store.transition_state(STATE_MIDDAY_STANDBY, "Self-heal: Midday standby")
             elif "14:00" <= current_time < "15:30":
                 self.store.transition_state(STATE_EVENING_PROMPT, "Self-heal: Evening window opened")
-            elif "15:30" <= current_time < "22:30":
+            elif "15:30" <= current_time < "23:30":
                 self.store.transition_state(STATE_EVENING_TRACKING, "Self-heal: Active evening tracking")
             else:
                 self.store.transition_state(STATE_NIGHT_SLEEP, "Self-heal: Night sleep mode")
@@ -964,7 +964,7 @@ class RailDaemon:
                 self.store.transition_state(STATE_MIDDAY_STANDBY, f"User set morning train {t_no}; midday standby")
             elif "14:00" <= now_time < "15:30":
                 self.store.transition_state(STATE_EVENING_PROMPT, f"User set morning train {t_no}; evening window")
-            elif "15:30" <= now_time < "22:30":
+            elif "15:30" <= now_time < "23:30":
                 self.store.transition_state(STATE_EVENING_TRACKING, f"User set morning train {t_no}; evening tracking")
             else:
                 self.store.transition_state(STATE_NIGHT_SLEEP, f"User set morning train {t_no}; night sleep")
@@ -1097,7 +1097,7 @@ class RailDaemon:
             init_state = STATE_MIDDAY_STANDBY
         elif "14:00" <= current_time < "15:30":
             init_state = STATE_EVENING_PROMPT
-        elif "15:30" <= current_time < "22:30":
+        elif "15:30" <= current_time < "23:30":
             init_state = STATE_EVENING_TRACKING
         else:
             init_state = STATE_NIGHT_SLEEP
@@ -1181,7 +1181,7 @@ class RailDaemon:
                 return POLL_TIER_CRITICAL
             return POLL_TIER_APPROACH
 
-        if "22:30" <= current_time or current_time < "06:45":
+        if "23:30" <= current_time or current_time < "06:45":
             return POLL_TIER_HIBERNATE
 
         return POLL_TIER_STANDBY
@@ -1218,7 +1218,7 @@ class RailDaemon:
                     state = STATE_MIDDAY_STANDBY
                 elif "14:00" <= current_time < "15:30":
                     state = STATE_EVENING_PROMPT
-                elif "15:30" <= current_time < "22:30":
+                elif "15:30" <= current_time < "23:30":
                     state = STATE_EVENING_TRACKING
                 else:
                     state = STATE_NIGHT_SLEEP
@@ -1244,12 +1244,12 @@ class RailDaemon:
                     self.store.transition_state(STATE_EVENING_PROMPT, "Evening window opened")
                     state = STATE_EVENING_PROMPT
 
-            elif "15:30" <= current_time < "22:30":
+            elif "15:30" <= current_time < "23:30":
                 if state not in (STATE_EVENING_TRACKING, STATE_HIBERNATION, STATE_WFH, STATE_BIKE):
                     self.store.transition_state(STATE_EVENING_TRACKING, "Active evening tracking")
                     state = STATE_EVENING_TRACKING
 
-            elif "22:30" <= current_time or current_time < "06:45":
+            elif "23:30" <= current_time or current_time < "06:45":
                 if state not in (STATE_NIGHT_SLEEP, STATE_WFH, STATE_BIKE):
                     self.store.transition_state(STATE_NIGHT_SLEEP, "Night sleep mode")
                     state = STATE_NIGHT_SLEEP
@@ -1283,7 +1283,7 @@ class RailDaemon:
                     elif "14:00" <= current_time < "15:30":
                         self.store.transition_state(STATE_EVENING_PROMPT, "Auto-correction to evening prompt")
                         state = STATE_EVENING_PROMPT
-                    elif "15:30" <= current_time < "22:30":
+                    elif "15:30" <= current_time < "23:30":
                         self.store.transition_state(STATE_EVENING_TRACKING, "Auto-correction to evening tracking")
                         state = STATE_EVENING_TRACKING
                     else:

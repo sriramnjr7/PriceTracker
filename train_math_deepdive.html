@@ -929,10 +929,11 @@
                         $$\mathcal{M} = \langle \mathcal{S}, \Sigma, \delta, s_0, \mathcal{F} \rangle$$
                     </div>
                     <ul class="text-xs text-slate-300 space-y-2 list-disc pl-5">
-                        <li><strong class="text-white">State Space $\mathcal{S}$:</strong> $\{\text{NIGHT\_SLEEP}, \text{MORNING\_PROMPT}, \text{MORNING\_TRACKING}, \text{MIDDAY\_STANDBY}, \text{EVENING\_PROMPT}, \text{EVENING\_TRACKING}, \text{HIBERNATION}\}$ plus bypass modes $\{\text{WFH}, \text{BIKE}\}$.</li>
+                        <li><strong class="text-white">State Space $\mathcal{S}$:</strong> $\{\text{NIGHT\_SLEEP}, \text{MORNING\_PROMPT}, \text{MORNING\_TRACKING}, \text{MIDDAY\_STANDBY}, \text{EVENING\_PROMPT}, \text{EVENING\_TRACKING}, \text{HIBERNATION}, \text{WEEKEND\_REST}\}$ plus bypass modes $\{\text{WFH}, \text{BIKE}\}$.</li>
                         <li><strong class="text-white">Alphabet $\Sigma$:</strong> $\{\tau_{\text{clock}}, \text{cmd}_{\text{user}}, \text{loc}_{\text{geo}}, \text{train}_{\text{dep}}, \text{event}_{\text{cancel}}\}$.</li>
                         <li><strong class="text-white">Transition Function $\delta$:</strong> $\mathcal{S} \times \Sigma \to \mathcal{S}$ is strictly deterministic.</li>
-                        <li><strong class="text-white">Initial State $s_0$:</strong> $\text{NIGHT\_SLEEP}$ (reset at 00:00).</li>
+                        <li><strong class="text-white">Initial State $s_0$:</strong> $\text{NIGHT\_SLEEP}$ (weekdays) / $\text{WEEKEND\_REST}$ (Saturday & Sunday).</li>
+                        <li><strong class="text-white">Weekend Rest Invariance:</strong> During weekends, $s_t = \text{WEEKEND\_REST}$ is absorbing for all $\tau_{\text{clock}}$, yielding $W_{\text{weekend}} = 0$ writes and total alert silence.</li>
                     </ul>
                 </div>
 
