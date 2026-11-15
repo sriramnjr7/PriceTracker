@@ -2124,4 +2124,218 @@ def test_patch8_supabase_sync_safe_dict_access_with_empty_state(guard_supabase_s
     assert payload["morning_status"] == "ACTIVE"
 
 
+# =============================================================================
+# EXTENDED AUDIT BACKTESTS: TIME NORMALIZATION, TIE-BREAKING, AND SAFE RESOLUTION
+# =============================================================================
+
+def test_clean_time_str_unpadded_and_single_digits():
+    """Verify clean_time_str parses single-digit hours/minutes and normalizes to HH:MM."""
+    assert rail_tracker.clean_time_str("7:5") == "07:05"
+    assert rail_tracker.clean_time_str("7:5 13-Nov") == "07:05"
+    assert rail_tracker.clean_time_str("7:05") == "07:05"
+    assert rail_tracker.clean_time_str("07:5") == "07:05"
+    assert rail_tracker.clean_time_str("08:25:00") == "08:25"
+    assert rail_tracker.clean_time_str("Source") == "Source"
+    assert rail_tracker.clean_time_str(None) == ""
+    assert rail_tracker.clean_time_str("") == ""
+    # add_minutes_to_time works seamlessly on unpadded inputs with date suffixes
+    assert rail_tracker.add_minutes_to_time("7:5 13-Nov", 15) == "07:20"
+
+
+def test_format_ampm_distinction():
+    """Verify format_ampm handles morning, midday, afternoon, and midnight correctly."""
+    assert rail_tracker.format_ampm("08:25") == "08:25 AM"
+    assert rail_tracker.format_ampm("11:30") == "11:30 AM"
+    assert rail_tracker.format_ampm("12:00") == "12:00 PM"
+    assert rail_tracker.format_ampm("12:15") == "12:15 PM"
+    assert rail_tracker.format_ampm("15:30") == "15:30 PM"
+    assert rail_tracker.format_ampm("00:15") == "00:15 AM"
+    assert rail_tracker.format_ampm("") == ""
+
+
+def test_tier_tie_breaking_picks_earlier_desk_arrival():
+    """Verify that when two trains have identical departure times, the one with earlier desk ETA is selected."""
+    with patch("rail_tracker.inspect_rake_turnaround") as mock_rake, patch("rail_tracker.get_live_train_status") as mock_status:
+        mock_rake.return_value = {
+            "morning_train": "66596",
+            "incoming_rake_train": "66595",
+            "scheduled_hsra_departure": "08:25",
+            "projected_hsra_departure": "08:25",
+            "effective_delay_mins": 0,
+            "revised_step_out_time": "08:15",
+            "is_delayed": False,
+            "rake_cancelled": False,
+            "rake_current_station": "HSRA",
+            "rake_current_station_name": "HOSUR",
+            "delay_summary": "On time",
+            "memu_has_departed": False,
+            "memu_status": {"stations": [{"code": "BLRR", "sta": "09:10", "eta": "09:10"}]},  # desk eta 09:40
+        }
+        mock_status.side_effect = lambda t, d=None: {
+            "06278": {
+                "train_no": "06278",
+                "train_name": "Dharmapuri MEMU",
+                "current_station": "HSRA",
+                "delay_minutes": 0,
+                "stations": [
+                    {"code": "HSRA", "sta": "07:05", "std": "07:07", "eta": "07:05", "etd": "07:07", "has_arrived": True, "has_departed": True},
+                    {"code": "BLRR", "sta": "07:51", "std": "07:52", "eta": "07:51", "etd": "07:52", "has_arrived": True, "has_departed": True},
+                ],
+            },
+            "16212": {
+                "train_no": "16212",
+                "train_name": "Salem Express",
+                "current_station": "HSRA",
+                "delay_minutes": 5,
+                "stations": [
+                    # Train 16212 departs at 08:25 (delayed from 08:20) and reaches BLRR at 08:59 -> desk eta 09:29
+                    {"code": "HSRA", "sta": "08:18", "std": "08:20", "eta": "08:23", "etd": "08:25", "has_arrived": False, "has_departed": False},
+                    {"code": "BLRR", "sta": "08:59", "std": "09:00", "eta": "08:59", "etd": "09:00", "has_arrived": False, "has_departed": False},
+                ],
+            },
+        }.get(t, {})
+
+        scan = rail_tracker.scan_morning_commute_options(reference_time="07:45")
+        # Both 66596 and 16212 depart at 08:25.
+        # 16212 desk ETA is 09:34, 66596 desk ETA is 09:40.
+        # Tie-breaker should pick 16212 because it arrives at desk earlier!
+        assert scan["recommended_train"]["train_no"] == "16212"
+        assert scan["recommended_train"]["desk_eta"] == "09:34"
+
+
+def test_scan_evening_commute_options_safe_dict_access():
+    """Verify scan_evening_commute_options does not crash on missing etd/sta/has_departed keys."""
+    mock_status = {
+        "train_no": "66585",
+        "current_station": "BNC",
+        "delay_minutes": 15,
+        "stations": [
+            # Station dictionary with missing etd key and no has_departed key
+            {"code": "BLRR", "name": "BELLANDUR", "std": "15:48"},
+            {"code": "HSRA", "name": "HOSUR"},
+        ],
+    }
+    with patch("rail_tracker.get_live_train_status", return_value=mock_status):
+        opts = rail_tracker.scan_evening_commute_options(reference_time="15:00")
+        assert len(opts) > 0
+        opt_66585 = next(o for o in opts if o["train_no"] == "66585")
+        # Fallback uses sch_dep 15:48 + delay 15m = 16:03
+        assert opt_66585["estimated_departure"] == "16:03"
+        # Desk leave time is 16:03 - 20m lead time to BLRR = 15:43
+        assert opt_66585["leave_desk_time"] == "15:43"
+
+
+def test_check_evening_milestone_trigger_safe_dict_access():
+    """Verify check_evening_milestone_trigger handles missing station keys gracefully without KeyError."""
+    # Stations missing has_departed, effective_delay, eta
+    status_sparse = {
+        "train_no": "16232",
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "std": "19:10"},
+            {"code": "CRLM", "name": "CARMELARAM"},
+        ],
+    }
+    # Should not raise KeyError
+    trig = rail_tracker.check_evening_milestone_trigger("16232", status_sparse)
+    assert trig is None
+
+    # When has_departed is True but eta is missing
+    status_departed = {
+        "train_no": "16232",
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "has_departed": True, "std": "19:10"},
+            {"code": "CRLM", "name": "CARMELARAM"},
+        ],
+    }
+    trig2 = rail_tracker.check_evening_milestone_trigger("16232", status_departed)
+    assert trig2 is not None
+    assert trig2["triggered"] is True
+    assert trig2["crlm_eta"] == "19:38"
+
+
+def test_api_rail_action_stay():
+    """Verify api_rail_action supports action:stay to transition to HIBERNATION."""
+    import asyncio
+    from unittest.mock import AsyncMock
+    from api.index import api_rail_action
+
+    async def _test():
+        mock_req = MagicMock()
+        mock_req.json = AsyncMock(return_value={"action": "stay"})
+        resp = await api_rail_action(mock_req)
+        assert resp.status_code == 200
+        body = json.loads(resp.body.decode("utf-8"))
+        assert body["status"] == "ok"
+        assert body["state"]["state"] == rail_daemon.STATE_HIBERNATION
+        assert body["state"]["evening_completed"] is True
+        assert "Staying late confirmed" in body["message"]
+
+    asyncio.run(_test())
+
+
+def test_transit_window_guard_midday_and_overnight():
+    """Verify inspect_rake_turnaround and 06278 do not calculate afternoon physical transit at 14:00."""
+    with patch("rail_tracker.get_live_train_status") as mock_status:
+        mock_status.side_effect = lambda t, d=None: {
+            "66595": {
+                "train_no": "66595",
+                "current_station": "BNC",  # Transit 60 mins
+                "delay_minutes": 0,
+                "stations": [{"code": "HSRA", "sta": "08:00", "has_arrived": False}],
+            },
+            "66596": {
+                "train_no": "66596",
+                "current_station": "HSRA",
+                "delay_minutes": 0,
+                "stations": [{"code": "HSRA", "sta": "08:20", "std": "08:25", "has_arrived": False, "has_departed": False}],
+            },
+            "06278": {
+                "train_no": "06278",
+                "current_station": "DPJ",  # Transit 80 mins
+                "delay_minutes": 0,
+                "stations": [{"code": "HSRA", "sta": "07:05", "std": "07:07", "has_arrived": False, "has_departed": False}],
+            },
+            "16212": {
+                "train_no": "16212",
+                "current_station": "SA",
+                "delay_minutes": 0,
+                "stations": [{"code": "HSRA", "sta": "08:18", "std": "08:20", "has_arrived": False, "has_departed": False}],
+            },
+        }.get(t, {})
+
+        # At 14:00 (midday/afternoon):
+        # 66595 should NOT project 14:00 + 60m = 15:00 arrival (which would make 66596 depart at 15:10).
+        rake = rail_tracker.inspect_rake_turnaround("66596", "66595", reference_time="14:00")
+        assert rake["projected_hsra_departure"] == "08:25"
+
+        # 06278 should NOT project 14:00 + 82m = 15:22 departure.
+        scan = rail_tracker.scan_morning_commute_options(reference_time="14:00")
+        opt_06278 = next(o for o in scan["options"] if o["train_no"] == "06278")
+        assert opt_06278["projected_departure"] == "07:07"
+
+
+def test_daemon_cmd_eta_safe_station_access():
+    """Verify daemon.cmd_eta does not raise KeyError when stations have missing keys."""
+    import tempfile
+    import uuid
+    daemon = rail_daemon.RailDaemon(store=rail_daemon.CommuteStateStore(file_path=os.path.join(tempfile.gettempdir(), f"test_cmd_eta_{uuid.uuid4().hex}.json")))
+    daemon.bot.send_message = MagicMock()
+
+    mock_sparse_status = {
+        "train_no": "16232",
+        "stations": [
+            # Minimal station dict with missing sta, eta, effective_delay, has_departed, has_arrived
+            {"code": "SBC", "name": "KSR BENGALURU"},
+            {"code": "BNC", "name": "BANGALORE CANT", "has_arrived": True},
+        ],
+    }
+    with patch("rail_tracker.get_live_train_status", return_value=mock_sparse_status):
+        daemon.cmd_eta("16232", chat_id="12345")
+        assert daemon.bot.send_message.call_count == 1
+        msg = daemon.bot.send_message.call_args[0][0]
+        assert "Station ETAs for Train 16232" in msg
+        assert "BNC" in msg
+
+
+
 

@@ -1686,6 +1686,10 @@ async def api_rail_action(request: Request):
                 store.state_data["morning_completed"] = True
                 store.transition_state(rail_daemon.STATE_MIDDAY_STANDBY, "Reached station platform")
                 msg = "Reached station platform!"
+        elif action == "stay":
+            store.state_data["evening_completed"] = True
+            store.transition_state(rail_daemon.STATE_HIBERNATION, "Staying late at office / outside")
+            msg = "Staying late confirmed. Evening tracking paused."
         elif action == "reset":
             store.reset_today()
             now_dt = get_ist_now()

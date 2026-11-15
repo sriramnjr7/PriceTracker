@@ -556,7 +556,7 @@ class RailDaemon:
         # Detects if relative train arrival/departure order changes (e.g. Salem Exp on time while Hosur MEMU delayed)
         if not last_rec:
             self.store.state_data["last_recommended_train"] = curr_rec
-        elif curr_rec != last_rec and rec_opt["status"] in ("VIABLE", "BOARDING"):
+        elif curr_rec != last_rec and rec_opt.get("status") in ("VIABLE", "BOARDING"):
             prev_opt = next((o for o in scan["options"] if o["train_no"] == last_rec), None)
             prev_name = prev_opt["train_name"] if prev_opt else f"Train {last_rec}"
             prev_dep = prev_opt["projected_departure"] if prev_opt else "earlier"
@@ -626,7 +626,7 @@ class RailDaemon:
             )
             
             # If another train is viable and departing later or sooner
-            if rec_opt["train_no"] != active_train and rec_opt["status"] in ("VIABLE", "BOARDING"):
+            if rec_opt.get("train_no") != active_train and rec_opt.get("status") in ("VIABLE", "BOARDING"):
                 delay_msg += (
                     f"\n\n💡 *Alternative Available*: Train *{rec_opt['train_no']}* departs at ~*{rec_opt['projected_departure']}* "
                     f"and reaches BLRR by *{rec_opt['dest_eta']}* (Desk: {rec_opt['desk_eta']})."
@@ -732,8 +732,8 @@ class RailDaemon:
                 self.store.save(sync_supabase=True)
 
         # Check if train has departed CRLM/BLRR or passed 22:30
-        crlm_stn = next((s for s in status.get("stations", []) if s["code"] == rail_tracker.STN_CARMELARAM), None)
-        if crlm_stn and crlm_stn["has_departed"]:
+        crlm_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_CARMELARAM), None)
+        if crlm_stn and crlm_stn.get("has_departed"):
             if not self.store.state_data.get("evening_completed"):
                 self.bot.send_message(f"🚆 Train {active_train} is en route to Hosur. Enjoy the ride home!")
                 self.store.state_data["evening_completed"] = True
@@ -1051,8 +1051,13 @@ class RailDaemon:
             msg += "Live station telemetry currently loading or train not on run.\n"
         else:
             for s in stations[:8]:
-                arr_flag = "✅" if s["has_departed"] else ("🟡" if s["has_arrived"] else "⏳")
-                msg += f"{arr_flag} *{s['code']}* ({s['name'][:14]}): STA {s['sta']} -> ETA *{s['eta']}* (+{s['effective_delay']}m)\n"
+                arr_flag = "✅" if s.get("has_departed") else ("🟡" if s.get("has_arrived") else "⏳")
+                s_code = s.get("code", "")
+                s_name = s.get("name", "")[:14]
+                s_sta = s.get("sta", "--")
+                s_eta = s.get("eta", s_sta)
+                s_delay = s.get("effective_delay", 0)
+                msg += f"{arr_flag} *{s_code}* ({s_name}): STA {s_sta} -> ETA *{s_eta}* (+{s_delay}m)\n"
         self.bot.send_message(msg, chat_id=chat_id)
 
     def cmd_milestones(self, chat_id: Optional[str] = None) -> None:

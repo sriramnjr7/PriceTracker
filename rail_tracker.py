@@ -431,14 +431,33 @@ def parse_delay_minutes(val: Any) -> int:
 
 
 def clean_time_str(time_val: Any) -> str:
-    """Extract clean HH:MM from strings like '08:25 13-Nov', '08:25:00', or 'Source'."""
+    """Extract clean HH:MM from strings like '08:25 13-Nov', '08:25:00', '7:5', or 'Source'."""
     if not time_val:
         return ""
     s = str(time_val).strip()
-    m = re.search(r"(\d{1,2}:\d{2})", s)
+    m = re.search(r"(\d{1,2}):(\d{1,2})", s)
     if m:
-        return m.group(1).zfill(5)
+        try:
+            h, mn = int(m.group(1)), int(m.group(2))
+            if 0 <= h <= 23 and 0 <= mn <= 59:
+                return f"{h:02d}:{mn:02d}"
+        except Exception:
+            pass
     return s
+
+
+def format_ampm(time_val: Any) -> str:
+    """Format HH:MM into a clean AM/PM string, e.g. '08:25' -> '08:25 AM', '12:15' -> '12:15 PM'."""
+    clean = clean_time_str(time_val)
+    if not clean or ":" not in clean:
+        return str(time_val) if time_val else ""
+    try:
+        parts = clean.split(":")
+        h = int(parts[0])
+        suffix = "PM" if h >= 12 else "AM"
+        return f"{clean} {suffix}"
+    except Exception:
+        return clean
 
 
 def add_minutes_to_time(base_time: str, minutes_to_add: int) -> str:
@@ -990,13 +1009,14 @@ def inspect_rake_turnaround(
     min_transit = MIN_TRANSIT_TO_HSRA_66595.get(curr_stn)
     rake_has_arrived = (curr_stn == STN_HOSUR) or bool(rake_hsra and rake_hsra.get("has_arrived"))
 
+    is_morning_window = ("05:00" <= reference_time < "10:30") if reference_time else True
     location_min_arrival = scheduled_rake_arr
-    if not rake_has_arrived and min_transit is not None and reference_time:
+    if is_morning_window and not rake_has_arrived and min_transit is not None and reference_time:
         location_min_arrival = add_minutes_to_time(reference_time, min_transit)
 
     # Take whichever ETA is later: reported ETA or physical location-based arrival
     rake_eta_hsra = reported_rake_eta
-    if minutes_difference(rake_eta_hsra, location_min_arrival) > 0:
+    if is_morning_window and minutes_difference(rake_eta_hsra, location_min_arrival) > 0:
         rake_eta_hsra = location_min_arrival
 
     # Physical constraint: MEMU cannot depart before (Rake_ETA + 10 mins turnaround)
@@ -1089,10 +1109,11 @@ def scan_morning_commute_options(
     memu2_projected_dep = memu2_etd_val if (memu2_etd_val and str(memu2_etd_val).strip() not in ("Destination", "")) else add_minutes_to_time(memu2_sch_dep, memu2_delay)
 
     # Physical transit check for 06278 if still en route to Hosur
+    is_morning_window = ("05:00" <= reference_time < "10:30") if reference_time else True
     memu2_curr_stn = memu2_status.get("current_station", "").upper()
     memu2_transit = MIN_TRANSIT_TO_HSRA_06278.get(memu2_curr_stn)
     memu2_has_arrived = (memu2_curr_stn == STN_HOSUR) or bool(memu2_hsra and memu2_hsra.get("has_arrived"))
-    if not memu2_has_arrived and memu2_transit is not None and reference_time:
+    if is_morning_window and not memu2_has_arrived and memu2_transit is not None and reference_time:
         loc_dep = add_minutes_to_time(reference_time, memu2_transit + 2)
         if minutes_difference(memu2_projected_dep, loc_dep) > 0:
             memu2_projected_dep = loc_dep
@@ -1134,7 +1155,7 @@ def scan_morning_commute_options(
     )
 
     # Physical transit check for 16212 if still en route to Hosur
-    is_morning_window = reference_time < "10:30" if reference_time else True
+    is_morning_window = ("05:00" <= reference_time < "10:30") if reference_time else True
     exp_curr_stn = exp_status.get("current_station", "").upper()
     exp_transit = MIN_TRANSIT_TO_HSRA_16212.get(exp_curr_stn)
     exp_has_arrived = (exp_curr_stn == STN_HOSUR) or bool(exp_hsra and exp_hsra.get("has_arrived"))
@@ -1283,14 +1304,22 @@ def scan_morning_commute_options(
             except Exception:
                 return 9999
 
+        # Tie-breaker key: latest departure, but if departures equal, earliest desk arrival
+        def _tier_rank(o: dict) -> tuple[int, int]:
+            return (_dep_minutes(o), -_arr_minutes(o))
+
+        # Fallback key: earliest desk arrival, but if arrivals equal, latest departure
+        def _fallback_rank(o: dict) -> tuple[int, int]:
+            return (_arr_minutes(o), -_dep_minutes(o))
+
         if tier1:
-            recommended = max(tier1, key=_dep_minutes)
+            recommended = max(tier1, key=_tier_rank)
             pool = tier1
         elif tier2:
-            recommended = max(tier2, key=_dep_minutes)
+            recommended = max(tier2, key=_tier_rank)
             pool = tier2
         else:
-            recommended = min(active_viable, key=_arr_minutes)
+            recommended = min(active_viable, key=_fallback_rank)
             pool = active_viable
 
         if not tier1 and not tier2:
@@ -1298,7 +1327,7 @@ def scan_morning_commute_options(
             delay_note = f" (delay: +{rec_delay}m)" if recommended.get("is_delayed") else ""
             rec_reason = (
                 f"🚨 WARNING: Severe delays across all corridor trains! Even earliest arriving option Train {recommended['train_no']} "
-                f"({recommended['train_name']}) won't reach desk until ~{recommended['desk_eta']} AM{delay_note}, "
+                f"({recommended['train_name']}) won't reach desk until ~{format_ampm(recommended['desk_eta'])}{delay_note}, "
                 f"missing your 12:00 PM hard shift start. Strongly consider taking Bike / Cab (/bike) or WFH (/wfh) today!"
             )
         elif not tier1 and tier2:
@@ -1306,27 +1335,27 @@ def scan_morning_commute_options(
             delay_note = f" (delay: +{rec_delay}m)" if recommended.get("is_delayed") else ""
             rec_reason = (
                 f"⚠️ CAUTION: Corridor delays have breached the 11:30 AM buffer! Train {recommended['train_no']} "
-                f"({recommended['train_name']}) departs Hosur at ~{recommended['projected_departure']} AM{delay_note} "
-                f"and arrives at desk by ~{recommended['desk_eta']} AM, reaching before your 12:00 PM shift start."
+                f"({recommended['train_name']}) departs Hosur at ~{format_ampm(recommended['projected_departure'])}{delay_note} "
+                f"and arrives at desk by ~{format_ampm(recommended['desk_eta'])}, reaching before your 12:00 PM shift start."
             )
         elif memu_rake.get("rake_cancelled"):
             rec_reason = (
                 f"⚠️ Train {MORNING_TRAIN_MEMU} rake is CANCELLED! Recommend taking Train {recommended['train_no']} "
-                f"({recommended['train_name']}) departing Hosur at ~{recommended['projected_departure']} AM. "
-                f"Reaches BLRR at ~{recommended['dest_eta']} AM (ETV Desk: ~{recommended['desk_eta']} AM)."
+                f"({recommended['train_name']}) departing Hosur at ~{format_ampm(recommended['projected_departure'])}. "
+                f"Reaches BLRR at ~{format_ampm(recommended['dest_eta'])} (ETV Desk: ~{format_ampm(recommended['desk_eta'])})."
             )
         elif len(pool) == 1:
             rec_delay = recommended.get("effective_delay_mins") or recommended.get("delay_mins") or 0
             delay_note = f" (delay: +{rec_delay}m)" if recommended.get("is_delayed") else " (on schedule)"
             rec_reason = (
                 f"Train {recommended['train_no']} ({recommended['train_name']}) is your sole qualifying option reaching desk before 11:30 AM "
-                f"(departs Hosur at ~{recommended['projected_departure']} AM{delay_note}, BLRR ~{recommended['dest_eta']} AM, Desk ~{recommended['desk_eta']} AM)."
+                f"(departs Hosur at ~{format_ampm(recommended['projected_departure'])}{delay_note}, BLRR ~{format_ampm(recommended['dest_eta'])}, Desk ~{format_ampm(recommended['desk_eta'])})."
             )
         else:
             delay_note = f" (delay: +{recommended['delay_mins']}m)" if recommended.get("is_delayed") else " (on schedule)"
             rec_reason = (
-                f"Train {recommended['train_no']} ({recommended['train_name']}) departs Hosur latest at ~{recommended['projected_departure']} AM{delay_note}, "
-                f"maximizing your sleep and home time! Reaches BLRR at ~{recommended['dest_eta']} AM and ETV desk by ~{recommended['desk_eta']} AM "
+                f"Train {recommended['train_no']} ({recommended['train_name']}) departs Hosur latest at ~{format_ampm(recommended['projected_departure'])}{delay_note}, "
+                f"maximizing your sleep and home time! Reaches BLRR at ~{format_ampm(recommended['dest_eta'])} and ETV desk by ~{format_ampm(recommended['desk_eta'])} "
                 f"(comfortably ahead of your 12:00 PM shift cutoff)."
             )
 
@@ -1360,33 +1389,34 @@ def scan_evening_commute_options(
         sched = CORRIDOR_SCHEDULES.get(t_no, {})
         
         # Check if train stops at BLRR (+11m advantage) or CRLM
-        blrr_stn = next((s for s in status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
-        crlm_stn = next((s for s in status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
-        hsra_stn = next((s for s in status.get("stations", []) if s["code"] == STN_HOSUR), None)
+        blrr_stn = next((s for s in status.get("stations", []) if s.get("code") == STN_BELLANDUR), None)
+        crlm_stn = next((s for s in status.get("stations", []) if s.get("code") == STN_CARMELARAM), None)
+        hsra_stn = next((s for s in status.get("stations", []) if s.get("code") == STN_HOSUR), None)
 
         if not blrr_stn and not crlm_stn and sched:
             static_st = fetch_static_fallback_status(t_no)
-            blrr_stn = next((s for s in static_st.get("stations", []) if s["code"] == STN_BELLANDUR), None)
-            crlm_stn = next((s for s in static_st.get("stations", []) if s["code"] == STN_CARMELARAM), None)
-            hsra_stn = next((s for s in static_st.get("stations", []) if s["code"] == STN_HOSUR), None)
+            blrr_stn = next((s for s in static_st.get("stations", []) if s.get("code") == STN_BELLANDUR), None)
+            crlm_stn = next((s for s in static_st.get("stations", []) if s.get("code") == STN_CARMELARAM), None)
+            hsra_stn = next((s for s in static_st.get("stations", []) if s.get("code") == STN_HOSUR), None)
             status = static_st
 
         if blrr_stn:
             board_stn = STN_BELLANDUR
-            sch_dep = blrr_stn["std"]
-            est_dep = blrr_stn["etd"]
+            sch_dep = blrr_stn.get("std", "")
+            etd_val = blrr_stn.get("etd")
             lead_time = LEAD_TIME_DESK_BLRR
         elif crlm_stn:
             board_stn = STN_CARMELARAM
-            sch_dep = crlm_stn["std"]
-            est_dep = crlm_stn["etd"]
+            sch_dep = crlm_stn.get("std", "")
+            etd_val = crlm_stn.get("etd")
             lead_time = LEAD_TIME_DESK_CRLM
         else:
             continue
 
         delay = status.get("delay_minutes", 0)
-        leave_desk_time = add_minutes_to_time(est_dep, -lead_time)
-        hsra_eta = hsra_stn["eta"] if hsra_stn else ""
+        est_dep = etd_val if (etd_val and str(etd_val).strip() not in ("Destination", "")) else (add_minutes_to_time(sch_dep, delay) if sch_dep else "")
+        leave_desk_time = add_minutes_to_time(est_dep, -lead_time) if est_dep else ""
+        hsra_eta = hsra_stn.get("eta", "") if hsra_stn else ""
 
         results.append({
             "train_no": t_no,
@@ -1440,23 +1470,24 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
         return None
 
     stations = status_dict.get("stations", [])
-    m_stn = next((s for s in stations if s["code"] == milestone_code), None)
-    crlm_stn = next((s for s in stations if s["code"] == STN_CARMELARAM), None)
+    m_stn = next((s for s in stations if s.get("code") == milestone_code), None)
+    crlm_stn = next((s for s in stations if s.get("code") == STN_CARMELARAM), None)
 
-    if m_stn and (m_stn["has_departed"] or m_stn["effective_delay"] is not None):
-        if m_stn["has_departed"]:
-            crlm_eta = crlm_stn["eta"] if crlm_stn else "19:38"
+    if m_stn and (m_stn.get("has_departed") or m_stn.get("effective_delay") is not None):
+        if m_stn.get("has_departed"):
+            crlm_eta = (crlm_stn.get("eta") if crlm_stn else None) or "19:38"
+            dep_time = m_stn.get("etd") or m_stn.get("std", "")
             return {
                 "triggered": True,
                 "train_no": t_no,
                 "train_name": sched.get("train_name", f"Train {t_no}"),
                 "milestone_station": milestone_code,
-                "departure_time": m_stn.get("etd", m_stn.get("std", "")),
+                "departure_time": dep_time,
                 "crlm_eta": crlm_eta,
                 "action": "LEAVE_DESK_NOW",
                 "message": (
                     f"🚨 *MILESTONE TRIGGER: Train {t_no}*\n"
-                    f"Train {t_no} has officially departed {milestone_code} at {m_stn.get('etd')}!\n"
+                    f"Train {t_no} has officially departed {milestone_code} at {dep_time}!\n"
                     f"Expected Carmelaram (CRLM) arrival: ~{crlm_eta}.\n\n"
                     f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 -> CRLM: ~25 mins lead time)."
                 ),
