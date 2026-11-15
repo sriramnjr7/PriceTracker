@@ -676,20 +676,73 @@ class RailDaemon:
 
     def cmd_status(self, chat_id: Optional[str] = None) -> None:
         st = self.store.state_data
-        active_train = st.get("morning_train" if "MORNING" in st["state"] else "evening_train", "66596")
-        status = rail_tracker.get_live_train_status(active_train)
+        state = st.get("state", STATE_NIGHT_SLEEP)
+        now_str = datetime.now().strftime("%H:%M")
 
-        msg = (
-            f"📡 *RailRadar Live Status*\n\n"
-            f"• *State Machine*: `{st['state']}`\n"
-            f"• *Active Train*: *{active_train}* ({status.get('train_name', '')})\n"
-            f"• *Current Location*: {status.get('current_station_name', '')} ({status.get('current_station', '')})\n"
-            f"• *Live Delay*: *{status.get('delay_minutes', 0)} mins*\n"
-            f"• *Projected Hosur Dep*: {st.get('morning_projected_dep', '08:25')}\n"
-            f"• *Step-Out Time*: *{st.get('morning_step_out_time', '08:15')} AM*\n"
-            f"• *Data Source*: `{status.get('source', 'CRIS')}`\n"
-            f"• *Last Updated*: {status.get('last_updated', '')}"
-        )
+        if state == STATE_MIDDAY_STANDBY:
+            evening_train = st.get("evening_train", "16232")
+            sched = rail_tracker.CORRIDOR_SCHEDULES.get(evening_train, {})
+            train_title = sched.get("train_name", "Return Train")
+            msg = (
+                f"🏢 *RailRadar Live Status — Midday Standby*\n\n"
+                f"• *State Machine*: `MIDDAY_STANDBY` (Desk / Office Mode)\n"
+                f"• *Morning Inbound*: Completed ✅\n"
+                f"• *Tracking Mode*: Standby (zero poll / battery consumption while at desk)\n"
+                f"• *Next Window*: Evening Return Corridor (15:30 – 22:00)\n"
+                f"• *Default Return Train*: *{evening_train}* ({train_title})\n"
+                f"• *Next Scheduled Check-In*: 14:00 PM (Corridor Preview)\n"
+                f"• *Current Time*: {now_str} IST\n\n"
+                f"💡 _Tip: Use `/evening` to browse all return trains, or `/train {evening_train}` for current position._"
+            )
+        elif state == STATE_NIGHT_SLEEP:
+            msg = (
+                f"🌙 *RailRadar Live Status — Overnight Hibernation*\n\n"
+                f"• *State Machine*: `NIGHT_SLEEP` (Deep Hibernation)\n"
+                f"• *Status*: Commute windows closed for the night. Silent mode active (zero notifications).\n"
+                f"• *Next Wake-Up*: Tomorrow at *06:45 AM* (Morning Corridor Scan)\n"
+                f"• *Corridor Trains*: 06278 (07:07), 66596 (08:26), 16212 (08:54)\n"
+                f"• *Current Time*: {now_str} IST\n\n"
+                f"💡 _Tip: Send `/morning` to preview tomorrow's schedule, or `/reset` to force daytime mode._"
+            )
+        elif state in (STATE_WFH, STATE_BIKE, STATE_HIBERNATION):
+            mode_name = "Work From Home" if state == STATE_WFH else ("Bike Commute" if state == STATE_BIKE else "Reached Destination")
+            msg = (
+                f"⏸️ *RailRadar Live Status — Tracking Paused*\n\n"
+                f"• *State Machine*: `{state}` ({mode_name})\n"
+                f"• *Status*: Tracking paused for today by user action.\n"
+                f"• *Notes*: {st.get('notes', 'No alerts will be sent.')}\n"
+                f"• *Current Time*: {now_str} IST\n\n"
+                f"💡 _Tip: Send `/reset` to resume autonomous tracking at any time._"
+            )
+        elif "EVENING" in state:
+            active_train = st.get("evening_train", "16232")
+            status = rail_tracker.get_live_train_status(active_train)
+            msg = (
+                f"🌆 *RailRadar Live Status — Evening Return*\n\n"
+                f"• *State Machine*: `{state}`\n"
+                f"• *Active Train*: *{active_train}* ({status.get('train_name', '')})\n"
+                f"• *Current Location*: {status.get('current_station_name', '')} ({status.get('current_station', '')})\n"
+                f"• *Live Delay*: *{status.get('delay_minutes', 0)} mins*\n"
+                f"• *Boarding Station*: Carmelaram (CRLM) / Bellandur Road (BLRR)\n"
+                f"• *Destination*: Hosur (HSRA)\n"
+                f"• *Milestone Fired*: {'Yes' if st.get('evening_milestone_fired') else 'Pending'}\n"
+                f"• *Data Source*: `{status.get('source', 'CRIS')}`\n"
+                f"• *Last Updated*: {status.get('last_updated', '')}"
+            )
+        else: # Morning Tracking or Morning Prompt
+            active_train = st.get("morning_train", rail_tracker.MORNING_TRAIN_MEMU)
+            status = rail_tracker.get_live_train_status(active_train)
+            msg = (
+                f"🌅 *RailRadar Live Status — Morning Inbound*\n\n"
+                f"• *State Machine*: `{state}`\n"
+                f"• *Active Train*: *{active_train}* ({status.get('train_name', '')})\n"
+                f"• *Current Location*: {status.get('current_station_name', '')} ({status.get('current_station', '')})\n"
+                f"• *Live Delay*: *{status.get('delay_minutes', 0)} mins*\n"
+                f"• *Projected Hosur Dep*: {st.get('morning_projected_dep', '08:25')}\n"
+                f"• *Step-Out Time*: *{st.get('morning_step_out_time', '08:15')} AM*\n"
+                f"• *Data Source*: `{status.get('source', 'CRIS')}`\n"
+                f"• *Last Updated*: {status.get('last_updated', '')}"
+            )
         self.bot.send_message(msg, chat_id=chat_id)
 
     def cmd_morning(self, chat_id: Optional[str] = None) -> None:
@@ -967,17 +1020,17 @@ class RailDaemon:
                 state = STATE_MORNING_TRACKING
 
         elif "09:40" <= current_time < "14:00":
-            if state in (STATE_MORNING_TRACKING, STATE_MORNING_PROMPT):
+            if state in (STATE_MORNING_TRACKING, STATE_MORNING_PROMPT, STATE_NIGHT_SLEEP):
                 self.store.transition_state(STATE_MIDDAY_STANDBY, "Midday standby")
                 state = STATE_MIDDAY_STANDBY
 
         elif "14:00" <= current_time < "15:30":
-            if state == STATE_MIDDAY_STANDBY and not self.store.state_data.get("evening_prompt_sent"):
+            if state in (STATE_MIDDAY_STANDBY, STATE_NIGHT_SLEEP) and not self.store.state_data.get("evening_prompt_sent"):
                 self.store.transition_state(STATE_EVENING_PROMPT, "Evening window opened")
                 state = STATE_EVENING_PROMPT
 
         elif "15:30" <= current_time < "22:30":
-            if state in (STATE_EVENING_PROMPT, STATE_MIDDAY_STANDBY):
+            if state in (STATE_EVENING_PROMPT, STATE_MIDDAY_STANDBY, STATE_NIGHT_SLEEP):
                 self.store.transition_state(STATE_EVENING_TRACKING, "Active evening tracking")
                 state = STATE_EVENING_TRACKING
 
