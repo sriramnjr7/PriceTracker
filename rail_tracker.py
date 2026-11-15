@@ -237,6 +237,7 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "direction": "EVENING",
         "origin": "BNC",
         "destination": "HSRA",
+        "milestone_station": "BYPL",
         "stations": [
             {"code": "BNC", "name": "BANGALORE CANT", "sta": "Source", "std": "15:30", "halt": 0, "day": 1},
             {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "15:40", "std": "15:41", "halt": 1, "day": 1},
@@ -267,6 +268,7 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "direction": "EVENING",
         "origin": "BNC",
         "destination": "HSRA",
+        "milestone_station": "BYPL",
         "stations": [
             {"code": "BNC", "name": "BANGALORE CANT", "sta": "Source", "std": "18:40", "halt": 0, "day": 1},
             {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "18:50", "std": "18:51", "halt": 1, "day": 1},
@@ -469,7 +471,7 @@ def minutes_difference(t_from: str, t_to: str, allow_wraparound: bool = True) ->
         if allow_wraparound:
             if p1[0] >= 18 and p2[0] <= 6 and diff < 0:
                 diff += 1440
-            elif p1[0] <= 5 and p2[0] >= 19 and diff > 0:
+            elif p1[0] <= 4 and p2[0] >= 20 and diff > 1200:
                 diff -= 1440
         return diff
     except Exception:
@@ -971,6 +973,7 @@ def inspect_rake_turnaround(
             "rake_eta_hsra": "CANCELLED",
             "rake_status_text": f"Rake {rake_train} {reason}",
             "delay_summary": f"🚨 Rake {rake_train} is {reason}! Train {morning_train} will not run normally. Switch to alternative train immediately.",
+            "memu_has_departed": False,
             "memu_status": memu_status,
             "rake_status": rake_status,
         }
@@ -1000,7 +1003,8 @@ def inspect_rake_turnaround(
     min_physical_dep = add_minutes_to_time(rake_eta_hsra, RAKE_TURNAROUND_MIN_BUFFER)
 
     # Directly reported MEMU ETD from CRIS if available
-    direct_memu_etd = memu_hsra.get("etd", "") if (memu_hsra and memu_hsra.get("etd") not in ("Destination", "")) else ""
+    etd_val = memu_hsra.get("etd") if memu_hsra else None
+    direct_memu_etd = etd_val if (etd_val and str(etd_val).strip() not in ("Destination", "")) else ""
     
     # Take whichever departure is later: physical turnaround, direct reported ETD, or scheduled
     projected_departure = scheduled_memu_dep
@@ -1037,6 +1041,7 @@ def inspect_rake_turnaround(
         "rake_eta_hsra": rake_eta_hsra,
         "rake_status_text": rake_status.get("current_status", ""),
         "delay_summary": delay_summary,
+        "memu_has_departed": bool(memu_hsra and memu_hsra.get("has_departed")),
         "memu_status": memu_status,
         "rake_status": rake_status,
     }
@@ -1080,7 +1085,8 @@ def scan_morning_commute_options(
 
     memu2_sch_dep = memu2_hsra.get("std", "07:07") if memu2_hsra else "07:07"
     memu2_delay = memu2_status.get("delay_minutes", 0)
-    memu2_projected_dep = memu2_hsra.get("etd", "") if (memu2_hsra and memu2_hsra.get("etd") not in ("Destination", "")) else add_minutes_to_time(memu2_sch_dep, memu2_delay)
+    memu2_etd_val = memu2_hsra.get("etd") if memu2_hsra else None
+    memu2_projected_dep = memu2_etd_val if (memu2_etd_val and str(memu2_etd_val).strip() not in ("Destination", "")) else add_minutes_to_time(memu2_sch_dep, memu2_delay)
 
     # Physical transit check for 06278 if still en route to Hosur
     memu2_curr_stn = memu2_status.get("current_station", "").upper()
@@ -1115,7 +1121,8 @@ def scan_morning_commute_options(
 
     exp_sch_dep = exp_hsra.get("std", "08:20") if exp_hsra else "08:20"
     exp_delay = exp_status.get("delay_minutes", 0)
-    exp_projected_dep = exp_hsra.get("etd", "") if (exp_hsra and exp_hsra.get("etd") not in ("Destination", "")) else add_minutes_to_time(exp_sch_dep, exp_delay)
+    exp_etd_val = exp_hsra.get("etd") if exp_hsra else None
+    exp_projected_dep = exp_etd_val if (exp_etd_val and str(exp_etd_val).strip() not in ("Destination", "")) else add_minutes_to_time(exp_sch_dep, exp_delay)
     # Cancellation checks for 06278 and 16212
     memu2_cancelled = (
         "cancel" in (memu2_status.get("current_status") or "").lower()
@@ -1127,10 +1134,11 @@ def scan_morning_commute_options(
     )
 
     # Physical transit check for 16212 if still en route to Hosur
+    is_morning_window = reference_time < "10:30" if reference_time else True
     exp_curr_stn = exp_status.get("current_station", "").upper()
     exp_transit = MIN_TRANSIT_TO_HSRA_16212.get(exp_curr_stn)
     exp_has_arrived = (exp_curr_stn == STN_HOSUR) or bool(exp_hsra and exp_hsra.get("has_arrived"))
-    if not exp_has_arrived and exp_transit is not None and reference_time:
+    if is_morning_window and not exp_has_arrived and exp_transit is not None and reference_time:
         loc_exp_dep = add_minutes_to_time(reference_time, exp_transit + 2)
         if minutes_difference(exp_projected_dep, loc_exp_dep) > 0:
             exp_projected_dep = loc_exp_dep
@@ -1139,13 +1147,13 @@ def scan_morning_commute_options(
     exp_step_out = add_minutes_to_time(exp_projected_dep, -LEAD_TIME_HOME_HOSUR)
 
     exp_sta = exp_blrr.get("sta", "08:59") if exp_blrr else ("09:05" if exp_crlm else "08:59")
-    if exp_delay > 0:
-        if exp_blrr and exp_blrr.get("eta") and exp_blrr.get("eta") != exp_sta:
+    if exp_effective_delay > 0:
+        if exp_blrr and exp_blrr.get("eta") and exp_blrr.get("eta") != exp_sta and minutes_difference(exp_projected_dep, exp_blrr.get("eta")) >= 25:
             exp_dest_eta = exp_blrr.get("eta")
-        elif exp_crlm and exp_crlm.get("eta") and exp_crlm.get("eta") != exp_sta:
+        elif exp_crlm and exp_crlm.get("eta") and exp_crlm.get("eta") != exp_sta and minutes_difference(exp_projected_dep, exp_crlm.get("eta")) >= 25:
             exp_dest_eta = exp_crlm.get("eta")
         else:
-            exp_dest_eta = add_minutes_to_time(exp_sta, exp_delay)
+            exp_dest_eta = add_minutes_to_time(exp_sta, exp_effective_delay)
     else:
         exp_dest_eta = (exp_blrr.get("eta") if exp_blrr else None) or exp_sta
 
@@ -1193,7 +1201,7 @@ def scan_morning_commute_options(
             "is_delayed": memu_rake["is_delayed"],
             "minutes_until_dep": memu_minutes_until_dep,
             "door_to_door_duration": minutes_difference(memu_rake["revised_step_out_time"], memu_desk_eta) if not memu_rake.get("rake_cancelled") else 0,
-            "status": determine_status(memu_minutes_until_dep, cancelled=memu_rake.get("rake_cancelled")),
+            "status": determine_status(memu_minutes_until_dep, has_departed=bool(memu_rake.get("memu_has_departed")), cancelled=memu_rake.get("rake_cancelled")),
             "details": memu_rake["delay_summary"],
         },
         {
@@ -1252,35 +1260,54 @@ def scan_morning_commute_options(
         if not active_viable:
             active_viable = viable
 
-        # 2. Safety Cutoff: Desk ETA <= 11:30 AM (>= 30 mins buffer ahead of 12:00 PM shift)
+        # 2. Safety Cutoff & 2-Stage Tiering:
+        # Tier 1: Desk ETA <= 11:30 AM (comfortable >= 30m buffer ahead of 12:00 PM shift start)
+        # Tier 2: Desk ETA <= 12:00 PM (hard shift start cutoff)
         SHIFT_CUTOFF_DESK = "11:30"
-        qualifying = [
-            o for o in active_viable
-            if minutes_difference(o.get("desk_eta", "12:00"), SHIFT_CUTOFF_DESK) >= 0
-        ]
+        SHIFT_HARD_START = "12:00"
 
-        # Fallback to active_viable if severe delays push all trains past cutoff
-        pool = qualifying if qualifying else active_viable
+        tier1 = [o for o in active_viable if minutes_difference(o.get("desk_eta", "12:00"), SHIFT_CUTOFF_DESK) >= 0]
+        tier2 = [o for o in active_viable if minutes_difference(o.get("desk_eta", "12:00"), SHIFT_HARD_START) >= 0]
 
-        # Helper to convert "HH:MM" into minutes from midnight
         def _dep_minutes(o: dict) -> int:
-            t = o.get("projected_departure", "00:00")
             try:
-                parts = t.split(":")
+                parts = o.get("projected_departure", "00:00").split(":")
                 return int(parts[0]) * 60 + int(parts[1])
             except Exception:
                 return 0
 
-        # Maximize sleep / home time: Pick the latest departing train!
-        recommended = max(pool, key=_dep_minutes)
+        def _arr_minutes(o: dict) -> int:
+            try:
+                parts = o.get("desk_eta", "23:59").split(":")
+                return int(parts[0]) * 60 + int(parts[1])
+            except Exception:
+                return 9999
 
-        if not qualifying:
+        if tier1:
+            recommended = max(tier1, key=_dep_minutes)
+            pool = tier1
+        elif tier2:
+            recommended = max(tier2, key=_dep_minutes)
+            pool = tier2
+        else:
+            recommended = min(active_viable, key=_arr_minutes)
+            pool = active_viable
+
+        if not tier1 and not tier2:
             rec_delay = recommended.get("effective_delay_mins") or recommended.get("delay_mins") or 0
             delay_note = f" (delay: +{rec_delay}m)" if recommended.get("is_delayed") else ""
             rec_reason = (
-                f"🚨 WARNING: Severe delays across all corridor trains! Even latest option Train {recommended['train_no']} "
+                f"🚨 WARNING: Severe delays across all corridor trains! Even earliest arriving option Train {recommended['train_no']} "
                 f"({recommended['train_name']}) won't reach desk until ~{recommended['desk_eta']} AM{delay_note}, "
-                f"missing your 11:30 AM safety cutoff. Strongly consider taking Bike / Cab (/bike) or WFH (/wfh) today!"
+                f"missing your 12:00 PM hard shift start. Strongly consider taking Bike / Cab (/bike) or WFH (/wfh) today!"
+            )
+        elif not tier1 and tier2:
+            rec_delay = recommended.get("effective_delay_mins") or recommended.get("delay_mins") or 0
+            delay_note = f" (delay: +{rec_delay}m)" if recommended.get("is_delayed") else ""
+            rec_reason = (
+                f"⚠️ CAUTION: Corridor delays have breached the 11:30 AM buffer! Train {recommended['train_no']} "
+                f"({recommended['train_name']}) departs Hosur at ~{recommended['projected_departure']} AM{delay_note} "
+                f"and arrives at desk by ~{recommended['desk_eta']} AM, reaching before your 12:00 PM shift start."
             )
         elif memu_rake.get("rake_cancelled"):
             rec_reason = (

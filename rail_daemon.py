@@ -327,18 +327,18 @@ class CommuteStateStore:
         try:
             url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/commute_daily_state"
             payload = {
-                "date": self.state_data["date"],
-                "state": self.state_data["state"],
-                "morning_train": self.state_data["morning_train"],
-                "morning_step_out_time": self.state_data["morning_step_out_time"],
-                "morning_revised_dep": self.state_data["morning_projected_dep"],
-                "morning_delay_mins": self.state_data["morning_delay_mins"],
-                "morning_status": "COMPLETED" if self.state_data["morning_completed"] else "ACTIVE",
-                "evening_train": self.state_data["evening_train"],
-                "evening_milestone_fired": self.state_data["evening_milestone_fired"],
-                "evening_status": "COMPLETED" if self.state_data["evening_completed"] else "ACTIVE",
-                "notes": self.state_data["notes"],
-                "last_updated": self.state_data["last_updated"],
+                "date": self.state_data.get("date", get_ist_now().strftime("%Y-%m-%d")),
+                "state": self.state_data.get("state", STATE_MIDDAY_STANDBY),
+                "morning_train": self.state_data.get("morning_train", rail_tracker.MORNING_TRAIN_MEMU if rail_tracker else "66596"),
+                "morning_step_out_time": self.state_data.get("morning_step_out_time", "08:15"),
+                "morning_revised_dep": self.state_data.get("morning_projected_dep", "08:25"),
+                "morning_delay_mins": self.state_data.get("morning_delay_mins", 0),
+                "morning_status": "COMPLETED" if self.state_data.get("morning_completed", False) else "ACTIVE",
+                "evening_train": self.state_data.get("evening_train", "16232"),
+                "evening_milestone_fired": self.state_data.get("evening_milestone_fired", False),
+                "evening_status": "COMPLETED" if self.state_data.get("evening_completed", False) else "ACTIVE",
+                "notes": self.state_data.get("notes", ""),
+                "last_updated": self.state_data.get("last_updated", get_ist_now().isoformat()),
             }
             req = urllib.request.Request(
                 url,
@@ -716,7 +716,7 @@ class RailDaemon:
         if not current_time:
             current_time = (now or get_ist_now()).strftime("%H:%M")
 
-        if current_time < "15:30" or current_time >= "23:00":
+        if current_time < "15:30" or current_time >= "23:30":
             logger.warning("Evening tracking invoked outside evening hours (%s)", current_time)
             return
 
@@ -784,6 +784,8 @@ class RailDaemon:
             self.cmd_milestones(chat_id)
         elif cmd in ("/reached", "reached"):
             self.cmd_reached(chat_id)
+        elif cmd in ("/stay", "stay"):
+            self.cmd_stay(chat_id)
         elif cmd == "/reset":
             self.cmd_reset(chat_id)
         else:
@@ -1019,6 +1021,10 @@ class RailDaemon:
         self.store.transition_state(STATE_BIKE, "User commuting via Bike")
         self.bot.send_message("🏍️ Commute mode switched to *Bike / Road*. Ride safe on Attibele / Electronic City flyover!", chat_id=chat_id)
 
+    def cmd_stay(self, chat_id: Optional[str] = None) -> None:
+        self.store.transition_state(STATE_HIBERNATION, "User staying late / Bangalore")
+        self.bot.send_message("🏠 Staying late confirmed. Evening train tracking paused for tonight.", chat_id=chat_id)
+
     def cmd_station(self, station_code: str, chat_id: Optional[str] = None) -> None:
         raw_stn = station_code.upper().strip()
         stn = rail_tracker.STATION_CODE_ALIASES.get(raw_stn, raw_stn)
@@ -1120,7 +1126,7 @@ class RailDaemon:
                 chat_id = str(msg.get("chat", {}).get("id", ""))
                 if text.startswith("/"):
                     self.execute_command(text, chat_id=chat_id)
-                elif text.strip().lower() in ("reached", "status", "morning", "evening", "wfh", "bike", "help", "delays", "rake"):
+                elif text.strip().lower() in ("reached", "status", "morning", "evening", "wfh", "bike", "help", "delays", "rake", "stay"):
                     self.execute_command("/" + text.strip().lower(), chat_id=chat_id)
 
             # 2. Inline Callback Query
@@ -1139,6 +1145,8 @@ class RailDaemon:
                     self.cmd_wfh(chat_id=chat_id)
                 elif data == "action:bike":
                     self.cmd_bike(chat_id=chat_id)
+                elif data == "action:stay":
+                    self.cmd_stay(chat_id=chat_id)
                 elif data == "action:reached":
                     self.cmd_reached(chat_id=chat_id)
                 elif data == "action:morning_scan":

@@ -29,10 +29,14 @@ def reset_watchdog():
     rail_tracker.watchdog.reset()
 
 
+_ORIGINAL_SYNC_TO_SUPABASE = rail_daemon.CommuteStateStore._sync_to_supabase
+
+
 @pytest.fixture(autouse=True)
 def guard_supabase_sync():
     """Autouse fixture that prevents tests from mutating live Supabase database."""
     with patch.object(rail_daemon.CommuteStateStore, "_sync_to_supabase", return_value=None) as mock_sync:
+        mock_sync._original = _ORIGINAL_SYNC_TO_SUPABASE
         yield mock_sync
 
 

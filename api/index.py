@@ -1335,7 +1335,9 @@ async def _fetch_supabase_commute_state(target_date: Optional[str] = None) -> Op
 
 def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dict[str, Any]:
     """Fast offline fallback status when rail modules cannot be loaded or network fails."""
-    is_evening = "EVENING" in state_data.get("state", "")
+    default_state = "NIGHT_SLEEP" if (now_time >= "23:30" or now_time < "06:45") else "STANDBY"
+    resolved_state = state_data.get("state", default_state)
+    is_evening = "EVENING" in resolved_state
     step_out = "19:15" if is_evening else state_data.get("morning_step_out_time", "08:15")
     try:
         cur_h, cur_m = map(int, now_time.split(":"))
@@ -1346,8 +1348,8 @@ def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dic
 
     return {
         "status": "ok",
-        "state": state_data.get("state", "STANDBY"),
-        "active_train": state_data.get("morning_train" if "MORNING" in state_data.get("state", "") else "evening_train", "66596"),
+        "state": resolved_state,
+        "active_train": state_data.get("morning_train" if "MORNING" in resolved_state else "evening_train", "66596"),
         "current_time": now_time,
         "step_out_time": step_out,
         "step_out_countdown_mins": countdown_mins,
@@ -1446,9 +1448,13 @@ async def api_rail_status():
                 "WEEKEND_REST"
                 if is_weekend
                 else (
-                    "MORNING_TRACKING"
-                    if "07:30" <= now_time < "09:40"
-                    else ("EVENING_TRACKING" if "15:30" <= now_time < "23:30" else "MIDDAY_STANDBY")
+                    "NIGHT_SLEEP"
+                    if now_time >= "23:30" or now_time < "06:45"
+                    else (
+                        "MORNING_TRACKING"
+                        if "07:30" <= now_time < "09:40"
+                        else ("EVENING_TRACKING" if "15:30" <= now_time < "23:30" else "MIDDAY_STANDBY")
+                    )
                 )
             ),
             "active_train": "66596",
@@ -1472,9 +1478,13 @@ async def api_rail_status():
                 "WEEKEND_REST"
                 if is_weekend
                 else (
-                    "MORNING_TRACKING"
-                    if "07:30" <= now_time < "09:40"
-                    else ("EVENING_TRACKING" if "15:30" <= now_time < "23:30" else "MIDDAY_STANDBY")
+                    "NIGHT_SLEEP"
+                    if now_time >= "23:30" or now_time < "06:45"
+                    else (
+                        "MORNING_TRACKING"
+                        if "07:30" <= now_time < "09:40"
+                        else ("EVENING_TRACKING" if "15:30" <= now_time < "23:30" else "MIDDAY_STANDBY")
+                    )
                 )
             ),
             "active_train": "66596",
@@ -1665,9 +1675,17 @@ async def api_rail_action(request: Request):
                 store.transition_state(rail_daemon.STATE_MORNING_TRACKING, f"Tracking morning train {train_no}")
             msg = f"Now tracking Train {train_no}."
         elif action == "reached":
-            store.state_data["morning_completed"] = True
-            store.transition_state(rail_daemon.STATE_MIDDAY_STANDBY, "Reached station platform")
-            msg = "Reached station platform!"
+            state = store.state_data.get("state", "")
+            now_time = get_ist_now().strftime("%H:%M")
+            is_evening = "EVENING" in state or ("13:00" <= now_time < "23:30" and not ("06:00" <= now_time < "12:00"))
+            if is_evening:
+                store.state_data["evening_completed"] = True
+                store.transition_state(rail_daemon.STATE_HIBERNATION, "Reached evening station / destination")
+                msg = "Reached destination! Evening commute completed."
+            else:
+                store.state_data["morning_completed"] = True
+                store.transition_state(rail_daemon.STATE_MIDDAY_STANDBY, "Reached station platform")
+                msg = "Reached station platform!"
         elif action == "reset":
             store.reset_today()
             now_dt = get_ist_now()
