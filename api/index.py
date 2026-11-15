@@ -164,6 +164,18 @@ async def root(request: Request):
             headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
         )
 
+    if method == "GET" and clean in ("math", "train-math", "train_math", "math-deepdive"):
+        math_file = os.path.join(root_dir, "train_math_deepdive.html")
+        if os.path.exists(math_file):
+            with open(math_file, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
+
+    if method == "GET" and clean in ("commute-guide", "real-life-guide", "commute_guide"):
+        guide_file = os.path.join(root_dir, "commute_real_life_guide.html")
+        if os.path.exists(guide_file):
+            with open(guide_file, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
+
     if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs", "rail-radar", "rail", "commute", "railradar"):
         return HTMLResponse(
             content=get_dashboard_html(),
@@ -2707,6 +2719,18 @@ async def catch_all(request: Request, full_path: str):
     # 0. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
     if is_browser_request(request) and not clean.startswith("api/") and not clean.startswith("assets/"):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)
+
+    if method == "GET" and clean in ("math", "train-math", "train_math", "math-deepdive"):
+        math_file = os.path.join(root_dir, "train_math_deepdive.html")
+        if os.path.exists(math_file):
+            with open(math_file, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
+
+    if method == "GET" and clean in ("commute-guide", "real-life-guide", "commute_guide"):
+        guide_file = os.path.join(root_dir, "commute_real_life_guide.html")
+        if os.path.exists(guide_file):
+            with open(guide_file, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
 
     if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs", "rail-radar", "rail", "commute", "railradar"):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)

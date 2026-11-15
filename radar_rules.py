@@ -386,9 +386,9 @@ DEFAULT_RADAR_RULES: List[RadarRule] = [
 ]
 
 
-# Active Flipkart SuperCoin Category Surveillance Rules
+# Active Flipkart SuperCoin Category Surveillance Rules (PARKED by user request: SuperCoins require authenticated session)
 SUPERCOIN_CATEGORY_RULES: List[RadarRule] = [
-    # 1. Broad Flipkart Watches Category Feed (Hilfiger, Titan, French Connection, Slazenger, Extri, etc.)
+    # 1. Broad Flipkart Watches Category Feed (Hilfiger, Titan, French Connection, Slazenger, Extri, etc.) - PARKED
     RadarRule(
         name="Flipkart Watches 70%+ SuperCoin & Steal Deals",
         category="Watches",
@@ -420,10 +420,9 @@ SUPERCOIN_CATEGORY_RULES: List[RadarRule] = [
             ),
         },
         apply_discount_facet=False,
-        is_active=True,
+        is_active=False,
     ),
-    # 2. Flipkart Premium Watches New Drops & Restocks (Recency Sort)
-    # Catches flash restocks and price drops (like NCTH1791382 Hilfiger, Extri X6066-C drop to 1869, Slazenger back in stock)
+    # 2. Flipkart Premium Watches New Drops & Restocks (Recency Sort) - PARKED
     RadarRule(
         name="Flipkart Premium Watches (Hilfiger, Titan, FC, Slazenger) SuperCoins",
         category="Watches",
@@ -448,9 +447,9 @@ SUPERCOIN_CATEGORY_RULES: List[RadarRule] = [
             ),
         },
         apply_discount_facet=False,
-        is_active=True,
+        is_active=False,
     ),
-    # 3. Flipkart Brillare 70%+ / 100% SuperCoin Loot Drops
+    # 3. Flipkart Brillare 70%+ / 100% SuperCoin Loot Drops - PARKED
     RadarRule(
         name="Flipkart Brillare 70%+ SuperCoin Loot Deals",
         category="Beauty & Personal Care",
@@ -465,9 +464,9 @@ SUPERCOIN_CATEGORY_RULES: List[RadarRule] = [
             "flipkart": "https://www.flipkart.com/search?q=brillare",
         },
         apply_discount_facet=False,
-        is_active=True,
+        is_active=False,
     ),
-    # 4. Flipkart Luxury Perfumes & Fragrances (DA RAKE Classio Vibes, Ascot Oud, etc.)
+    # 4. Flipkart Luxury Perfumes & Fragrances - PARKED
     RadarRule(
         name="Flipkart Luxury Perfumes (DA RAKE & EDP) 70%+ Steals",
         category="Fragrances & Perfumes",
@@ -481,9 +480,9 @@ SUPERCOIN_CATEGORY_RULES: List[RadarRule] = [
             "flipkart": "https://www.flipkart.com/search?q=da+rake+perfume",
         },
         apply_discount_facet=False,
-        is_active=True,
+        is_active=False,
     ),
-    # 5. Flipkart Broad SuperCoin Offers Feed
+    # 5. Flipkart Broad SuperCoin Offers Feed - PARKED
     RadarRule(
         name="Flipkart 70%+ SuperCoin Loot & Clearance Glitches",
         category="SuperCoins & Clearance",
@@ -496,6 +495,6 @@ SUPERCOIN_CATEGORY_RULES: List[RadarRule] = [
             "flipkart": "https://www.flipkart.com/search?q=100%25+supercoins+offer",
         },
         apply_discount_facet=False,
-        is_active=True,
+        is_active=False,
     ),
 ]
