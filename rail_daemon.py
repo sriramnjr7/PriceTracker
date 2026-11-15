@@ -30,6 +30,12 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 import rail_tracker
 
 logger = logging.getLogger("rail_daemon")
@@ -48,13 +54,23 @@ def get_ist_now() -> datetime:
 # 1. CONFIGURATION & CONSTANTS
 # =============================================================================
 
-DEFAULT_BOT_TOKEN = "9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyqFZU"
-DEFAULT_CHAT_ID = "716060462"
+DEFAULT_BOT_TOKEN = ""
+DEFAULT_CHAT_ID = ""
 
-# Strict Isolation: Only use TRAIN_BOT_TOKEN or RAIL_TELEGRAM_BOT_TOKEN.
-# NEVER fall back to PriceTracker's TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID.
-TELEGRAM_BOT_TOKEN = os.getenv("TRAIN_BOT_TOKEN") or os.getenv("RAIL_TELEGRAM_BOT_TOKEN") or DEFAULT_BOT_TOKEN
-TELEGRAM_CHAT_ID = os.getenv("TRAIN_CHAT_ID") or os.getenv("RAIL_TELEGRAM_CHAT_ID") or DEFAULT_CHAT_ID
+# Strict Isolation: All tokens must be loaded from environment variables or .env file.
+# Dedicated Rail bot tokens take precedence; fall back to standard tokens if provided.
+TELEGRAM_BOT_TOKEN = (
+    os.getenv("TRAIN_BOT_TOKEN")
+    or os.getenv("RAIL_TELEGRAM_BOT_TOKEN")
+    or os.getenv("TELEGRAM_BOT_TOKEN")
+    or DEFAULT_BOT_TOKEN
+)
+TELEGRAM_CHAT_ID = (
+    os.getenv("TRAIN_CHAT_ID")
+    or os.getenv("RAIL_TELEGRAM_CHAT_ID")
+    or os.getenv("TELEGRAM_CHAT_ID")
+    or DEFAULT_CHAT_ID
+)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -75,11 +91,12 @@ STATE_EVENING_TRACKING = "EVENING_TRACKING"
 STATE_HIBERNATION = "HIBERNATION"
 STATE_WFH = "WFH"
 STATE_BIKE = "BIKE"
+STATE_WEEKEND_REST = "WEEKEND_REST"
 
 # Adaptive Polling Tiers (in seconds)
 POLL_TIER_CRITICAL = 30     # < 20 mins to step-out / milestone
 POLL_TIER_APPROACH = 60     # 20 - 60 mins
-POLL_TIER_STANDBY = 900     # Midday / > 60 mins (15 minutes)
+POLL_TIER_STANDBY = 900     # Midday / Weekend / > 60 mins (15 minutes)
 POLL_TIER_HIBERNATE = 10    # Low frequency for Telegram updates during sleep
 
 # Lead Times (minutes)
@@ -96,9 +113,9 @@ class TelegramClient:
     """Synchronous resilient Telegram Bot API client for long-polling and alert pushes."""
 
     def __init__(self, token: str, default_chat_id: str):
-        self.token = token
-        self.default_chat_id = default_chat_id
-        self.base_url = f"https://api.telegram.org/bot{self.token}"
+        self.token = token.strip() if token else ""
+        self.default_chat_id = default_chat_id.strip() if default_chat_id else ""
+        self.base_url = f"https://api.telegram.org/bot{self.token}" if self.token else ""
 
     def send_message(
         self,
@@ -108,8 +125,8 @@ class TelegramClient:
         parse_mode: str = "Markdown",
     ) -> Optional[Dict[str, Any]]:
         target_chat = chat_id or self.default_chat_id
-        if not target_chat:
-            logger.warning("No chat_id configured for Telegram notification.")
+        if not self.token or not target_chat:
+            logger.warning("No Telegram token or chat_id configured. Message dispatch skipped.")
             return None
 
         url = f"{self.base_url}/sendMessage"
@@ -144,6 +161,8 @@ class TelegramClient:
         parse_mode: str = "Markdown",
     ) -> Optional[Dict[str, Any]]:
         target_chat = chat_id or self.default_chat_id
+        if not self.token or not target_chat:
+            return None
         url = f"{self.base_url}/editMessageText"
         payload = {
             "chat_id": target_chat,
@@ -169,6 +188,8 @@ class TelegramClient:
             return None
 
     def answer_callback(self, callback_query_id: str, text: Optional[str] = None) -> bool:
+        if not self.token:
+            return False
         url = f"{self.base_url}/answerCallbackQuery"
         payload = {"callback_query_id": callback_query_id}
         if text:
@@ -186,6 +207,8 @@ class TelegramClient:
             return False
 
     def get_updates(self, offset: int = 0, timeout: int = 20) -> List[Dict[str, Any]]:
+        if not self.token:
+            return []
         url = f"{self.base_url}/getUpdates?offset={offset}&timeout={timeout}"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "RailRadarDaemon/1.0"})
@@ -204,8 +227,8 @@ class TelegramClient:
 class CommuteStateStore:
     """Manages daily commute state with disk cache and zero-polling Supabase writes."""
 
-    def __init__(self, file_path: str = LOCAL_STATE_FILE):
-        self.file_path = file_path
+    def __init__(self, file_path: Optional[str] = None):
+        self.file_path = file_path if file_path is not None else LOCAL_STATE_FILE
         self.state_data = self._load()
 
     def _get_today_str(self) -> str:
@@ -384,10 +407,16 @@ class RailDaemon:
     # Morning Lifecycle Logic
     # -------------------------------------------------------------------------
 
-    def handle_morning_prompt(self, current_time: Optional[str] = None) -> None:
-        """Triggered at 06:45 AM: Send morning options overview. Strictly guarded to 06:45 - 09:30 AM IST."""
+    def handle_morning_prompt(self, current_time: Optional[str] = None, now: Optional[datetime] = None) -> None:
+        """Triggered at 06:45 AM: Send morning options overview. Strictly guarded to 06:45 - 09:30 AM IST on weekdays."""
+        # Weekend guard: Zero proactive morning alerts on Saturday / Sunday
+        if now is not None and now.weekday() in (5, 6):
+            logger.info("Suppressed handle_morning_prompt: Weekend rest mode (%s)", now.strftime("%A"))
+            self.store.transition_state(STATE_WEEKEND_REST, "Weekend rest mode active")
+            return
+
         if not current_time:
-            current_time = get_ist_now().strftime("%H:%M")
+            current_time = (now or get_ist_now()).strftime("%H:%M")
 
         # 1. Strict time-of-day guard: Strictly between 06:45 and 09:30 AM IST only
         if not ("06:45" <= current_time <= "09:30"):
@@ -437,12 +466,19 @@ class RailDaemon:
         self.store.state_data["last_recommended_train"] = rec["train_no"]
         self.store.save()
 
-    def handle_morning_tracking(self, current_time: str) -> None:
+    def handle_morning_tracking(self, current_time: str, now: Optional[datetime] = None) -> None:
         """
         Continuously tracks active morning train (16212 Salem Exp, 66596 MEMU, or 06278 MEMU).
         Dynamically shifts step-out alerts, detects recommendation flips, and pushes alerts.
         """
-        # Strict time-of-day guard for morning tracking
+        # Weekend guard: Zero proactive morning alerts on Saturday / Sunday
+        if now is not None and now.weekday() in (5, 6):
+            logger.info("Suppressed handle_morning_tracking: Weekend rest mode (%s)", now.strftime("%A"))
+            self.store.state_data["morning_completed"] = True
+            self.store.transition_state(STATE_WEEKEND_REST, "Weekend rest mode active")
+            return
+
+        # Strict time-of-day guard for morning tracking: strictly between 07:00 and 09:40 AM IST
         if current_time >= "09:40" or current_time < "07:00":
             logger.warning("Morning tracking invoked outside morning hours (%s); auto-completing to midday standby", current_time)
             self.store.state_data["morning_completed"] = True
@@ -590,10 +626,16 @@ class RailDaemon:
     # Evening Lifecycle Logic
     # -------------------------------------------------------------------------
 
-    def handle_evening_prompt(self, current_time: Optional[str] = None) -> None:
+    def handle_evening_prompt(self, current_time: Optional[str] = None, now: Optional[datetime] = None) -> None:
         """Triggered at 14:00 PM: Evening commute check-in."""
+        # Weekend guard: Zero proactive evening prompts on Saturday / Sunday
+        if now is not None and now.weekday() in (5, 6):
+            logger.info("Suppressed handle_evening_prompt: Weekend rest mode (%s)", now.strftime("%A"))
+            self.store.transition_state(STATE_WEEKEND_REST, "Weekend rest mode active")
+            return
+
         if not current_time:
-            current_time = get_ist_now().strftime("%H:%M")
+            current_time = (now or get_ist_now()).strftime("%H:%M")
 
         if not ("14:00" <= current_time <= "18:00"):
             logger.warning("Rejected handle_evening_prompt execution: current_time %s is outside evening prompt window (14:00 - 18:00 IST)", current_time)
@@ -616,13 +658,19 @@ class RailDaemon:
         self.store.state_data["evening_prompt_sent"] = True
         self.store.transition_state(STATE_EVENING_PROMPT, "Sent 14:00 PM evening check-in")
 
-    def handle_evening_tracking(self, current_time: Optional[str] = None) -> None:
+    def handle_evening_tracking(self, current_time: Optional[str] = None, now: Optional[datetime] = None) -> None:
         """
         Monitors evening train (e.g. 16232) and checks milestone triggers
         (e.g. Train 16232 clearing BNC -> 'LEAVE DESK NOW').
         """
+        # Weekend guard: Zero proactive evening alerts on Saturday / Sunday
+        if now is not None and now.weekday() in (5, 6):
+            logger.info("Suppressed handle_evening_tracking: Weekend rest mode (%s)", now.strftime("%A"))
+            self.store.transition_state(STATE_WEEKEND_REST, "Weekend rest mode active")
+            return
+
         if not current_time:
-            current_time = get_ist_now().strftime("%H:%M")
+            current_time = (now or get_ist_now()).strftime("%H:%M")
 
         if current_time < "15:30" or current_time >= "23:00":
             logger.warning("Evening tracking invoked outside evening hours (%s)", current_time)
@@ -727,7 +775,17 @@ class RailDaemon:
         state = st.get("state", STATE_NIGHT_SLEEP)
         now_str = get_ist_now().strftime("%H:%M")
 
-        if state == STATE_MIDDAY_STANDBY:
+        if state == STATE_WEEKEND_REST:
+            msg = (
+                f"🏖️ *RailRadar Live Status — Weekend Rest*\n\n"
+                f"• *State Machine*: `WEEKEND_REST` (Silent Mode)\n"
+                f"• *Status*: Weekend rest mode active. Autonomous commute prompts & proactive delay alerts are paused.\n"
+                f"• *Next Commute*: Monday morning at *06:45 AM* (Morning Corridor Scan)\n"
+                f"• *Corridor Trains*: 06278 (07:07), 66596 (08:26), 16212 (08:54)\n"
+                f"• *Current Time*: {now_str} IST\n\n"
+                f"💡 _Tip: Interactive commands like `/train <no>`, `/rake`, `/station <stn>`, `/delays`, and `/eta` remain fully functional._"
+            )
+        elif state == STATE_MIDDAY_STANDBY:
             evening_train = st.get("evening_train", "16232")
             sched = rail_tracker.CORRIDOR_SCHEDULES.get(evening_train, {})
             train_title = sched.get("train_name", "Return Train")
@@ -971,7 +1029,9 @@ class RailDaemon:
         self.store.reset_today()
         now_ist = get_ist_now()
         current_time = now_ist.strftime("%H:%M")
-        if "06:45" <= current_time < "07:30":
+        if now_ist.weekday() in (5, 6):
+            init_state = STATE_WEEKEND_REST
+        elif "06:45" <= current_time < "07:30":
             init_state = STATE_MORNING_PROMPT
         elif "07:30" <= current_time < "09:40":
             init_state = STATE_MORNING_TRACKING
@@ -983,7 +1043,7 @@ class RailDaemon:
             init_state = STATE_EVENING_TRACKING
         else:
             init_state = STATE_NIGHT_SLEEP
-        self.store.transition_state(init_state, f"Reset initialized for {current_time} IST")
+        self.store.transition_state(init_state, f"Reset initialized for {current_time} IST (Weekday: {now_ist.weekday()})")
         self.bot.send_message(f"🔄 Daily commute state reset back to default ({init_state}). Next scheduled trigger according to time of day.", chat_id=chat_id)
 
     # -------------------------------------------------------------------------
@@ -1038,7 +1098,7 @@ class RailDaemon:
     def determine_poll_interval(self, current_time: str) -> int:
         state = self.store.state_data["state"]
 
-        if state in (STATE_WFH, STATE_BIKE, STATE_HIBERNATION):
+        if state in (STATE_WFH, STATE_BIKE, STATE_HIBERNATION, STATE_WEEKEND_REST):
             return POLL_TIER_STANDBY
 
         if "MORNING" in state:
@@ -1070,9 +1130,9 @@ class RailDaemon:
         if now is None:
             now = get_ist_now()
         current_time = now.strftime("%H:%M")
+        is_weekend = now.weekday() in (5, 6)
         state = self.store.state_data["state"]
         now_ts = time.time()
-        poll_interval = self.determine_poll_interval(current_time)
 
         # Check for day rollover
         today_str = now.strftime("%Y-%m-%d")
@@ -1081,44 +1141,76 @@ class RailDaemon:
             self.store.reset_today()
             state = self.store.state_data["state"]
 
-        # 1. State Machine Transitions based on Wall-Clock Time (IST)
-        if "06:45" <= current_time < "07:30":
-            if state in (STATE_NIGHT_SLEEP, STATE_HIBERNATION):
-                self.store.transition_state(STATE_MORNING_PROMPT, "Morning window opened")
-                state = STATE_MORNING_PROMPT
+        # 1. State Machine Transitions based on Wall-Clock Time (IST) & Weekend Check
+        if is_weekend:
+            if state != STATE_WEEKEND_REST:
+                self.store.transition_state(STATE_WEEKEND_REST, f"Weekend rest mode ({now.strftime('%A')})")
+                state = STATE_WEEKEND_REST
+        else:
+            # Weekday Transitions: if recovering from weekend rest on Monday
+            if state == STATE_WEEKEND_REST:
+                if "06:45" <= current_time < "07:30":
+                    state = STATE_MORNING_PROMPT
+                elif "07:30" <= current_time < "09:40":
+                    state = STATE_MORNING_TRACKING
+                elif "09:40" <= current_time < "14:00":
+                    state = STATE_MIDDAY_STANDBY
+                elif "14:00" <= current_time < "15:30":
+                    state = STATE_EVENING_PROMPT
+                elif "15:30" <= current_time < "22:30":
+                    state = STATE_EVENING_TRACKING
+                else:
+                    state = STATE_NIGHT_SLEEP
+                self.store.transition_state(state, "Resumed weekday commute schedule")
 
-        elif "07:30" <= current_time < "09:40":
-            if state in (STATE_MORNING_PROMPT, STATE_NIGHT_SLEEP):
-                self.store.transition_state(STATE_MORNING_TRACKING, "Active morning tracking")
-                state = STATE_MORNING_TRACKING
+            if "06:45" <= current_time < "07:30":
+                if state in (STATE_NIGHT_SLEEP, STATE_HIBERNATION):
+                    self.store.transition_state(STATE_MORNING_PROMPT, "Morning window opened")
+                    state = STATE_MORNING_PROMPT
 
-        elif "09:40" <= current_time < "14:00":
-            if state not in (STATE_MIDDAY_STANDBY, STATE_WFH, STATE_BIKE):
-                self.store.transition_state(STATE_MIDDAY_STANDBY, "Midday standby window")
-                state = STATE_MIDDAY_STANDBY
+            elif "07:30" <= current_time < "09:40":
+                if state in (STATE_MORNING_PROMPT, STATE_NIGHT_SLEEP):
+                    self.store.transition_state(STATE_MORNING_TRACKING, "Active morning tracking")
+                    state = STATE_MORNING_TRACKING
 
-        elif "14:00" <= current_time < "15:30":
-            if state not in (STATE_EVENING_PROMPT, STATE_EVENING_TRACKING, STATE_WFH, STATE_BIKE) and not self.store.state_data.get("evening_prompt_sent"):
-                self.store.transition_state(STATE_EVENING_PROMPT, "Evening window opened")
-                state = STATE_EVENING_PROMPT
+            elif "09:40" <= current_time < "14:00":
+                if state not in (STATE_MIDDAY_STANDBY, STATE_WFH, STATE_BIKE):
+                    self.store.transition_state(STATE_MIDDAY_STANDBY, "Midday standby window")
+                    state = STATE_MIDDAY_STANDBY
 
-        elif "15:30" <= current_time < "22:30":
-            if state not in (STATE_EVENING_TRACKING, STATE_HIBERNATION, STATE_WFH, STATE_BIKE):
-                self.store.transition_state(STATE_EVENING_TRACKING, "Active evening tracking")
-                state = STATE_EVENING_TRACKING
+            elif "14:00" <= current_time < "15:30":
+                if state not in (STATE_EVENING_PROMPT, STATE_EVENING_TRACKING, STATE_WFH, STATE_BIKE) and not self.store.state_data.get("evening_prompt_sent"):
+                    self.store.transition_state(STATE_EVENING_PROMPT, "Evening window opened")
+                    state = STATE_EVENING_PROMPT
 
-        elif "22:30" <= current_time or current_time < "06:45":
-            if state not in (STATE_NIGHT_SLEEP, STATE_WFH, STATE_BIKE):
-                self.store.transition_state(STATE_NIGHT_SLEEP, "Night sleep mode")
-                state = STATE_NIGHT_SLEEP
+            elif "15:30" <= current_time < "22:30":
+                if state not in (STATE_EVENING_TRACKING, STATE_HIBERNATION, STATE_WFH, STATE_BIKE):
+                    self.store.transition_state(STATE_EVENING_TRACKING, "Active evening tracking")
+                    state = STATE_EVENING_TRACKING
 
-        # 2. Execute State Logic if interval elapsed
+            elif "22:30" <= current_time or current_time < "06:45":
+                if state not in (STATE_NIGHT_SLEEP, STATE_WFH, STATE_BIKE):
+                    self.store.transition_state(STATE_NIGHT_SLEEP, "Night sleep mode")
+                    state = STATE_NIGHT_SLEEP
+
+        # Determine poll interval based on updated state
+        poll_interval = self.determine_poll_interval(current_time)
+
+        # 2. Execute State Logic if interval elapsed OR if initial prompt is pending
         should_track = (now_ts - self.last_track_poll_time) >= poll_interval
+        if state == STATE_MORNING_PROMPT and not self.store.state_data.get("morning_prompt_sent") and "06:45" <= current_time <= "09:30":
+            should_track = True
+        elif state == STATE_EVENING_PROMPT and not self.store.state_data.get("evening_prompt_sent") and "14:00" <= current_time <= "18:00":
+            should_track = True
+
         if should_track:
             self.last_track_poll_time = now_ts
-            if state == STATE_MORNING_PROMPT:
+            if state == STATE_WEEKEND_REST:
+                # Proactive push alerts are completely suppressed on weekends
+                pass
+            elif state == STATE_MORNING_PROMPT:
                 if "06:45" <= current_time <= "09:30":
-                    self.handle_morning_prompt(current_time)
+                    self.handle_morning_prompt(current_time, now=now)
                 else:
                     logger.warning("Prevented handle_morning_prompt execution: time is %s (outside 06:45 - 09:30 IST)", current_time)
                     if "09:30" < current_time < "09:40":
@@ -1138,20 +1230,21 @@ class RailDaemon:
                         state = STATE_NIGHT_SLEEP
             elif state == STATE_MORNING_TRACKING:
                 if current_time < "09:40":
-                    self.handle_morning_tracking(current_time)
+                    self.handle_morning_tracking(current_time, now=now)
                 else:
                     self.store.state_data["morning_completed"] = True
                     self.store.transition_state(STATE_MIDDAY_STANDBY, "Morning commute window closed")
                     state = STATE_MIDDAY_STANDBY
             elif state == STATE_EVENING_PROMPT:
-                self.handle_evening_prompt(current_time)
+                self.handle_evening_prompt(current_time, now=now)
             elif state == STATE_EVENING_TRACKING:
-                self.handle_evening_tracking(current_time)
+                self.handle_evening_tracking(current_time, now=now)
 
-            # Check watchdog fail-safe
-            pending_wd = rail_tracker.watchdog.get_pending_alert()
-            if pending_wd and pending_wd.get("triggered"):
-                self.bot.send_message(pending_wd["message"])
+            # Check watchdog fail-safe (suppressed during weekend rest)
+            if state != STATE_WEEKEND_REST:
+                pending_wd = rail_tracker.watchdog.get_pending_alert()
+                if pending_wd and pending_wd.get("triggered"):
+                    self.bot.send_message(pending_wd["message"])
 
         # 3. Always poll for Telegram user interactions
         self.process_telegram_updates()

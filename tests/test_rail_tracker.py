@@ -1066,7 +1066,8 @@ def test_watchdog_dispatch_via_daemon():
             "recommended_train": {"train_no": "66596", "train_name": "MEMU", "projected_departure": "08:25", "step_out_time": "08:15", "delay_mins": 0, "status": "VIABLE"},
             "rake_turnaround": {"incoming_rake_train": "66595", "rake_current_station": "HSRA", "rake_current_station_name": "HOSUR", "rake_delay_mins": 0},
         }
-        daemon.step()
+        weekday_morning = datetime(2026, 11, 16, 8, 0, 0, tzinfo=rail_daemon.IST_TZ)
+        daemon.step(now=weekday_morning)
 
         # Bot must have dispatched the watchdog alert message!
         calls = [c[0][0] for c in daemon.bot.send_message.call_args_list]
@@ -1193,32 +1194,34 @@ def test_boarding_status_window():
 
 
 def test_morning_prompt_strict_guard_at_midday():
-    """CRITICAL TEST: Ensure handle_morning_prompt strictly refuses to fire at 12:29 PM (midday) or any non-morning time."""
+    """CRITICAL TEST: Ensure handle_morning_prompt strictly refuses to fire at 12:29 PM (midday) or any non-morning time on weekdays."""
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
     daemon.store.state_data["morning_prompt_sent"] = False
 
+    weekday_dt = datetime(2026, 11, 16, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
+
     # 1. At 12:29 PM (the user's reported bug time), prompt must be strictly rejected
-    daemon.handle_morning_prompt("12:29")
+    daemon.handle_morning_prompt("12:29", now=weekday_dt)
     assert daemon.bot.send_message.call_count == 0, "Morning prompt must NEVER fire at 12:29 PM"
     assert daemon.store.state_data["state"] == rail_daemon.STATE_MIDDAY_STANDBY, "Must self-heal to MIDDAY_STANDBY"
 
     # 2. At 14:15 PM (afternoon), rejected and heals to EVENING_PROMPT
-    daemon.handle_morning_prompt("14:15")
+    daemon.handle_morning_prompt("14:15", now=datetime(2026, 11, 16, 14, 15, 0, tzinfo=rail_daemon.IST_TZ))
     assert daemon.bot.send_message.call_count == 0
     assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_PROMPT
 
     # 3. At 18:00 PM (evening), rejected and heals to EVENING_TRACKING
-    daemon.handle_morning_prompt("18:00")
+    daemon.handle_morning_prompt("18:00", now=datetime(2026, 11, 16, 18, 0, 0, tzinfo=rail_daemon.IST_TZ))
     assert daemon.bot.send_message.call_count == 0
     assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_TRACKING
 
     # 4. At 23:00 PM (night), rejected and heals to NIGHT_SLEEP
-    daemon.handle_morning_prompt("23:00")
+    daemon.handle_morning_prompt("23:00", now=datetime(2026, 11, 16, 23, 0, 0, tzinfo=rail_daemon.IST_TZ))
     assert daemon.bot.send_message.call_count == 0
     assert daemon.store.state_data["state"] == rail_daemon.STATE_NIGHT_SLEEP
 
-    # 5. At 07:00 AM (valid morning window), allowed to fire
+    # 5. At 07:00 AM (valid morning window on weekday), allowed to fire
     daemon.store.state_data["morning_prompt_sent"] = False
     with patch("rail_tracker.scan_morning_commute_options") as mock_scan:
         mock_scan.return_value = {
@@ -1227,19 +1230,19 @@ def test_morning_prompt_strict_guard_at_midday():
             "rake_turnaround": {"rake_current_station_name": "Yesvantpur Jn", "rake_delay_mins": 0},
             "recommendation_reason": "On time",
         }
-        daemon.handle_morning_prompt("07:00")
+        daemon.handle_morning_prompt("07:00", now=datetime(2026, 11, 16, 7, 0, 0, tzinfo=rail_daemon.IST_TZ))
         assert daemon.bot.send_message.call_count == 1
         assert daemon.store.state_data["morning_prompt_sent"] is True
 
 
 def test_daemon_step_simulated_midday_heals_state():
-    """Verify daemon.step() at 12:29 PM IST transitions erroneous states to MIDDAY_STANDBY without firing morning prompt."""
+    """Verify daemon.step() at 12:29 PM IST on a weekday transitions erroneous states to MIDDAY_STANDBY without firing morning prompt."""
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
     daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_PROMPT
 
-    # Simulate 12:29 PM IST
-    simulated_midday = datetime(2026, 11, 15, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
+    # Simulate 12:29 PM IST on a weekday (Monday Nov 16, 2026)
+    simulated_midday = datetime(2026, 11, 16, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
     daemon.last_track_poll_time = 0.0
 
     daemon.step(now=simulated_midday)
@@ -1256,7 +1259,7 @@ def test_cmd_track_at_midday_avoids_morning_tracking():
     daemon.store.state_data["state"] = rail_daemon.STATE_MIDDAY_STANDBY
 
     with patch("rail_daemon.get_ist_now") as mock_now:
-        mock_now.return_value = datetime(2026, 11, 15, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
+        mock_now.return_value = datetime(2026, 11, 16, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
         daemon.cmd_track("66596")
         assert daemon.store.state_data["morning_train"] == "66596"
         assert daemon.store.state_data["state"] == rail_daemon.STATE_MIDDAY_STANDBY
@@ -1270,12 +1273,13 @@ def test_ist_timezone_conversion_from_utc():
 
 
 def test_morning_prompt_at_0935_heals_to_morning_tracking():
-    """Verify handle_morning_prompt at 09:35 AM IST self-heals to MORNING_TRACKING without sending alert."""
+    """Verify handle_morning_prompt at 09:35 AM IST on weekday self-heals to MORNING_TRACKING without sending alert."""
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
     daemon.store.state_data["morning_prompt_sent"] = False
 
-    daemon.handle_morning_prompt("09:35")
+    weekday_dt = datetime(2026, 11, 16, 9, 35, 0, tzinfo=rail_daemon.IST_TZ)
+    daemon.handle_morning_prompt("09:35", now=weekday_dt)
     assert daemon.bot.send_message.call_count == 0
     assert daemon.store.state_data["state"] == rail_daemon.STATE_MORNING_TRACKING
 
@@ -1284,11 +1288,12 @@ def test_evening_prompt_and_tracking_guarded_at_midday():
     """Verify handle_evening_prompt and handle_evening_tracking reject execution at midday (12:29 PM)."""
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
+    weekday_dt = datetime(2026, 11, 16, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
 
-    daemon.handle_evening_prompt("12:29")
+    daemon.handle_evening_prompt("12:29", now=weekday_dt)
     assert daemon.bot.send_message.call_count == 0
 
-    daemon.handle_evening_tracking("12:29")
+    daemon.handle_evening_tracking("12:29", now=weekday_dt)
     assert daemon.bot.send_message.call_count == 0
 
 
@@ -1306,5 +1311,169 @@ def test_api_rail_status_ist_time():
         assert data["current_time"] == "12:29"
 
 
+# =============================================================================
+# 12. WEEKEND REST & SECRET HYGIENE TESTS
+# =============================================================================
 
+def test_weekend_rest_state_transition():
+    """Verify daemon.step() on Sunday/Saturday enters STATE_WEEKEND_REST and stays silent."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_PROMPT
+
+    # Sunday, Nov 15, 2026 at 12:29 PM IST
+    sunday_dt = datetime(2026, 11, 15, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
+    daemon.last_track_poll_time = 0.0
+
+    poll_interval = daemon.step(now=sunday_dt)
+
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_WEEKEND_REST
+    assert daemon.bot.send_message.call_count == 0, "No notifications allowed on Sunday!"
+    assert poll_interval == rail_daemon.POLL_TIER_STANDBY
+
+
+def test_weekend_rest_suppresses_all_prompts_and_tracking():
+    """Verify morning/evening prompts and tracking calls are strictly suppressed on weekends."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    sunday_dt = datetime(2026, 11, 15, 8, 0, 0, tzinfo=rail_daemon.IST_TZ)
+
+    # 1. Morning prompt
+    daemon.handle_morning_prompt("08:00", now=sunday_dt)
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_WEEKEND_REST
+
+    # 2. Morning tracking
+    daemon.handle_morning_tracking("08:15", now=sunday_dt)
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_WEEKEND_REST
+
+    # 3. Evening prompt
+    daemon.handle_evening_prompt("14:00", now=sunday_dt)
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_WEEKEND_REST
+
+    # 4. Evening tracking
+    daemon.handle_evening_tracking("16:00", now=sunday_dt)
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_WEEKEND_REST
+
+
+def test_cmd_status_during_weekend_rest():
+    """Verify /status during weekend rest clearly reports WEEKEND_REST with resume time."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["state"] = rail_daemon.STATE_WEEKEND_REST
+
+    daemon.cmd_status()
+    assert daemon.bot.send_message.call_count == 1
+    call_text = daemon.bot.send_message.call_args[0][0]
+    assert "Weekend Rest" in call_text
+    assert "WEEKEND_REST" in call_text
+    assert "Monday morning" in call_text
+
+
+def test_cmd_reset_on_weekend():
+    """Verify /reset on weekend initializes to STATE_WEEKEND_REST."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+
+    with patch("rail_daemon.get_ist_now") as mock_now:
+        mock_now.return_value = datetime(2026, 11, 15, 13, 0, 0, tzinfo=rail_daemon.IST_TZ)
+        daemon.cmd_reset()
+        assert daemon.store.state_data["state"] == rail_daemon.STATE_WEEKEND_REST
+        assert "WEEKEND_REST" in daemon.bot.send_message.call_args[0][0]
+
+
+def test_midday_morning_tracking_killswitch():
+    """Ensure handle_morning_tracking at >= 09:40 strictly marks completed and transitions to MIDDAY_STANDBY."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_TRACKING
+    weekday_midday = datetime(2026, 11, 16, 13, 0, 0, tzinfo=rail_daemon.IST_TZ)
+
+    daemon.handle_morning_tracking("13:00", now=weekday_midday)
+    assert daemon.store.state_data["morning_completed"] is True
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_MIDDAY_STANDBY
+    assert daemon.bot.send_message.call_count == 0
+
+
+def test_secrets_hygiene_no_hardcoded_tokens_in_code():
+    """CRITICAL SECURITY TEST: Ensure no Telegram bot tokens are hardcoded in source code."""
+    assert rail_daemon.DEFAULT_BOT_TOKEN == "", "DEFAULT_BOT_TOKEN must be empty string in version control"
+
+    repo_files = [
+        os.path.join(root_dir, "rail_daemon.py"),
+        os.path.join(root_dir, "rail_tracker.py"),
+        os.path.join(root_dir, "MEMORY.md"),
+        os.path.join(root_dir, "RAIL_COMMUTE_README.md"),
+    ]
+
+    import re
+    # Match any exposed bot token: 9-11 digits followed by colon and 35 alphanumeric/hyphen chars
+    token_pattern = re.compile(r"\b\d{9,11}:[A-Za-z0-9_-]{35}\b")
+
+    for file_path in repo_files:
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                matches = token_pattern.findall(content)
+                assert len(matches) == 0, f"Exposed token found in {file_path}: {matches}"
+
+
+def test_monday_morning_boundary_transition_0644_to_0645():
+    """Verify clean Monday morning transition from NIGHT_SLEEP directly into MORNING_PROMPT at 06:45 AM."""
+    import time
+    rail_tracker.watchdog.reset()
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+
+    # 1. Monday at 06:44 AM (window not yet opened)
+    monday_0644 = datetime(2026, 11, 16, 6, 44, 0, tzinfo=rail_daemon.IST_TZ)
+    daemon.store.state_data["date"] = "2026-11-16"
+    daemon.store.state_data["state"] = rail_daemon.STATE_NIGHT_SLEEP
+    daemon.store.state_data["morning_prompt_sent"] = False
+    daemon.last_track_poll_time = time.time() - 30
+
+    interval_0644 = daemon.step(now=monday_0644)
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_NIGHT_SLEEP
+    assert daemon.store.state_data["morning_prompt_sent"] is False
+    assert daemon.bot.send_message.call_count == 0
+
+    # 2. Monday at 06:45 AM (window opens!)
+    monday_0645 = datetime(2026, 11, 16, 6, 45, 0, tzinfo=rail_daemon.IST_TZ)
+    interval_0645 = daemon.step(now=monday_0645)
+
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_MORNING_PROMPT
+    assert daemon.store.state_data["morning_prompt_sent"] is True, "Morning prompt must fire immediately at 06:45"
+    assert daemon.bot.send_message.call_count == 1
+    call_text = daemon.bot.send_message.call_args[0][0]
+    assert "Good Morning Sriram" in call_text
+
+
+def test_weekend_guards_when_now_is_none():
+    """Verify weekend suppression works in daemon.step() when now argument is omitted (now=None)."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    sunday_dt = datetime(2026, 11, 15, 8, 30, 0, tzinfo=rail_daemon.IST_TZ)
+
+    with patch("rail_daemon.get_ist_now", return_value=sunday_dt):
+        poll = daemon.step() # No now argument provided!
+        assert daemon.bot.send_message.call_count == 0
+        assert daemon.store.state_data["state"] == rail_daemon.STATE_WEEKEND_REST
+        assert poll == rail_daemon.POLL_TIER_STANDBY
+
+
+def test_api_rail_status_enforces_weekend_rest():
+    """Verify /api/rail/status strictly returns WEEKEND_REST on Saturday/Sunday even if cached state was weekday."""
+    import asyncio
+    from api.index import api_rail_status
+
+    sunday_dt = datetime(2026, 11, 15, 12, 0, 0, tzinfo=rail_daemon.IST_TZ)
+    with patch("api.index.get_ist_now", return_value=sunday_dt):
+        with patch("api.index._fetch_supabase_commute_state", return_value={"date": "2026-11-15", "state": "MIDDAY_STANDBY"}):
+            resp = asyncio.run(api_rail_status())
+            import json
+            data = json.loads(resp.body.decode("utf-8"))
+            assert data["state"] == "WEEKEND_REST"
 

@@ -3,7 +3,7 @@
 > **High-Performance Transit Intelligence & Multi-Stage Autonomous Daemon for Sriram's Hosur &harr; ETV Bangalore Commute**  
 > **Shift:** 12:00 PM &ndash; 08:30 PM+ | **Workplace:** JPMorgan Chase, Parcel 5 (Back Gate), Embassy Tech Village (ETV)  
 > **Home:** Gangaiya Venkatachalapathy St, Nehru Nagar Ext, Hosur (180m from Railway Station PF1)  
-> **Telegram Bot:** `@SriTrainBot` (Token: `9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyqFZU`)  
+> **Telegram Bot:** `@SriTrainBot` (Token: Configured via `TRAIN_BOT_TOKEN` in `.env` / Secrets)  
 > **Cloud Production:** Oracle Cloud VM (`140.245.250.104`) &middot; Vercel Serverless (`https://sritrack.vercel.app/`)
 
 ---
@@ -172,7 +172,7 @@ Monte Carlo Simulation Results (N = 10,000 Days):
                ▼                                              ▼
 ┌──────────────────────────────┐              ┌───────────────────────────────┐
 │   Telegram (@SriTrainBot)    │              │       Vercel Dashboard        │
-│   Token: 9074983932:...      │              │   https://sritrack.vercel.app │
+│   Token: env:TRAIN_BOT_TOKEN │              │   https://sritrack.vercel.app │
 └──────────────────────────────┘              └───────────────────────────────┘
 ```
 
@@ -236,7 +236,7 @@ The daemon manages daily state transitions with **Zero-Polling Supabase writes**
 
 ## 7. Telegram Bot Commands Suite (`@SriTrainBot`)
 
-The bot operates on dedicated token `9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyqFZU` (strictly isolated from PriceTracker).
+The bot operates on dedicated token loaded from `TRAIN_BOT_TOKEN` or `RAIL_TELEGRAM_BOT_TOKEN` (strictly isolated from PriceTracker).
 
 | Command | Arguments | Description |
 |:---|:---|:---|

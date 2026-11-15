@@ -120,7 +120,7 @@ SriTrack implements stateless, zero-restart tracking controls:
 > **Autonomous Transit System for Sriram's Hosur &harr; ETV Bangalore Daily Commute**  
 > **Shift:** 12:00 PM &ndash; 08:30 PM+ | **Office:** JPMorgan Chase, Parcel 5 (Back Gate), Embassy Tech Village (ETV)  
 > **Home:** Gangaiya Venkatachalapathy St, Nehru Nagar Ext, Hosur (180m from Railway Station PF1)  
-> **Telegram Bot:** `@SriTrainBot` (Token: `9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyqFZU` | Chat: `716060462`)  
+> **Telegram Bot:** `@SriTrainBot` (Token: Configured via `TRAIN_BOT_TOKEN` in `.env` / Secrets | Chat: `716060462`)  
 > **Cloud Daemon:** Oracle Cloud VM (`140.245.250.104` &middot; `railradar.service`)  
 > **Web & API:** `https://sritrack.vercel.app/` (Tab: `/rail-radar` &middot; API: `/api/rail/*`)
 
@@ -166,7 +166,7 @@ SriTrack implements stateless, zero-restart tracking controls:
   - **On-Time Probability (&le; 12:00 PM):** **100.00%**.
 
 ### 4. 7-State Autonomous Commute Daemon (`rail_daemon.py`)
-- **Strict Bot Isolation:** Dedicated token `9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyqFZU`. NEVER share or mix with PriceTracker.
+- **Strict Bot Isolation:** Dedicated token loaded via `TRAIN_BOT_TOKEN` or `RAIL_TELEGRAM_BOT_TOKEN`. NEVER share or mix with PriceTracker.
 - **Zero-Polling Supabase Write Guarantee:** State transitions only ($\le 7$ rows/day). Zero polling writes.
 - **State Machine Lifecycle:**
   1. `NIGHT_SLEEP` (22:30 – 06:45)

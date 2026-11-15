@@ -81,6 +81,17 @@ INCOMING_RAKE_MEMU = "66595"
 MORNING_TRAIN_EARLIER_MEMU = "06278"
 MORNING_TRAIN_EXP = "16212"
 
+# State Constants
+STATE_WEEKEND_REST = "WEEKEND_REST"
+
+
+def is_weekend(dt: Optional[datetime] = None) -> bool:
+    """Return True if the specified datetime (or current IST datetime) is a weekend (Saturday=5, Sunday=6)."""
+    if dt is None:
+        dt = get_ist_now()
+    return dt.weekday() in (5, 6)
+
+
 # Global switch for fast offline fallback without network I/O
 ALLOW_NETWORK: bool = True
 
@@ -641,6 +652,10 @@ class RailWatchdog:
         self.last_failure_reason = ""
         self.alert_triggered = False
         self._pending_alert = None
+
+    def reset(self) -> None:
+        """Reset watchdog failure counters and pending alerts."""
+        self.record_success()
 
     def get_pending_alert(self) -> Optional[Dict[str, Any]]:
         """Retrieve and consume any pending watchdog fail-safe alert for Telegram dispatch."""

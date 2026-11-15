@@ -1,9 +1,13 @@
 # Environment / secrets - never commit
 .env
+*.env
 .env*.local
 .env.*
 *.key
 *.pem
+*.token
+credentials.json
+secrets.json
 id_rsa*
 id_ed25519*
 

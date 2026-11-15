@@ -1294,24 +1294,25 @@ async def serve_collection_asset(filename: str):
 # RAIL RADAR & COMMUTE API ENDPOINTS
 # ==========================================
 
-async def _fetch_supabase_commute_state() -> Optional[dict[str, Any]]:
-    """Fetch latest commute state from Supabase commute_daily_state table with 1.5s timeout."""
+async def _fetch_supabase_commute_state(target_date: Optional[str] = None) -> Optional[dict[str, Any]]:
+    """Fetch latest commute state for target_date (default: today IST) from Supabase commute_daily_state table with 1.5s timeout."""
     supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
     supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     if not (supabase_url and supabase_key):
         return None
+    today_str = target_date or get_ist_now().strftime("%Y-%m-%d")
     try:
         headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
         async with httpx.AsyncClient(timeout=1.5) as client:
             resp = await client.get(
-                f"{supabase_url}/rest/v1/commute_daily_state?order=date.desc&limit=1",
+                f"{supabase_url}/rest/v1/commute_daily_state?date=eq.{today_str}&limit=1",
                 headers=headers,
             )
             if resp.status_code == 200:
                 rows = resp.json()
                 if rows and isinstance(rows, list) and len(rows) > 0:
                     row = rows[0]
-                    parsed: dict[str, Any] = {}
+                    parsed: dict[str, Any] = {"date": row.get("date", today_str)}
                     if row.get("state"):
                         parsed["state"] = row["state"]
                     if row.get("morning_train"):
@@ -1438,8 +1439,18 @@ async def api_rail_status():
 
     # Blast-radius isolation guard: If auxiliary rail modules failed to import
     if not RAIL_MODULES_AVAILABLE or rail_tracker is None:
+        now_dt = get_ist_now()
+        is_weekend = now_dt.weekday() in (5, 6)
         state_data = {
-            "state": "MORNING_TRACKING" if "07:30" <= now_time < "09:40" else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "STANDBY"),
+            "state": (
+                "WEEKEND_REST"
+                if is_weekend
+                else (
+                    "MORNING_TRACKING"
+                    if "07:30" <= now_time < "09:40"
+                    else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "MIDDAY_STANDBY")
+                )
+            ),
             "active_train": "66596",
             "morning_step_out_time": "08:15",
             "morning_projected_dep": "08:25",
@@ -1448,11 +1459,24 @@ async def api_rail_status():
         sb_state = await _fetch_supabase_commute_state()
         if sb_state:
             state_data.update(sb_state)
+        if is_weekend and state_data.get("state") not in ("WEEKEND_REST", "WFH", "BIKE"):
+            state_data["state"] = "WEEKEND_REST"
         return JSONResponse(content=_build_offline_rail_status(now_time, state_data))
 
     try:
+        now_dt = get_ist_now()
+        today_str = now_dt.strftime("%Y-%m-%d")
+        is_weekend = now_dt.weekday() in (5, 6)
         state_data = {
-            "state": "MORNING_TRACKING" if "07:30" <= now_time < "09:40" else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "STANDBY"),
+            "state": (
+                "WEEKEND_REST"
+                if is_weekend
+                else (
+                    "MORNING_TRACKING"
+                    if "07:30" <= now_time < "09:40"
+                    else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "MIDDAY_STANDBY")
+                )
+            ),
             "active_train": "66596",
             "morning_step_out_time": "08:15",
             "morning_projected_dep": "08:25",
@@ -1462,7 +1486,8 @@ async def api_rail_status():
             try:
                 with open(rail_daemon.LOCAL_STATE_FILE, "r", encoding="utf-8") as f:
                     saved_state = json.load(f)
-                    state_data.update(saved_state)
+                    if saved_state.get("date") == today_str:
+                        state_data.update(saved_state)
             except Exception:
                 pass
 
@@ -1502,6 +1527,10 @@ async def api_rail_status():
             if state_data.get("morning_step_out_time"):
                 if "recommended_train" in scan:
                     scan["recommended_train"]["step_out_time"] = state_data["morning_step_out_time"]
+
+        # Weekend enforcement guard: Automated weekday tracking states must never leak into weekends
+        if is_weekend and state_data.get("state") not in ("WEEKEND_REST", "WFH", "BIKE"):
+            state_data["state"] = "WEEKEND_REST"
 
         rake = scan.get("rake_turnaround", {})
         if "recommended_train" in scan and scan["recommended_train"]:
