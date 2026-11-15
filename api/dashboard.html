@@ -9622,7 +9622,16 @@
       const countdownText = document.getElementById("rail-countdown-text");
       const cd = data.step_out_countdown_mins;
       if (countdownText) {
-        if (cd !== undefined && cd !== null) {
+        if (data.state === "WEEKEND_REST") {
+          countdownText.textContent = "🏖️ Weekend Rest Mode — Next Commute Monday 06:45 AM";
+          countdownText.style.color = "#38bdf8";
+        } else if (data.state === "WFH") {
+          countdownText.textContent = "🏠 Work From Home Active — Proactive tracking paused";
+          countdownText.style.color = "#a78bfa";
+        } else if (data.state === "BIKE") {
+          countdownText.textContent = "🏍️ Bike / Road Mode Active — Rail alerts paused";
+          countdownText.style.color = "#fbbf24";
+        } else if (cd !== undefined && cd !== null) {
           if (cd > 0) {
             countdownText.textContent = `Step out in ${cd} mins (10m walk buffer)`;
             countdownText.style.color = "#94a3b8";

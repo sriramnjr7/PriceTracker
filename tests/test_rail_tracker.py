@@ -1477,3 +1477,143 @@ def test_api_rail_status_enforces_weekend_rest():
             data = json.loads(resp.body.decode("utf-8"))
             assert data["state"] == "WEEKEND_REST"
 
+
+def test_minutes_difference_midnight_wraparound():
+    """Verify minutes_difference handles day wraparounds across midnight cleanly."""
+    # Crossing midnight forward (e.g. late night train arriving after midnight)
+    assert rail_tracker.minutes_difference("23:50", "00:20") == 30
+    assert rail_tracker.minutes_difference("23:30", "00:15") == 45
+    assert rail_tracker.minutes_difference("22:50", "00:10") == 80
+
+    # Crossing midnight backward
+    assert rail_tracker.minutes_difference("00:20", "23:50") == -30
+    assert rail_tracker.minutes_difference("00:15", "23:30") == -45
+
+    # Same day normal differences
+    assert rail_tracker.minutes_difference("08:15", "08:25") == 10
+    assert rail_tracker.minutes_difference("08:25", "08:15") == -10
+
+
+def test_station_code_alias_resolution():
+    """Verify STATION_CODE_ALIASES resolves long or colloquial station names to official IR codes."""
+    raw_entry = {"SC": "", "SN": "Belandur Road", "STA": "08:59", "STD": "09:00"}
+    norm = rail_tracker.normalize_station_entry(raw_entry)
+    assert norm["code"] == "BLRR"
+
+    raw_entry_crlm = {"SC": "CARMELARAM", "SN": "Carmelaram", "STA": "08:52", "STD": "08:53"}
+    norm_crlm = rail_tracker.normalize_station_entry(raw_entry_crlm)
+    assert norm_crlm["code"] == "CRLM"
+
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.cmd_station("bellandur")
+    assert daemon.bot.send_message.called
+    msg = daemon.bot.send_message.call_args[0][0]
+    assert "Station Timetable: BLRR" in msg
+
+
+def test_extreme_delay_past_cutoff_triggers_bike_or_wfh_warning():
+    """When all morning trains are delayed past 11:30 AM desk cutoff, generate urgent warning."""
+    with patch("rail_tracker.inspect_rake_turnaround") as mock_rake, patch("rail_tracker.get_live_train_status") as mock_status:
+        mock_rake.return_value = {
+            "morning_train": "66596",
+            "incoming_rake_train": "66595",
+            "scheduled_hsra_departure": "08:25",
+            "projected_hsra_departure": "11:15",
+            "effective_delay_mins": 170,
+            "revised_step_out_time": "11:05",
+            "is_delayed": True,
+            "rake_cancelled": False,
+            "rake_current_station": "BAND",
+            "rake_current_station_name": "BANASWADI",
+            "delay_summary": "170m delay",
+            "memu_status": {"stations": [{"code": "BLRR", "sta": "09:03", "eta": "11:53"}]},
+        }
+        mock_status.side_effect = lambda t, d=None: {
+            "06278": {
+                "train_no": "06278",
+                "train_name": "Dharmapuri MEMU",
+                "current_station": "DPJ",
+                "delay_minutes": 250,
+                "stations": [
+                    {"code": "HSRA", "sta": "07:05", "std": "07:07", "eta": "11:35", "etd": "11:37", "has_arrived": False, "has_departed": False},
+                    {"code": "BLRR", "sta": "07:51", "std": "07:52", "eta": "12:15", "etd": "12:16", "has_arrived": False, "has_departed": False},
+                ],
+            },
+            "16212": {
+                "train_no": "16212",
+                "train_name": "Salem Express",
+                "current_station": "SA",
+                "delay_minutes": 200,
+                "stations": [
+                    {"code": "HSRA", "sta": "08:18", "std": "08:20", "eta": "11:40", "etd": "11:42", "has_arrived": False, "has_departed": False},
+                    {"code": "BLRR", "sta": "08:59", "std": "09:00", "eta": "12:20", "etd": "12:21", "has_arrived": False, "has_departed": False},
+                ],
+            },
+        }[t]
+
+        scan = rail_tracker.scan_morning_commute_options(reference_time="08:00")
+        assert "WARNING: Severe delays" in scan["recommendation_reason"]
+        assert "Bike / Cab" in scan["recommendation_reason"]
+        assert "WFH" in scan["recommendation_reason"]
+
+
+def test_telegram_client_markdown_resilience_retry():
+    """Verify TelegramClient automatically retries sending as plain text when Markdown parsing fails."""
+    import io
+    import urllib.error
+
+    client = rail_daemon.TelegramClient("test_token", "123456")
+
+    error_resp = urllib.error.HTTPError(
+        url="https://api.telegram.org/bottest_token/sendMessage",
+        code=400,
+        msg="Bad Request: can't parse entities in message text",
+        hdrs={},
+        fp=io.BytesIO(b'{"ok": false, "description": "Bad Request: can\'t parse entities"}'),
+    )
+
+    success_resp = MagicMock()
+    success_resp.read.return_value = json.dumps({"ok": True, "result": {"message_id": 999}}).encode("utf-8")
+    success_resp.__enter__.return_value = success_resp
+
+    with patch.object(rail_daemon.TelegramClient, "send_message", rail_daemon.TelegramClient._real_send_message):
+        with patch("urllib.request.urlopen", side_effect=[error_resp, success_resp]) as mock_urlopen:
+            res = client.send_message("Unclosed *markdown test [with error", parse_mode="Markdown")
+            assert res is not None
+            assert res.get("message_id") == 999
+            assert mock_urlopen.call_count == 2
+            first_payload = json.loads(mock_urlopen.call_args_list[0][0][0].data.decode("utf-8"))
+            second_payload = json.loads(mock_urlopen.call_args_list[1][0][0].data.decode("utf-8"))
+            assert first_payload.get("parse_mode") == "Markdown"
+            assert "parse_mode" not in second_payload
+
+
+def test_api_rail_action_smart_direction_and_reset():
+    """Verify /api/rail/action correctly tracks evening trains during midday and initializes reset state."""
+    import asyncio
+    from api.index import api_rail_action
+    from starlette.requests import Request
+
+    async def _run():
+        scope = {"type": "http", "method": "POST", "headers": []}
+
+        # 1. Select evening train 16232 at 16:00
+        req_16232 = Request(scope)
+        req_16232._json = {"action": "select_train", "train_no": "16232"}
+        with patch("api.index.get_ist_now", return_value=datetime(2026, 11, 16, 16, 0, 0, tzinfo=rail_daemon.IST_TZ)):
+            resp = await api_rail_action(req_16232)
+            data = json.loads(resp.body.decode("utf-8"))
+            assert data["state"]["state"] == rail_daemon.STATE_EVENING_TRACKING
+            assert data["state"]["evening_train"] == "16232"
+
+        # 2. Reset at 08:30 AM should initialize to MORNING_TRACKING, not NIGHT_SLEEP
+        req_reset = Request(scope)
+        req_reset._json = {"action": "reset"}
+        with patch("api.index.get_ist_now", return_value=datetime(2026, 11, 16, 8, 30, 0, tzinfo=rail_daemon.IST_TZ)):
+            resp = await api_rail_action(req_reset)
+            data = json.loads(resp.body.decode("utf-8"))
+            assert data["state"]["state"] == rail_daemon.STATE_MORNING_TRACKING
+
+    asyncio.run(_run())
+

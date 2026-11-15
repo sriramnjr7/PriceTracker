@@ -390,7 +390,7 @@ def test_flipkart_category_surveillance_rules_integrity():
     for rule in SUPERCOIN_CATEGORY_RULES:
         assert "flipkart" in rule.platforms
         assert rule.min_discount >= 70.0
-        assert rule.is_active is True
+        assert rule.is_active is False  # Parked by user request: SuperCoins require authenticated session
         assert len(rule.negative_keywords) > 0
 
 

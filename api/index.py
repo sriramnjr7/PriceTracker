@@ -1448,7 +1448,7 @@ async def api_rail_status():
                 else (
                     "MORNING_TRACKING"
                     if "07:30" <= now_time < "09:40"
-                    else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "MIDDAY_STANDBY")
+                    else ("EVENING_TRACKING" if "15:30" <= now_time < "23:30" else "MIDDAY_STANDBY")
                 )
             ),
             "active_train": "66596",
@@ -1474,7 +1474,7 @@ async def api_rail_status():
                 else (
                     "MORNING_TRACKING"
                     if "07:30" <= now_time < "09:40"
-                    else ("EVENING_TRACKING" if "15:30" <= now_time < "22:30" else "MIDDAY_STANDBY")
+                    else ("EVENING_TRACKING" if "15:30" <= now_time < "23:30" else "MIDDAY_STANDBY")
                 )
             ),
             "active_train": "66596",
@@ -1649,7 +1649,15 @@ async def api_rail_action(request: Request):
         elif action in ("select_train", "track"):
             train_no = str(data.get("train_no", "66596")).strip()
             state = store.state_data.get("state", "")
-            if "EVENING" in state:
+            now_time = get_ist_now().strftime("%H:%M")
+            sched = rail_tracker.CORRIDOR_SCHEDULES.get(train_no, {}) if rail_tracker else {}
+            is_evening = (
+                sched.get("direction") == "EVENING"
+                or train_no in ("66585", "16211", "66583", "16232", "16527", "16236")
+                or "EVENING" in state
+                or ("13:00" <= now_time < "23:30" and not ("06:00" <= now_time < "12:00"))
+            )
+            if is_evening:
                 store.state_data["evening_train"] = train_no
                 store.transition_state(rail_daemon.STATE_EVENING_TRACKING, f"Tracking evening train {train_no}")
             else:
@@ -1662,7 +1670,24 @@ async def api_rail_action(request: Request):
             msg = "Reached station platform!"
         elif action == "reset":
             store.reset_today()
-            msg = "Commute state reset to default."
+            now_dt = get_ist_now()
+            curr_time = now_dt.strftime("%H:%M")
+            if now_dt.weekday() in (5, 6):
+                init_state = rail_daemon.STATE_WEEKEND_REST
+            elif "06:45" <= curr_time < "07:30":
+                init_state = rail_daemon.STATE_MORNING_PROMPT
+            elif "07:30" <= curr_time < "09:40":
+                init_state = rail_daemon.STATE_MORNING_TRACKING
+            elif "09:40" <= curr_time < "14:00":
+                init_state = rail_daemon.STATE_MIDDAY_STANDBY
+            elif "14:00" <= curr_time < "15:30":
+                init_state = rail_daemon.STATE_EVENING_PROMPT
+            elif "15:30" <= curr_time < "23:30":
+                init_state = rail_daemon.STATE_EVENING_TRACKING
+            else:
+                init_state = rail_daemon.STATE_NIGHT_SLEEP
+            store.transition_state(init_state, f"Reset initialized for {curr_time} IST")
+            msg = f"Commute state reset to {init_state}."
         else:
             return JSONResponse(status_code=400, content={"status": "error", "message": f"Unknown action: {action}"})
 

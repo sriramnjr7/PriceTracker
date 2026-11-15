@@ -118,6 +118,39 @@ MIN_TRANSIT_TO_HSRA_06278: Dict[str, int] = {
     "HSRA": 0,
 }
 
+MIN_TRANSIT_TO_HSRA_16212: Dict[str, int] = {
+    "SA": 150,
+    "DPJ": 50,
+    "KMLM": 13,
+    "HSRA": 0,
+}
+
+STATION_CODE_ALIASES: Dict[str, str] = {
+    "BELANDUR ROAD": "BLRR",
+    "BELLANDUR ROAD": "BLRR",
+    "BELLANDUR": "BLRR",
+    "BELANDUR": "BLRR",
+    "CARMELARAM": "CRLM",
+    "CARMELARAM RAILWAY STATION": "CRLM",
+    "HOSUR": "HSRA",
+    "BANGALORE CANT": "BNC",
+    "BENGALURU CANT": "BNC",
+    "BENGALURU CANTONMENT": "BNC",
+    "BANGALORE CANTONMENT": "BNC",
+    "KSR BENGALURU": "SBC",
+    "BANGALORE CITY": "SBC",
+    "BENGALURU CITY": "SBC",
+    "SBC": "SBC",
+    "BAIYAPPANAHALLI": "BYPL",
+    "BAIYYAPPANAHALLI": "BYPL",
+    "YESVANTPUR": "YPR",
+    "YESVANTPUR JN": "YPR",
+    "YESHWANTHPUR": "YPR",
+    "DHARMAPURI": "DPJ",
+    "SALEM": "SA",
+    "SALEM JN": "SA",
+}
+
 # Static Corridor Schedules
 CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
     "06278": {
@@ -420,8 +453,10 @@ def add_minutes_to_time(base_time: str, minutes_to_add: int) -> str:
         return base_time
 
 
-def minutes_difference(t_from: str, t_to: str) -> int:
-    """Calculate signed minutes difference between t_from and t_to (t_to - t_from)."""
+def minutes_difference(t_from: str, t_to: str, allow_wraparound: bool = True) -> int:
+    """Calculate signed minutes difference between t_from and t_to (t_to - t_from).
+    Handles day wraparound when times cross midnight (e.g. 23:50 to 00:20 -> +30 mins; 00:20 to 23:50 -> -30 mins).
+    """
     c1 = clean_time_str(t_from)
     c2 = clean_time_str(t_to)
     if not c1 or not c2 or ":" not in c1 or ":" not in c2:
@@ -431,8 +466,12 @@ def minutes_difference(t_from: str, t_to: str) -> int:
         p2 = [int(x) for x in c2.split(":")]
         dt1 = datetime(2026, 1, 1, p1[0], p1[1])
         dt2 = datetime(2026, 1, 1, p2[0], p2[1])
-        # Handle day wraparound if diff is large
         diff = int((dt2 - dt1).total_seconds() / 60)
+        if allow_wraparound:
+            if diff < -720:
+                diff += 1440
+            elif diff > 720:
+                diff -= 1440
         return diff
     except Exception:
         return 0
@@ -459,6 +498,21 @@ def normalize_station_entry(s: dict, running_delay: int = 0) -> dict:
     """Normalize station entries across CRIS and ConfirmTkt into a unified dictionary."""
     code = s.get("SC") or s.get("StationCode") or s.get("stnCode") or ""
     name = s.get("SN") or s.get("StationName") or s.get("stnName") or code
+
+    # Canonical station code resolution using aliases
+    clean_code = str(code).upper().strip()
+    clean_name = str(name).strip()
+    clean_name_upper = clean_name.upper()
+    if clean_code in STATION_CODE_ALIASES:
+        clean_code = STATION_CODE_ALIASES[clean_code]
+    elif clean_name_upper in STATION_CODE_ALIASES:
+        clean_code = STATION_CODE_ALIASES[clean_name_upper]
+    elif not clean_code or len(clean_code) > 6:
+        for alias_name, alias_code in STATION_CODE_ALIASES.items():
+            if alias_name in clean_name_upper:
+                clean_code = alias_code
+                break
+
     sta_raw = s.get("STA") or s.get("ArrivalTime") or s.get("arr") or ""
     std_raw = s.get("STD") or s.get("DepartureTime") or s.get("dep") or ""
     eta_raw = s.get("ETA") or s.get("ExpectedArrivalTime") or ""
@@ -481,8 +535,8 @@ def normalize_station_entry(s: dict, running_delay: int = 0) -> dict:
     platform = str(s.get("PF") or s.get("Platform") or s.get("platform") or "1")
 
     return {
-        "code": code.upper().strip(),
-        "name": name.strip(),
+        "code": clean_code or code.upper().strip(),
+        "name": clean_name or clean_code,
         "sta": resolved_sta,
         "std": resolved_std,
         "eta": resolved_eta,
@@ -877,18 +931,32 @@ def inspect_rake_turnaround(
     scheduled_rake_arr = rake_hsra.get("sta", "08:00") if rake_hsra else "08:00"
     scheduled_memu_dep = memu_hsra.get("std", "08:25") if memu_hsra else "08:25"
 
-    # Check for cancellation or short-termination before Hosur
+    # Check for cancellation, diversion, or short-termination before Hosur
     raw_status = (rake_status.get("current_status") or "").lower()
     raw_details = str(rake_status.get("raw", "")).lower()
+    memu_raw_status = (memu_status.get("current_status") or "").lower()
+    memu_raw_details = str(memu_status.get("raw", "")).lower()
     curr_stn = rake_status.get("current_station", "").upper()
-    is_cancelled = "cancel" in raw_status or "cancel" in raw_details
+
+    is_cancelled = (
+        "cancel" in raw_status
+        or "cancel" in raw_details
+        or "cancel" in memu_raw_status
+        or "cancel" in memu_raw_details
+    )
+    is_diverted = (
+        "divert" in raw_status
+        or "divert" in raw_details
+        or "divert" in memu_raw_status
+        or "divert" in memu_raw_details
+    )
     is_short_terminated = (
         ("terminate" in raw_status or "short" in raw_status)
         and curr_stn != STN_HOSUR
     )
 
-    if is_cancelled or is_short_terminated:
-        reason = "CANCELLED" if is_cancelled else f"TERMINATED SHORT at {curr_stn}"
+    if is_cancelled or is_diverted or is_short_terminated:
+        reason = "CANCELLED" if is_cancelled else ("DIVERTED" if is_diverted else f"TERMINATED SHORT at {curr_stn}")
         return {
             "morning_train": morning_train,
             "incoming_rake_train": rake_train,
@@ -903,7 +971,7 @@ def inspect_rake_turnaround(
             "rake_delay_mins": 999,
             "rake_eta_hsra": "CANCELLED",
             "rake_status_text": f"Rake {rake_train} {reason}",
-            "delay_summary": f"🚨 Rake {rake_train} is {reason}! Train {morning_train} will not run. Switch to alternative train immediately.",
+            "delay_summary": f"🚨 Rake {rake_train} is {reason}! Train {morning_train} will not run normally. Switch to alternative train immediately.",
             "memu_status": memu_status,
             "rake_status": rake_status,
         }
@@ -1049,6 +1117,26 @@ def scan_morning_commute_options(
     exp_sch_dep = exp_hsra.get("std", "08:20") if exp_hsra else "08:20"
     exp_delay = exp_status.get("delay_minutes", 0)
     exp_projected_dep = exp_hsra.get("etd", "") if (exp_hsra and exp_hsra.get("etd") not in ("Destination", "")) else add_minutes_to_time(exp_sch_dep, exp_delay)
+    # Cancellation checks for 06278 and 16212
+    memu2_cancelled = (
+        "cancel" in (memu2_status.get("current_status") or "").lower()
+        or "cancel" in str(memu2_status.get("raw", "")).lower()
+    )
+    exp_cancelled = (
+        "cancel" in (exp_status.get("current_status") or "").lower()
+        or "cancel" in str(exp_status.get("raw", "")).lower()
+    )
+
+    # Physical transit check for 16212 if still en route to Hosur
+    exp_curr_stn = exp_status.get("current_station", "").upper()
+    exp_transit = MIN_TRANSIT_TO_HSRA_16212.get(exp_curr_stn)
+    exp_has_arrived = (exp_curr_stn == STN_HOSUR) or bool(exp_hsra and exp_hsra.get("has_arrived"))
+    if not exp_has_arrived and exp_transit is not None and reference_time:
+        loc_exp_dep = add_minutes_to_time(reference_time, exp_transit + 2)
+        if minutes_difference(exp_projected_dep, loc_exp_dep) > 0:
+            exp_projected_dep = loc_exp_dep
+
+    exp_effective_delay = max(0, minutes_difference(exp_sch_dep, exp_projected_dep))
     exp_step_out = add_minutes_to_time(exp_projected_dep, -LEAD_TIME_HOME_HOSUR)
 
     exp_sta = exp_blrr.get("sta", "08:59") if exp_blrr else ("09:05" if exp_crlm else "08:59")
@@ -1124,7 +1212,7 @@ def scan_morning_commute_options(
             "is_delayed": memu2_effective_delay > 0,
             "minutes_until_dep": memu2_minutes_until_dep,
             "door_to_door_duration": minutes_difference(memu2_step_out, memu2_desk_eta),
-            "status": determine_status(memu2_minutes_until_dep, has_departed=bool(memu2_hsra and memu2_hsra.get("has_departed"))),
+            "status": determine_status(memu2_minutes_until_dep, has_departed=bool(memu2_hsra and memu2_hsra.get("has_departed")), cancelled=memu2_cancelled),
             "details": f"Dharmapuri MEMU currently near {memu2_status.get('current_station_name', '')} (Delay: {memu2_effective_delay}m).",
         },
         {
@@ -1142,7 +1230,7 @@ def scan_morning_commute_options(
             "is_delayed": exp_delay > 0,
             "minutes_until_dep": exp_minutes_until_dep,
             "door_to_door_duration": minutes_difference(exp_step_out, exp_desk_eta),
-            "status": determine_status(exp_minutes_until_dep, has_departed=bool(exp_hsra and exp_hsra.get("has_departed"))),
+            "status": determine_status(exp_minutes_until_dep, has_departed=bool(exp_hsra and exp_hsra.get("has_departed")), cancelled=exp_cancelled),
             "details": f"Salem Express currently near {exp_status.get('current_station_name', '')} (Delay: {exp_delay}m).",
         },
     ]
@@ -1186,7 +1274,14 @@ def scan_morning_commute_options(
         # Maximize sleep / home time: Pick the latest departing train!
         recommended = max(pool, key=_dep_minutes)
 
-        if memu_rake.get("rake_cancelled"):
+        if not qualifying:
+            delay_note = f" (delay: +{recommended['delay_mins']}m)" if recommended.get("is_delayed") else ""
+            rec_reason = (
+                f"🚨 WARNING: Severe delays across all corridor trains! Even latest option Train {recommended['train_no']} "
+                f"({recommended['train_name']}) won't reach desk until ~{recommended['desk_eta']} AM{delay_note}, "
+                f"missing your 11:30 AM safety cutoff. Strongly consider taking Bike / Cab (/bike) or WFH (/wfh) today!"
+            )
+        elif memu_rake.get("rake_cancelled"):
             rec_reason = (
                 f"⚠️ Train {MORNING_TRAIN_MEMU} rake is CANCELLED! Recommend taking Train {recommended['train_no']} "
                 f"({recommended['train_name']}) departing Hosur at ~{recommended['projected_departure']} AM. "
