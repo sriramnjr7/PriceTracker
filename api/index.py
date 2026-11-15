@@ -1327,6 +1327,8 @@ async def _fetch_supabase_commute_state(target_date: Optional[str] = None) -> Op
                         parsed["evening_train"] = row["evening_train"]
                     if row.get("notes"):
                         parsed["notes"] = row["notes"]
+                    if "alerts_enabled" in row and row.get("alerts_enabled") is not None:
+                        parsed["alerts_enabled"] = bool(row["alerts_enabled"])
                     return parsed
     except Exception as exc:
         logger.warning("Supabase commute_daily_state fetch warning: %s", exc)
@@ -1353,6 +1355,7 @@ def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dic
         "current_time": now_time,
         "step_out_time": step_out,
         "step_out_countdown_mins": countdown_mins,
+        "alerts_enabled": bool(state_data.get("alerts_enabled", True)),
         "morning_scan": {
             "options": [
                 {
@@ -1461,6 +1464,7 @@ async def api_rail_status():
             "morning_step_out_time": "08:15",
             "morning_projected_dep": "08:25",
             "morning_delay_mins": 0,
+            "alerts_enabled": True,
         }
         sb_state = await _fetch_supabase_commute_state()
         if sb_state:
@@ -1491,6 +1495,7 @@ async def api_rail_status():
             "morning_step_out_time": "08:15",
             "morning_projected_dep": "08:25",
             "morning_delay_mins": 0,
+            "alerts_enabled": True,
         }
         if rail_daemon and hasattr(rail_daemon, "LOCAL_STATE_FILE") and os.path.exists(rail_daemon.LOCAL_STATE_FILE):
             try:
@@ -1567,6 +1572,7 @@ async def api_rail_status():
                 "current_time": now_time,
                 "step_out_time": step_out,
                 "step_out_countdown_mins": countdown_mins,
+                "alerts_enabled": bool(state_data.get("alerts_enabled", True)),
                 "morning_scan": scan,
                 "rake_turnaround": rake,
                 "evening_options": evening_opts,
@@ -1690,6 +1696,25 @@ async def api_rail_action(request: Request):
             store.state_data["evening_completed"] = True
             store.transition_state(rail_daemon.STATE_HIBERNATION, "Staying late at office / outside")
             msg = "Staying late confirmed. Evening tracking paused."
+        elif action in ("toggle_alerts", "toggle_alert"):
+            curr = bool(store.state_data.get("alerts_enabled", True))
+            new_val = not curr
+            store.state_data["alerts_enabled"] = new_val
+            store.save(sync_supabase=True)
+            msg = f"Alerts {'enabled' if new_val else 'muted'}."
+        elif action in ("set_alerts", "set_alert"):
+            enabled = bool(data.get("enabled", True))
+            store.state_data["alerts_enabled"] = enabled
+            store.save(sync_supabase=True)
+            msg = f"Alerts {'enabled' if enabled else 'muted'}."
+        elif action in ("mute", "mute_alerts"):
+            store.state_data["alerts_enabled"] = False
+            store.save(sync_supabase=True)
+            msg = "Alerts muted."
+        elif action in ("unmute", "unmute_alerts"):
+            store.state_data["alerts_enabled"] = True
+            store.save(sync_supabase=True)
+            msg = "Alerts resumed."
         elif action == "reset":
             store.reset_today()
             now_dt = get_ist_now()
@@ -1713,7 +1738,12 @@ async def api_rail_action(request: Request):
         else:
             return JSONResponse(status_code=400, content={"status": "error", "message": f"Unknown action: {action}"})
 
-        return JSONResponse(content={"status": "ok", "message": msg, "state": store.state_data})
+        return JSONResponse(content={
+            "status": "ok",
+            "message": msg,
+            "state": store.state_data,
+            "alerts_enabled": store.state_data.get("alerts_enabled", True),
+        })
     except Exception as exc:
         logger.error("Error handling rail action: %s", exc)
         return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})

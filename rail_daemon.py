@@ -295,6 +295,7 @@ class CommuteStateStore:
             "evening_completed": False,
             "last_delay_reported": 0,
             "last_step_out_reported": "08:15",
+            "alerts_enabled": True,
             "notes": "",
             "last_updated": get_ist_now().isoformat(),
         }
@@ -305,6 +306,8 @@ class CommuteStateStore:
                 with open(self.file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if data.get("date") == self._get_today_str():
+                        if "alerts_enabled" not in data:
+                            data["alerts_enabled"] = True
                         return data
             except Exception as e:
                 logger.error("Error reading local state: %s", e)
@@ -337,6 +340,7 @@ class CommuteStateStore:
                 "evening_train": self.state_data.get("evening_train", "16232"),
                 "evening_milestone_fired": self.state_data.get("evening_milestone_fired", False),
                 "evening_status": "COMPLETED" if self.state_data.get("evening_completed", False) else "ACTIVE",
+                "alerts_enabled": self.state_data.get("alerts_enabled", True),
                 "notes": self.state_data.get("notes", ""),
                 "last_updated": self.state_data.get("last_updated", get_ist_now().isoformat()),
             }
@@ -478,6 +482,11 @@ class RailDaemon:
                 self.store.transition_state(STATE_NIGHT_SLEEP, "Self-heal: Night sleep mode")
             return
 
+        # Alerts master kill switch guard: suppress proactive prompt if alerts disabled
+        if not self.store.state_data.get("alerts_enabled", True):
+            logger.info("Suppressed handle_morning_prompt: Alerts are muted (alerts_enabled=False)")
+            return
+
         if self.store.state_data.get("morning_prompt_sent"):
             return
 
@@ -576,7 +585,10 @@ class RailDaemon:
                     [{"text": f"Stay with {active_train}", "callback_data": "action:ack"}],
                 ]
             }
-            self.bot.send_message(flip_msg, reply_markup=kb)
+            if self.store.state_data.get("alerts_enabled", True):
+                self.bot.send_message(flip_msg, reply_markup=kb)
+            else:
+                logger.info("Suppressed morning flip alert push: Alerts muted")
 
             # Auto-update active tracking if user hasn't pinned a specific train manually
             if not self.store.state_data.get("user_manually_selected_train"):
@@ -637,9 +649,15 @@ class RailDaemon:
                         [{"text": f"Stay with {active_train}", "callback_data": "action:ack"}],
                     ]
                 }
-                self.bot.send_message(delay_msg, reply_markup=kb)
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(delay_msg, reply_markup=kb)
+                else:
+                    logger.info("Suppressed morning delay alternative alert push: Alerts muted")
             else:
-                self.bot.send_message(delay_msg)
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(delay_msg)
+                else:
+                    logger.info("Suppressed morning delay alert push: Alerts muted")
 
             self.store.state_data["last_delay_reported"] = current_delay
             self.store.state_data["last_step_out_reported"] = step_out_time
@@ -657,7 +675,10 @@ class RailDaemon:
                 f"• Expected Desk Arrival: ~*{active_opt['desk_eta']} AM*\n\n"
                 f"👟 5m walk + 5m platform cushion. Tap below when you reach platform:"
             )
-            self.bot.send_message(alert_msg, reply_markup=self.get_stepped_out_keyboard())
+            if self.store.state_data.get("alerts_enabled", True):
+                self.bot.send_message(alert_msg, reply_markup=self.get_stepped_out_keyboard())
+            else:
+                logger.info("Suppressed morning step-out alert push: Alerts muted")
             self.store.state_data["morning_stepped_out"] = True
             self.store.save(sync_supabase=True)
 
@@ -683,6 +704,11 @@ class RailDaemon:
 
         if not ("14:00" <= current_time <= "18:00"):
             logger.warning("Rejected handle_evening_prompt execution: current_time %s is outside evening prompt window (14:00 - 18:00 IST)", current_time)
+            return
+
+        # Alerts master kill switch guard: suppress proactive prompt if alerts disabled
+        if not self.store.state_data.get("alerts_enabled", True):
+            logger.info("Suppressed handle_evening_prompt: Proactive alerts are muted (alerts_enabled=False)")
             return
 
         if self.store.state_data.get("evening_prompt_sent"):
@@ -727,7 +753,10 @@ class RailDaemon:
         if not self.store.state_data.get("evening_milestone_fired"):
             milestone = rail_tracker.check_evening_milestone_trigger(active_train, status)
             if milestone and milestone.get("triggered"):
-                self.bot.send_message(milestone["message"])
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(milestone["message"])
+                else:
+                    logger.info("Suppressed evening milestone alert push: Alerts muted")
                 self.store.state_data["evening_milestone_fired"] = True
                 self.store.save(sync_supabase=True)
 
@@ -735,7 +764,10 @@ class RailDaemon:
         crlm_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_CARMELARAM), None)
         if crlm_stn and crlm_stn.get("has_departed"):
             if not self.store.state_data.get("evening_completed"):
-                self.bot.send_message(f"🚆 Train {active_train} is en route to Hosur. Enjoy the ride home!")
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(f"🚆 Train {active_train} is en route to Hosur. Enjoy the ride home!")
+                else:
+                    logger.info("Suppressed evening en-route alert push: Alerts muted")
                 self.store.state_data["evening_completed"] = True
                 self.store.transition_state(STATE_HIBERNATION, "Evening commute completed")
 
@@ -756,6 +788,10 @@ class RailDaemon:
             self.cmd_help(chat_id)
         elif cmd == "/status":
             self.cmd_status(chat_id)
+        elif cmd in ("/mute", "/pause", "/silence"):
+            self.cmd_mute(chat_id)
+        elif cmd in ("/unmute", "/resume"):
+            self.cmd_unmute(chat_id)
         elif cmd == "/morning":
             self.cmd_morning(chat_id)
         elif cmd == "/evening":
@@ -789,11 +825,33 @@ class RailDaemon:
         elif cmd == "/reset":
             self.cmd_reset(chat_id)
         else:
-            self.bot.send_message(f"❓ Unknown command `{cmd}`. Use /help to see all 14 available commands.", chat_id=chat_id)
+            self.bot.send_message(f"❓ Unknown command `{cmd}`. Use /help to see all 16 available commands.", chat_id=chat_id)
+
+    def cmd_mute(self, chat_id: Optional[str] = None) -> None:
+        self.store.state_data["alerts_enabled"] = False
+        self.store.save(sync_supabase=True)
+        msg = (
+            "🔕 *Proactive Telegram Alerts Muted*\n\n"
+            "• Autonomous push alerts (morning/evening prompts, live delay shifts, step-out alarms, watchdog) are now silenced.\n"
+            "• State machine & timetable tracking continue running in the background.\n"
+            "• Direct commands (`/status`, `/train`, `/delays`, `/eta`, `/morning`, `/rake`) remain fully functional.\n\n"
+            "💡 Use `/unmute` or the website dashboard toggle to resume alerts anytime."
+        )
+        self.bot.send_message(msg, chat_id=chat_id)
+
+    def cmd_unmute(self, chat_id: Optional[str] = None) -> None:
+        self.store.state_data["alerts_enabled"] = True
+        self.store.save(sync_supabase=True)
+        msg = (
+            "🔔 *Proactive Telegram Alerts Resumed*\n\n"
+            "• Autonomous push alerts, dynamic delay shifts, and step-out alarms are now active.\n"
+            "💡 Use `/mute` anytime if you need to silence notifications."
+        )
+        self.bot.send_message(msg, chat_id=chat_id)
 
     def cmd_help(self, chat_id: Optional[str] = None) -> None:
         msg = (
-            f"🚆 *RailRadar Commute Bot — 14 Command Suite*\n"
+            f"🚆 *RailRadar Commute Bot — 16 Command Suite*\n"
             f"Autonomous transit intelligence for Hosur <-> ETV Bangalore\n\n"
             f"📋 *Live Operations & Status*:\n"
             f"• `/status` — Live commute state & active train countdown\n"
@@ -808,6 +866,8 @@ class RailDaemon:
             f"• `/station <code>` — View timetable for HSRA, CRLM, or BLRR\n"
             f"• `/milestones` — View departure milestone triggers (e.g. 16232 @ BNC)\n\n"
             f"⚙️ *Overrides & Controls*:\n"
+            f"• `/mute` — Emergency kill switch: mute all proactive alerts\n"
+            f"• `/unmute` — Resume autonomous proactive alerts\n"
             f"• `/reached` — Pause tracking for the day (sleeps until next commute)\n"
             f"• `/wfh` — Mark today as Work From Home (pauses alerts)\n"
             f"• `/bike` — Switch today's mode to Bike/Road commute\n"
@@ -820,11 +880,13 @@ class RailDaemon:
         st = self.store.state_data
         state = st.get("state", STATE_NIGHT_SLEEP)
         now_str = get_ist_now().strftime("%H:%M")
+        alerts_label = "🔔 ACTIVE" if st.get("alerts_enabled", True) else "🔕 MUTED"
 
         if state == STATE_WEEKEND_REST:
             msg = (
                 f"🏖️ *RailRadar Live Status — Weekend Rest*\n\n"
                 f"• *State Machine*: `WEEKEND_REST` (Silent Mode)\n"
+                f"• *Alerts Master*: {alerts_label}\n"
                 f"• *Status*: Weekend rest mode active. Autonomous commute prompts & proactive delay alerts are paused.\n"
                 f"• *Next Commute*: Monday morning at *06:45 AM* (Morning Corridor Scan)\n"
                 f"• *Corridor Trains*: 06278 (07:07), 66596 (08:26), 16212 (08:54)\n"
@@ -838,6 +900,7 @@ class RailDaemon:
             msg = (
                 f"🏢 *RailRadar Live Status — Midday Standby*\n\n"
                 f"• *State Machine*: `MIDDAY_STANDBY` (Desk / Office Mode)\n"
+                f"• *Alerts Master*: {alerts_label}\n"
                 f"• *Morning Inbound*: Completed ✅\n"
                 f"• *Tracking Mode*: Standby (zero poll / battery consumption while at desk)\n"
                 f"• *Next Window*: Evening Return Corridor (15:30 – 22:00)\n"
@@ -851,6 +914,7 @@ class RailDaemon:
             msg = (
                 f"🌙 *RailRadar Live Status — Overnight Hibernation*\n\n"
                 f"• *State Machine*: `NIGHT_SLEEP` (Deep Hibernation)\n"
+                f"• *Alerts Master*: {alerts_label}\n"
                 f"• *Status*: Commute windows closed for the night. Silent mode active (zero notifications).\n"
                 f"• *Next Wake-Up*: {wake_target} at *06:45 AM* (Morning Corridor Scan)\n"
                 f"• *Corridor Trains*: 06278 (07:07), 66596 (08:26), 16212 (08:54)\n"
@@ -862,6 +926,7 @@ class RailDaemon:
             msg = (
                 f"⏸️ *RailRadar Live Status — Tracking Paused*\n\n"
                 f"• *State Machine*: `{state}` ({mode_name})\n"
+                f"• *Alerts Master*: {alerts_label}\n"
                 f"• *Status*: Tracking paused for today by user action.\n"
                 f"• *Notes*: {st.get('notes', 'No alerts will be sent.')}\n"
                 f"• *Current Time*: {now_str} IST\n\n"
@@ -873,6 +938,7 @@ class RailDaemon:
             msg = (
                 f"🌆 *RailRadar Live Status — Evening Return*\n\n"
                 f"• *State Machine*: `{state}`\n"
+                f"• *Alerts Master*: {alerts_label}\n"
                 f"• *Active Train*: *{active_train}* ({status.get('train_name', '')})\n"
                 f"• *Current Location*: {status.get('current_station_name', '')} ({status.get('current_station', '')})\n"
                 f"• *Live Delay*: *{status.get('delay_minutes', 0)} mins*\n"
@@ -888,6 +954,7 @@ class RailDaemon:
             msg = (
                 f"🌅 *RailRadar Live Status — Morning Inbound*\n\n"
                 f"• *State Machine*: `{state}`\n"
+                f"• *Alerts Master*: {alerts_label}\n"
                 f"• *Active Train*: *{active_train}* ({status.get('train_name', '')})\n"
                 f"• *Current Location*: {status.get('current_station_name', '')} ({status.get('current_station', '')})\n"
                 f"• *Live Delay*: *{status.get('delay_minutes', 0)} mins*\n"
@@ -1131,7 +1198,7 @@ class RailDaemon:
                 chat_id = str(msg.get("chat", {}).get("id", ""))
                 if text.startswith("/"):
                     self.execute_command(text, chat_id=chat_id)
-                elif text.strip().lower() in ("reached", "status", "morning", "evening", "wfh", "bike", "help", "delays", "rake", "stay"):
+                elif text.strip().lower() in ("reached", "status", "morning", "evening", "wfh", "bike", "help", "delays", "rake", "stay", "mute", "unmute", "pause", "resume"):
                     self.execute_command("/" + text.strip().lower(), chat_id=chat_id)
 
             # 2. Inline Callback Query
@@ -1146,6 +1213,10 @@ class RailDaemon:
                 if data.startswith("train:") or data.startswith("track:"):
                     train_no = data.split(":", 1)[1]
                     self.cmd_track(train_no, chat_id=chat_id)
+                elif data in ("action:mute", "action:mute_alerts"):
+                    self.cmd_mute(chat_id=chat_id)
+                elif data in ("action:unmute", "action:unmute_alerts"):
+                    self.cmd_unmute(chat_id=chat_id)
                 elif data == "action:wfh":
                     self.cmd_wfh(chat_id=chat_id)
                 elif data == "action:bike":
@@ -1314,8 +1385,8 @@ class RailDaemon:
             elif state == STATE_EVENING_TRACKING:
                 self.handle_evening_tracking(current_time, now=now)
 
-            # Check watchdog fail-safe (suppressed during weekend rest)
-            if state != STATE_WEEKEND_REST:
+            # Check watchdog fail-safe (suppressed during weekend rest or when alerts muted)
+            if state != STATE_WEEKEND_REST and self.store.state_data.get("alerts_enabled", True):
                 pending_wd = rail_tracker.watchdog.get_pending_alert()
                 if pending_wd and pending_wd.get("triggered"):
                     self.bot.send_message(pending_wd["message"])

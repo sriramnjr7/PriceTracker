@@ -2337,5 +2337,197 @@ def test_daemon_cmd_eta_safe_station_access():
         assert "BNC" in msg
 
 
+# =============================================================================
+# 12. ALERTS MASTER KILL SWITCH / ON-OFF TOGGLE TESTS
+# =============================================================================
+
+def test_alerts_enabled_default_and_persistence(tmp_path):
+    """Verify alerts_enabled defaults to True, persists False to disk, and resets cleanly."""
+    state_file = str(tmp_path / "commute_test_alerts.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    assert store.state_data.get("alerts_enabled") is True
+
+    # Mutate to False and save
+    store.state_data["alerts_enabled"] = False
+    store.save()
+
+    # Reload from disk
+    store2 = rail_daemon.CommuteStateStore(file_path=state_file)
+    assert store2.state_data.get("alerts_enabled") is False
+
+    # Reset today restores True
+    store2.reset_today()
+    assert store2.state_data.get("alerts_enabled") is True
+
+
+def test_alerts_muted_suppresses_proactive_pushes_while_preserving_state(tmp_path):
+    """Verify switching alerts OFF suppresses proactive Telegram pushes while preserving internal state transitions."""
+    state_file = str(tmp_path / "commute_test_muted.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    store.state_data["alerts_enabled"] = False
+    store.state_data["morning_train"] = "66596"
+    store.state_data["morning_prompt_sent"] = False
+    store.save()
+
+    daemon = rail_daemon.RailDaemon(store=store)
+    daemon.bot.send_message = MagicMock()
+
+    # 1. handle_morning_prompt: Should suppress Telegram message dispatch
+    daemon.handle_morning_prompt(current_time="07:15")
+    assert daemon.bot.send_message.call_count == 0
+
+    # 2. handle_morning_tracking: Telegram push suppressed, but delay and step-out state MUST be recorded
+    fake_scan = {
+        "options": [
+            {
+                "train_no": "66596",
+                "train_name": "Hosur MEMU",
+                "scheduled_departure": "08:25",
+                "projected_departure": "08:45",
+                "step_out_time": "08:35",
+                "dest_eta": "09:23",
+                "desk_eta": "09:53",
+                "delay_mins": 20,
+                "is_delayed": True,
+                "status": "VIABLE",
+            }
+        ],
+        "recommended_train": {
+            "train_no": "66596",
+            "train_name": "Hosur MEMU",
+            "scheduled_departure": "08:25",
+            "projected_departure": "08:45",
+            "step_out_time": "08:35",
+            "dest_eta": "09:23",
+            "desk_eta": "09:53",
+            "delay_mins": 20,
+            "is_delayed": True,
+            "status": "VIABLE",
+        },
+        "rake_turnaround": {
+            "rake_current_station_name": "HEELALIGE",
+            "rake_current_station": "HLE",
+            "rake_delay_mins": 20,
+        },
+        "recommendation_reason": "Optimal MEMU rake",
+    }
+    with patch("rail_tracker.scan_morning_commute_options", return_value=fake_scan):
+        daemon.handle_morning_tracking(current_time="08:35")
+        # Assert ZERO messages sent to Telegram
+        assert daemon.bot.send_message.call_count == 0
+        # Assert internal state updated properly despite muted alerts
+        assert daemon.store.state_data["morning_delay_mins"] == 20
+        assert daemon.store.state_data["morning_step_out_time"] == "08:35"
+        assert daemon.store.state_data["morning_stepped_out"] is True
+
+    # 3. handle_evening_prompt: Should suppress message
+    daemon.store.state_data["evening_prompt_sent"] = False
+    daemon.handle_evening_prompt(current_time="14:15")
+    assert daemon.bot.send_message.call_count == 0
+
+    # 4. handle_evening_tracking: Milestone trigger should NOT push message, but record fired
+    fake_status = {
+        "train_name": "Mailaduturai Express",
+        "current_status": "Departed BNC",
+        "stations": [{"code": "CRLM", "has_departed": False}],
+    }
+    fake_milestone = {"triggered": True, "message": "LEAVE DESK NOW"}
+    with patch("rail_tracker.get_live_train_status", return_value=fake_status), \
+         patch("rail_tracker.check_evening_milestone_trigger", return_value=fake_milestone):
+        daemon.handle_evening_tracking(current_time="19:15")
+        assert daemon.bot.send_message.call_count == 0
+        assert daemon.store.state_data["evening_milestone_fired"] is True
+
+
+def test_switching_alerts_on_resumes_alerts(tmp_path):
+    """Verify switching alerts back ON restores proactive Telegram alert dispatches."""
+    state_file = str(tmp_path / "commute_test_resume.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    store.state_data["alerts_enabled"] = True
+    store.state_data["morning_prompt_sent"] = False
+    store.save()
+
+    daemon = rail_daemon.RailDaemon(store=store)
+    daemon.bot.send_message = MagicMock()
+
+    daemon.handle_morning_prompt(current_time="07:15")
+    assert daemon.bot.send_message.call_count == 1
+    msg = daemon.bot.send_message.call_args[0][0]
+    assert "Good Morning Sriram" in msg
+
+
+def test_direct_commands_still_answer_when_alerts_muted(tmp_path):
+    """Verify user-initiated direct commands (/status, /morning, /delays, /eta, /rake, /help) answer with muted indicator."""
+    state_file = str(tmp_path / "commute_test_cmds.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    store.state_data["alerts_enabled"] = False
+    store.save()
+
+    daemon = rail_daemon.RailDaemon(store=store)
+    daemon.bot.send_message = MagicMock()
+
+    # /status command
+    daemon.cmd_status(chat_id="test_chat")
+    assert daemon.bot.send_message.call_count == 1
+    status_msg = daemon.bot.send_message.call_args[0][0]
+    assert "🔕 MUTED" in status_msg
+
+    # /morning command
+    daemon.bot.send_message.reset_mock()
+    daemon.cmd_morning(chat_id="test_chat")
+    assert daemon.bot.send_message.call_count == 1
+
+    # /help command
+    daemon.bot.send_message.reset_mock()
+    daemon.cmd_help(chat_id="test_chat")
+    assert daemon.bot.send_message.call_count == 1
+    help_msg = daemon.bot.send_message.call_args[0][0]
+    assert "/mute" in help_msg
+    assert "/unmute" in help_msg
+
+    # /mute and /unmute commands
+    daemon.bot.send_message.reset_mock()
+    daemon.execute_command("/mute", chat_id="test_chat")
+    assert daemon.store.state_data["alerts_enabled"] is False
+    assert "Muted" in daemon.bot.send_message.call_args[0][0]
+
+    daemon.bot.send_message.reset_mock()
+    daemon.execute_command("/unmute", chat_id="test_chat")
+    assert daemon.store.state_data["alerts_enabled"] is True
+    assert "Resumed" in daemon.bot.send_message.call_args[0][0]
+
+
+def test_api_rail_status_and_action_toggle_alerts(client):
+    """Verify GET /api/rail/status returns alerts_enabled and POST /api/rail/action toggles alerts cleanly."""
+    # 1. Verify GET /api/rail/status returns alerts_enabled
+    res = client.get("/api/rail/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "alerts_enabled" in data
+    assert isinstance(data["alerts_enabled"], bool)
+
+    # 2. Toggle alerts via POST /api/rail/action
+    toggle_res = client.post("/api/rail/action", json={"action": "toggle_alerts"})
+    assert toggle_res.status_code == 200
+    toggle_data = toggle_res.json()
+    assert toggle_data["status"] == "ok"
+    assert "alerts_enabled" in toggle_data
+
+    # 3. Explicitly set alerts to False
+    set_false_res = client.post("/api/rail/action", json={"action": "set_alerts", "enabled": False})
+    assert set_false_res.status_code == 200
+    assert set_false_res.json()["alerts_enabled"] is False
+
+    # 4. GET /api/rail/status should reflect False
+    status_false = client.get("/api/rail/status").json()
+    assert status_false["alerts_enabled"] is False
+
+    # 5. Restore alerts to True
+    set_true_res = client.post("/api/rail/action", json={"action": "unmute_alerts"})
+    assert set_true_res.status_code == 200
+    assert set_true_res.json()["alerts_enabled"] is True
+
+
+
 
 

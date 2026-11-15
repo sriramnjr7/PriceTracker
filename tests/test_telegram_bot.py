@@ -422,4 +422,23 @@ async def test_probe_vip_watches_respects_db_is_active():
         assert sent == 0
 
 
+@pytest.mark.asyncio
+async def test_handle_message_mute_and_unmute(bot):
+    """Verify /mute and /unmute toggle alerts and reply with confirmation."""
+    import rail_daemon
+    await bot.handle_message({"chat": {"id": 123}, "text": "/mute"})
+    bot.send_reply.assert_called_once()
+    assert "Muted" in bot.send_reply.call_args[0][1]
+    store = rail_daemon.CommuteStateStore()
+    assert store.state_data.get("alerts_enabled") is False
+
+    bot.send_reply.reset_mock()
+    await bot.handle_message({"chat": {"id": 123}, "text": "/unmute"})
+    bot.send_reply.assert_called_once()
+    assert "Resumed" in bot.send_reply.call_args[0][1]
+    store2 = rail_daemon.CommuteStateStore()
+    assert store2.state_data.get("alerts_enabled") is True
+
+
+
 

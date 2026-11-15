@@ -5422,9 +5422,13 @@
             <div class="rail-hero-card" id="rail-hero-card" style="background: linear-gradient(135deg, rgba(20,24,36,0.95), rgba(12,15,24,0.98)); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.4);">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
                 <div>
-                  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
                     <span id="rail-state-badge" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Active Tracking</span>
                     <span id="rail-delay-badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">On Schedule</span>
+                    <span id="rail-alerts-badge" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="Telegram Proactive Alert Dispatch Status">
+                      <span id="rail-alerts-badge-icon">🔔</span>
+                      <span id="rail-alerts-badge-text">Alerts Active</span>
+                    </span>
                   </div>
                   <h2 id="rail-hero-title" style="font-size: 24px; font-weight: 700; color: #fff; margin: 0 0 4px 0;">Train 66596: Hosur &rarr; Yesvantpur MEMU</h2>
                   <p id="rail-hero-subtitle" style="font-size: 13px; color: var(--text-muted); margin: 0;">Hosur (08:25 AM) &rarr; Carmelaram (08:57 AM) &rarr; Bellandur Road (09:03 AM) &rarr; ETV Desk (~09:35 AM)</p>
@@ -5451,7 +5455,11 @@
               </div>
 
               <!-- Commute Action Control Buttons -->
-              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button class="btn-ui" id="rail-alerts-toggle-btn" onclick="toggleRailAlerts()" style="background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.35); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;" title="Emergency kill switch to mute all proactive Telegram push alerts">
+                  <span id="rail-alerts-btn-icon">🔕</span>
+                  <span id="rail-alerts-btn-label">Mute Alerts</span>
+                </button>
                 <button class="btn-ui btn-ui-secondary" onclick="sendRailAction('reached')" style="border-color: rgba(16,185,129,0.3); color: #10b981;">
                   <span>🏁 Reached Platform</span>
                 </button>
@@ -9609,6 +9617,47 @@
         }
       }
 
+      // Alerts Master Status Pill & Button
+      const alertsEnabled = data.alerts_enabled !== false;
+      const alertsBadge = document.getElementById("rail-alerts-badge");
+      const alertsBadgeIcon = document.getElementById("rail-alerts-badge-icon");
+      const alertsBadgeText = document.getElementById("rail-alerts-badge-text");
+      const alertsToggleBtn = document.getElementById("rail-alerts-toggle-btn");
+      const alertsBtnIcon = document.getElementById("rail-alerts-btn-icon");
+      const alertsBtnLabel = document.getElementById("rail-alerts-btn-label");
+
+      if (alertsBadge) {
+        if (alertsEnabled) {
+          alertsBadge.style.background = "rgba(16, 185, 129, 0.15)";
+          alertsBadge.style.color = "#10b981";
+          alertsBadge.style.borderColor = "rgba(16, 185, 129, 0.3)";
+          if (alertsBadgeIcon) alertsBadgeIcon.textContent = "🔔";
+          if (alertsBadgeText) alertsBadgeText.textContent = "Alerts Active";
+        } else {
+          alertsBadge.style.background = "rgba(239, 68, 68, 0.15)";
+          alertsBadge.style.color = "#f87171";
+          alertsBadge.style.borderColor = "rgba(239, 68, 68, 0.3)";
+          if (alertsBadgeIcon) alertsBadgeIcon.textContent = "🔕";
+          if (alertsBadgeText) alertsBadgeText.textContent = "Alerts Muted";
+        }
+      }
+
+      if (alertsToggleBtn) {
+        if (alertsEnabled) {
+          alertsToggleBtn.style.background = "rgba(239, 68, 68, 0.12)";
+          alertsToggleBtn.style.color = "#f87171";
+          alertsToggleBtn.style.borderColor = "rgba(239, 68, 68, 0.35)";
+          if (alertsBtnIcon) alertsBtnIcon.textContent = "🔕";
+          if (alertsBtnLabel) alertsBtnLabel.textContent = "Mute Alerts";
+        } else {
+          alertsToggleBtn.style.background = "rgba(16, 185, 129, 0.12)";
+          alertsToggleBtn.style.color = "#10b981";
+          alertsToggleBtn.style.borderColor = "rgba(16, 185, 129, 0.35)";
+          if (alertsBtnIcon) alertsBtnIcon.textContent = "🔔";
+          if (alertsBtnLabel) alertsBtnLabel.textContent = "Unmute Alerts";
+        }
+      }
+
       // Title & Subtitle
       const title = document.getElementById("rail-hero-title");
       if (title) title.textContent = `Train ${rec.train_no || "66596"}: ${rec.train_name || "Hosur MEMU"}`;
@@ -9820,6 +9869,42 @@
         fetchRailRadarData();
       } catch (e) {
         showToast("Error updating rail action: " + e.message);
+      }
+    }
+
+    async function toggleRailAlerts() {
+      const current = (railRadarState.status && railRadarState.status.alerts_enabled !== false);
+      const targetState = !current;
+
+      // Optimistic UI update
+      if (railRadarState.status) {
+        railRadarState.status.alerts_enabled = targetState;
+        renderRailHero(railRadarState.status);
+      }
+      showToast(targetState ? "Resuming Telegram alerts..." : "Muting Telegram alerts...");
+
+      try {
+        const res = await fetch("/api/rail/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "toggle_alerts", enabled: targetState })
+        });
+        const out = await res.json();
+        if (out.status === "ok") {
+          const finalState = out.alerts_enabled !== undefined ? out.alerts_enabled : targetState;
+          if (railRadarState.status) railRadarState.status.alerts_enabled = finalState;
+          renderRailHero(railRadarState.status);
+          showToast(finalState ? "🔔 Proactive Telegram alerts resumed." : "🔕 Telegram alerts muted. Direct commands remain active.");
+        } else {
+          throw new Error(out.message || "Failed to toggle alerts");
+        }
+      } catch (err) {
+        // Rollback on error
+        if (railRadarState.status) {
+          railRadarState.status.alerts_enabled = current;
+          renderRailHero(railRadarState.status);
+        }
+        showToast("Error toggling alerts: " + err.message);
       }
     }
 

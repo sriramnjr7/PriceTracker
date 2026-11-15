@@ -515,6 +515,25 @@ class TelegramAssistant:
             await self.handle_command_list(chat_id)
             return
 
+        # 2b. /mute or /unmute (Emergency kill switch for proactive alerts)
+        if text.lower() in {"/mute", "/unmute"} or text.lower().startswith(("/mute ", "/unmute ")):
+            is_mute = text.lower().startswith("/mute")
+            try:
+                import rail_daemon
+                store = rail_daemon.CommuteStateStore()
+                store.state_data["alerts_enabled"] = not is_mute
+                store.save(sync_supabase=True)
+                action_word = "muted" if is_mute else "resumed"
+                icon = "🔕" if is_mute else "🔔"
+                await self.send_reply(
+                    chat_id,
+                    f"{icon} *Alerts {action_word.capitalize()}*\nProactive Telegram alerts are now {action_word}.\n"
+                    f"State tracking continues in the background."
+                )
+                return
+            except Exception as e:
+                logger.error("Error toggling alerts in telegram_bot: %s", e)
+
         # 3. /pause
         if text.startswith("/pause"):
             arg = re.sub(r"^/pause\s*", "", text, flags=re.I).strip()
