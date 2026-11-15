@@ -1593,7 +1593,7 @@ def test_telegram_client_markdown_resilience_retry():
 
     with patch.object(rail_daemon.TelegramClient, "send_message", rail_daemon.TelegramClient._real_send_message):
         with patch("urllib.request.urlopen", side_effect=[error_resp, success_resp]) as mock_urlopen:
-            res = client.send_message("Unclosed *markdown test [with error", parse_mode="Markdown")
+            res = client.send_message("Unclosed *markdown test [with error", parse_mode="Markdown", is_direct_reply=True)
             assert res is not None
             assert res.get("message_id") == 999
             assert mock_urlopen.call_count == 2
@@ -2677,6 +2677,53 @@ def test_resilient_supabase_sync_pgrst204_fallback_api():
 
     import asyncio
     asyncio.run(_test())
+
+
+def test_telegram_client_master_gatekeeper_blocks_proactive_alerts(tmp_path):
+    """Verify TelegramClient master gatekeeper strictly drops unsolicited alerts when muted, on weekends, or off-hours."""
+    state_file = str(tmp_path / "test_gatekeeper.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    client = rail_daemon.TelegramClient("test_token", "123456", store=store)
+
+    with patch.object(rail_daemon.TelegramClient, "send_message", rail_daemon.TelegramClient._real_send_message):
+        # 1. Blocked when store alerts_enabled is False
+        store.state_data["alerts_enabled"] = False
+        res_muted = client.send_message("🚨 Test Alert: Muted State", is_direct_reply=False)
+        assert res_muted is None
+
+        # 2. Blocked on Sunday even if alerts_enabled is True
+        store.state_data["alerts_enabled"] = True
+        sunday_dt = datetime(2026, 11, 15, 8, 30, 0, tzinfo=rail_daemon.IST_TZ)
+        with patch("rail_daemon.get_ist_now", return_value=sunday_dt):
+            res_sunday = client.send_message("🚨 Test Alert: Sunday Alert", is_direct_reply=False)
+            assert res_sunday is None
+
+        # 3. Blocked at Midnight (00:15 AM) on Weekday
+        monday_midnight = datetime(2026, 11, 16, 0, 15, 0, tzinfo=rail_daemon.IST_TZ)
+        with patch("rail_daemon.get_ist_now", return_value=monday_midnight):
+            res_midnight = client.send_message("🚨 Test Alert: Midnight Spurt", is_direct_reply=False)
+            assert res_midnight is None
+
+        # 4. Allowed during Authorized Commute Window (Monday 07:15 AM)
+        monday_morning = datetime(2026, 11, 16, 7, 15, 0, tzinfo=rail_daemon.IST_TZ)
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps({"ok": True, "result": {"message_id": 100}}).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+
+        with patch("rail_daemon.get_ist_now", return_value=monday_morning), \
+             patch("urllib.request.urlopen", return_value=mock_resp):
+            res_ok = client.send_message("☀️ Authorized Morning Alert", is_direct_reply=False)
+            assert res_ok is not None
+            assert res_ok["message_id"] == 100
+
+        # 5. Direct replies ALWAYS permitted regardless of time/mute status
+        with patch("rail_daemon.get_ist_now", return_value=monday_midnight), \
+             patch("urllib.request.urlopen", return_value=mock_resp):
+            store.state_data["alerts_enabled"] = False
+            res_direct = client.send_message("📊 Status Response", is_direct_reply=True)
+            assert res_direct is not None
+            assert res_direct["message_id"] == 100
+
     assert len(call_payloads) == 2
     assert "alerts_enabled" in call_payloads[0]
     assert "alerts_enabled" not in call_payloads[1]
@@ -2754,6 +2801,53 @@ def test_fetch_supabase_commute_state_parses_completion_and_milestones():
 
     import asyncio
     asyncio.run(_test())
+
+
+def test_telegram_client_master_gatekeeper_blocks_proactive_alerts(tmp_path):
+    """Verify TelegramClient master gatekeeper strictly drops unsolicited alerts when muted, on weekends, or off-hours."""
+    state_file = str(tmp_path / "test_gatekeeper.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    client = rail_daemon.TelegramClient("test_token", "123456", store=store)
+
+    with patch.object(rail_daemon.TelegramClient, "send_message", rail_daemon.TelegramClient._real_send_message):
+        # 1. Blocked when store alerts_enabled is False
+        store.state_data["alerts_enabled"] = False
+        res_muted = client.send_message("🚨 Test Alert: Muted State", is_direct_reply=False)
+        assert res_muted is None
+
+        # 2. Blocked on Sunday even if alerts_enabled is True
+        store.state_data["alerts_enabled"] = True
+        sunday_dt = datetime(2026, 11, 15, 8, 30, 0, tzinfo=rail_daemon.IST_TZ)
+        with patch("rail_daemon.get_ist_now", return_value=sunday_dt):
+            res_sunday = client.send_message("🚨 Test Alert: Sunday Alert", is_direct_reply=False)
+            assert res_sunday is None
+
+        # 3. Blocked at Midnight (00:15 AM) on Weekday
+        monday_midnight = datetime(2026, 11, 16, 0, 15, 0, tzinfo=rail_daemon.IST_TZ)
+        with patch("rail_daemon.get_ist_now", return_value=monday_midnight):
+            res_midnight = client.send_message("🚨 Test Alert: Midnight Spurt", is_direct_reply=False)
+            assert res_midnight is None
+
+        # 4. Allowed during Authorized Commute Window (Monday 07:15 AM)
+        monday_morning = datetime(2026, 11, 16, 7, 15, 0, tzinfo=rail_daemon.IST_TZ)
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps({"ok": True, "result": {"message_id": 100}}).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+
+        with patch("rail_daemon.get_ist_now", return_value=monday_morning), \
+             patch("urllib.request.urlopen", return_value=mock_resp):
+            res_ok = client.send_message("☀️ Authorized Morning Alert", is_direct_reply=False)
+            assert res_ok is not None
+            assert res_ok["message_id"] == 100
+
+        # 5. Direct replies ALWAYS permitted regardless of time/mute status
+        with patch("rail_daemon.get_ist_now", return_value=monday_midnight), \
+             patch("urllib.request.urlopen", return_value=mock_resp):
+            store.state_data["alerts_enabled"] = False
+            res_direct = client.send_message("📊 Status Response", is_direct_reply=True)
+            assert res_direct is not None
+            assert res_direct["message_id"] == 100
+
 
 
 
