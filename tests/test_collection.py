@@ -409,3 +409,97 @@ def test_api_crud_full_lifecycle():
     assert res_reset.status_code == 200
     assert len(res_reset.json()["items"]) == 18
 
+
+def test_archive_status_normalization_and_methods(tmp_path):
+    """Verify archive endpoint supports POST, PUT, PATCH, explicit payload, and normalizes status casing."""
+    temp_file = str(tmp_path / "archive_test.json")
+    manager = CollectionManager(data_file=temp_file)
+
+    # 1. Normalization in update_item
+    item_id = "watch-01-titan-classique"
+    updated = manager.update_item(item_id, {"status": "archived"})
+    assert updated["status"] == "Archived", "Lowercase 'archived' must normalize to 'Archived'"
+
+    # 2. Archive stats calculation
+    stats = manager.get_stats()
+    assert stats["archived_items"] == 1
+    assert stats["owned_items"] == 17
+    assert stats["total_items"] == 18
+
+    # 3. Explicit target status restore
+    restored = manager.archive_item(item_id, target_status="owned")
+    assert restored["status"] == "Owned", "Target status 'owned' must normalize to 'Owned'"
+    stats2 = manager.get_stats()
+    assert stats2["archived_items"] == 0
+    assert stats2["owned_items"] == 18
+
+    # 4. API endpoint support with POST, PUT, PATCH with manager isolated to temp_file
+    from unittest.mock import patch
+    from collection_data import collection_mgr
+    with patch.object(collection_mgr, "file_path", temp_file):
+        res_post = client.post(f"/api/collection/{item_id}/archive", json={"status": "Archived"})
+        assert res_post.status_code == 200
+        assert res_post.json()["item"]["status"] == "Archived"
+
+        res_put = client.put(f"/api/collection/{item_id}/archive", json={"status": "Owned"})
+        assert res_put.status_code == 200
+        assert res_put.json()["item"]["status"] == "Owned"
+
+        res_patch = client.patch(f"/api/collection/{item_id}/archive")
+        assert res_patch.status_code == 200
+        assert res_patch.json()["item"]["status"] == "Archived"
+
+        # 5. Direct toggle from archived to owned without target_status
+        res_toggle_back = client.post(f"/api/collection/{item_id}/archive")
+        assert res_toggle_back.status_code == 200
+        assert res_toggle_back.json()["item"]["status"] == "Owned"
+
+        # 6. Single api prefix routing /api/index.py/collection/{item_id}/archive
+        res_single_api = client.post(f"/api/index.py/collection/{item_id}/archive", json={"status": "Archived"})
+        assert res_single_api.status_code == 200
+        assert res_single_api.json()["item"]["status"] == "Archived"
+
+
+def test_collection_manager_storage_isolation_from_tmp(tmp_path):
+    """Ensure custom file_path / data_file is never hijacked by /tmp/my_collection.json."""
+    import tempfile
+    global_tmp = os.path.join(tempfile.gettempdir(), "my_collection.json")
+
+    # Write a dummy marker into global tmp
+    try:
+        with open(global_tmp, "w", encoding="utf-8") as f:
+            json.dump([{"id": "hacked-item", "brand": "Hacked", "model": "Hijacked"}], f)
+
+        custom_file = str(tmp_path / "custom_col.json")
+        mgr = CollectionManager(data_file=custom_file)
+        assert mgr.file_path == custom_file, "Custom data_file must NOT be overridden by /tmp/my_collection.json"
+        assert not any(i.get("id") == "hacked-item" for i in mgr.get_all_items()), "Must not read items from global tmp"
+    finally:
+        if os.path.exists(global_tmp):
+            try:
+                os.remove(global_tmp)
+            except Exception:
+                pass
+
+
+def test_archive_case_insensitive_toggle_and_stats(tmp_path):
+    """Ensure items with lowercase status toggle correctly and reflect in get_stats."""
+    custom_file = str(tmp_path / "case_test.json")
+    mgr = CollectionManager(data_file=custom_file)
+
+    item_id = "watch-01-titan-classique"
+    # Manually inject lowercase status
+    mgr.update_item(item_id, {"status": "ARCHIVED"})
+    stats = mgr.get_stats()
+    assert stats["archived_items"] == 1
+    assert stats["owned_items"] == 17
+
+    # Toggle back to owned without passing status
+    toggled = mgr.archive_item(item_id)
+    assert toggled["status"] == "Owned"
+    stats_after = mgr.get_stats()
+    assert stats_after["archived_items"] == 0
+    assert stats_after["owned_items"] == 18
+
+
+

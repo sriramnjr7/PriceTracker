@@ -741,6 +741,22 @@ def _normalize_item_input(data: Dict[str, Any], is_update: bool = False) -> Dict
     """Normalize input dictionary so snake_case frontend inputs map seamlessly to model schema."""
     norm = dict(data)
 
+    # 0. Status normalization & casing safety
+    if "status" in norm and norm["status"] is not None:
+        raw_status = str(norm["status"]).strip().lower()
+        if raw_status in ("archived", "archive"):
+            norm["status"] = "Archived"
+        elif raw_status in ("owned", "own"):
+            norm["status"] = "Owned"
+        elif raw_status in ("sold",):
+            norm["status"] = "Sold"
+        elif raw_status in ("gifted", "gift"):
+            norm["status"] = "Gifted"
+        elif raw_status in ("returned", "return"):
+            norm["status"] = "Returned"
+        else:
+            norm["status"] = str(norm["status"]).strip().capitalize()
+
     # 1. Field name aliases
     if "reference_number" in norm and not norm.get("reference"):
         norm["reference"] = norm.pop("reference_number")
@@ -878,10 +894,11 @@ class CollectionManager:
     def _ensure_storage(self) -> None:
         """Create file and seed initial 18 items if missing."""
         # On serverless platforms like Vercel with read-only filesystems, use temp directory if available
-        tmp_dir = tempfile.gettempdir()
-        tmp_file = os.path.join(tmp_dir, "my_collection.json")
-        if os.path.exists(tmp_file):
-            self.file_path = tmp_file
+        if self.file_path == COLLECTION_FILE_PATH:
+            tmp_dir = tempfile.gettempdir()
+            tmp_file = os.path.join(tmp_dir, "my_collection.json")
+            if os.path.exists(tmp_file):
+                self.file_path = tmp_file
 
         if not os.path.exists(self.file_path):
             self._save_items(copy.deepcopy(INITIAL_COLLECTION_ITEMS))
@@ -896,13 +913,20 @@ class CollectionManager:
                 self._save_items(copy.deepcopy(INITIAL_COLLECTION_ITEMS))
 
     def _read_raw_items(self) -> List[Dict[str, Any]]:
-        if not os.path.exists(self.file_path):
+        # Check fallback tmp path first if on serverless or if tmp path exists and is newer
+        path_to_read = self.file_path
+        if self.file_path == COLLECTION_FILE_PATH:
+            tmp_path = os.path.join(tempfile.gettempdir(), "my_collection.json")
+            if os.path.exists(tmp_path):
+                if not os.path.exists(self.file_path) or os.path.getmtime(tmp_path) >= os.path.getmtime(self.file_path):
+                    path_to_read = tmp_path
+        if not os.path.exists(path_to_read):
             return copy.deepcopy(INITIAL_COLLECTION_ITEMS)
         try:
-            with open(self.file_path, "r", encoding="utf-8") as f:
+            with open(path_to_read, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as exc:
-            logger.error("Failed to load collection items: %s", exc)
+            logger.error("Failed to load collection items from %s: %s", path_to_read, exc)
             return copy.deepcopy(INITIAL_COLLECTION_ITEMS)
 
     def _save_items(self, items: List[Dict[str, Any]]) -> None:
@@ -993,12 +1017,17 @@ class CollectionManager:
             return _format_item_response(updated_item)
         return None
 
-    def archive_item(self, item_id: str) -> Optional[Dict[str, Any]]:
+    def archive_item(self, item_id: str, target_status: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Toggle or set item status to Archived without deleting."""
         item = self.get_item(item_id)
         if not item:
             return None
-        new_status = "Owned" if item.get("status") == "Archived" else "Archived"
+        if target_status:
+            ts = str(target_status).strip().lower()
+            new_status = "Archived" if ts in ("archived", "archive") else ("Owned" if ts in ("owned", "own") else str(target_status).strip().capitalize())
+        else:
+            cur_status = str(item.get("status") or "").strip().lower()
+            new_status = "Owned" if cur_status in ("archived", "archive") else "Archived"
         return self.update_item(item_id, {"status": new_status})
 
     def delete_item(self, item_id: str) -> bool:
@@ -1021,9 +1050,9 @@ class CollectionManager:
         """Compute live counts, categories, brands, and valuation dynamically from current data."""
         items = self.get_all_items()
         total_count = len(items)
-        owned_items = [i for i in items if i.get("status", "Owned") == "Owned"]
+        owned_items = [i for i in items if str(i.get("status") or "Owned").strip().lower() in ("owned", "own")]
         owned_count = len(owned_items)
-        archived_count = sum(1 for i in items if i.get("status") == "Archived")
+        archived_count = sum(1 for i in items if str(i.get("status") or "").strip().lower() in ("archived", "archive"))
 
         categories: Dict[str, int] = {}
         brands: set[str] = set()
@@ -1039,7 +1068,7 @@ class CollectionManager:
                 brands.add(brand.strip())
 
             # Valuation metrics on owned items
-            if i.get("status", "Owned") == "Owned":
+            if str(i.get("status") or "Owned").strip().lower() in ("owned", "own"):
                 price = i.get("purchasePrice") if i.get("purchasePrice") is not None else i.get("purchase_price")
                 if price:
                     try:

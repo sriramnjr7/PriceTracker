@@ -49,6 +49,14 @@ from collection_data import collection_mgr
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("vercel_api")
 
+# Indian Standard Time (IST, UTC+05:30) Helper
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
+
+
+def get_ist_now() -> datetime:
+    """Return current datetime in Indian Standard Time (IST, UTC+05:30)."""
+    return datetime.now(timezone.utc).astimezone(IST_TZ)
+
 try:
     import rail_tracker
     import rail_daemon
@@ -365,8 +373,8 @@ async def root(request: Request):
         if clean.endswith("/stats") or clean == "api/collection/stats":
             return await api_get_collection_stats()
         archive_match = re.search(r"collection/([^/]+)/archive", clean)
-        if archive_match and method == "POST":
-            return await api_archive_collection_item(archive_match.group(1))
+        if archive_match and method in ("POST", "PUT", "PATCH"):
+            return await api_archive_collection_item(archive_match.group(1), request)
         item_match = re.search(r"collection/([^/]+)$", clean)
         if item_match:
             item_id = item_match.group(1)
@@ -1216,10 +1224,25 @@ async def api_update_collection_item(item_id: str, request: Request):
 
 
 @app.post("/api/collection/{item_id}/archive")
+@app.put("/api/collection/{item_id}/archive")
+@app.patch("/api/collection/{item_id}/archive")
 @app.post("/api/index.py/api/collection/{item_id}/archive")
-async def api_archive_collection_item(item_id: str):
-    """Toggle archive status for a collection item."""
-    item = collection_mgr.archive_item(item_id)
+@app.put("/api/index.py/api/collection/{item_id}/archive")
+@app.patch("/api/index.py/api/collection/{item_id}/archive")
+@app.post("/api/index.py/collection/{item_id}/archive")
+@app.put("/api/index.py/collection/{item_id}/archive")
+@app.patch("/api/index.py/collection/{item_id}/archive")
+async def api_archive_collection_item(item_id: str, request: Request):
+    """Toggle archive status for a collection item or set explicit status."""
+    target_status = None
+    if request:
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and "status" in body:
+                target_status = body["status"]
+        except Exception:
+            pass
+    item = collection_mgr.archive_item(item_id, target_status=target_status)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return JSONResponse(content={"status": "success", "item": item})
@@ -1410,8 +1433,8 @@ def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dic
 @app.get("/api/rail/status")
 @app.get("/api/index.py/api/rail/status")
 async def api_rail_status():
-    """Retrieve live commute status, active train tracking, incoming rake inspection, and morning recommendations."""
-    now_time = datetime.now().strftime("%H:%M")
+    """Retrieve live commute status, active train tracking, incoming rake inspection, and morning recommendations in IST."""
+    now_time = get_ist_now().strftime("%H:%M")
 
     # Blast-radius isolation guard: If auxiliary rail modules failed to import
     if not RAIL_MODULES_AVAILABLE or rail_tracker is None:
@@ -2933,8 +2956,8 @@ async def catch_all(request: Request, full_path: str):
         if clean.endswith("/stats") or clean == "api/collection/stats":
             return await api_get_collection_stats()
         archive_match = re.search(r"collection/([^/]+)/archive", clean)
-        if archive_match and method == "POST":
-            return await api_archive_collection_item(archive_match.group(1))
+        if archive_match and method in ("POST", "PUT", "PATCH"):
+            return await api_archive_collection_item(archive_match.group(1), request)
         item_match = re.search(r"collection/([^/]+)$", clean)
         if item_match:
             item_id = item_match.group(1)

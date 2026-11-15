@@ -3760,6 +3760,25 @@
       color: var(--text-muted);
       border-color: rgba(148, 163, 184, 0.2);
     }
+    .btn-card-quick-archive {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 1px 6px;
+      cursor: pointer;
+      line-height: 1.3;
+      transition: all 0.18s ease;
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-card-quick-archive:hover {
+      background: rgba(99, 102, 241, 0.28);
+      border-color: rgba(99, 102, 241, 0.6);
+      transform: scale(1.08);
+    }
     .badge-watch {
       background: rgba(56, 189, 248, 0.12);
       color: #38bdf8;
@@ -4534,7 +4553,7 @@
             <section class="cyber-stats-bar collection-stats-bar" aria-label="Collection Telemetry">
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num" id="col-stat-total">18</div>
-                <div class="cyber-stat-label">Total Items</div>
+                <div class="cyber-stat-label">Owned Items</div>
               </div>
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num highlight-cyan" id="col-stat-watches">7</div>
@@ -4547,6 +4566,10 @@
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num highlight-amber" id="col-stat-brands">9</div>
                 <div class="cyber-stat-label">Brands</div>
+              </div>
+              <div class="cyber-stat-col">
+                <div class="cyber-stat-num" style="color: var(--text-muted);" id="col-stat-archived">0</div>
+                <div class="cyber-stat-label">Archived</div>
               </div>
               <div class="cyber-stat-col">
                 <div class="cyber-stat-num highlight-cyan" id="col-stat-valuation">₹1,05,829</div>
@@ -6109,6 +6132,7 @@
               const stats = parsed.stats || calculateCollectionStats(parsed.items);
               updateCollectionKPIs(stats);
               updateCategoryPills();
+              updateStatusFilterCounts();
               renderCollectionCards();
               const colNavBadge = document.getElementById("nav-collection-count-badge");
               if (colNavBadge) {
@@ -6140,6 +6164,7 @@
         const stats = data.stats || calculateCollectionStats(collectionState.items);
         updateCollectionKPIs(stats);
         updateCategoryPills();
+        updateStatusFilterCounts();
         renderCollectionCards();
 
         // Update sidebar badge
@@ -6154,7 +6179,8 @@
     }
 
     function calculateCollectionStats(items) {
-      const owned = items.filter(i => (i.status || "Owned") === "Owned");
+      const owned = items.filter(i => String(i.status || "Owned").trim().toLowerCase() === "owned");
+      const archived = items.filter(i => String(i.status || "").trim().toLowerCase() === "archived");
       const watches = owned.filter(i => (i.category || "").toLowerCase() === "watches").length;
       const shoes = owned.filter(i => (i.category || "").toLowerCase() === "shoes").length;
       const brands = new Set(owned.map(i => (i.brand || "").trim().toLowerCase()).filter(Boolean)).size;
@@ -6175,7 +6201,10 @@
       }
 
       return {
-        total: owned.length,
+        total: items.length,
+        total_items: items.length,
+        owned_items: owned.length,
+        archived_items: archived.length,
         categories: { watches, shoes },
         total_brands: brands,
         total_valuation: totalValuation,
@@ -6190,12 +6219,14 @@
       const statWatches = document.getElementById("col-stat-watches");
       const statShoes = document.getElementById("col-stat-shoes");
       const statBrands = document.getElementById("col-stat-brands");
+      const statArchived = document.getElementById("col-stat-archived");
       const statValuation = document.getElementById("col-stat-valuation");
 
-      if (statTotal) statTotal.textContent = stats.total || stats.total_items || 0;
+      if (statTotal) statTotal.textContent = stats.owned_items !== undefined ? stats.owned_items : (stats.total || 0);
       if (statWatches) statWatches.textContent = (stats.categories && stats.categories.watches !== undefined) ? stats.categories.watches : (stats.watches_count || 0);
       if (statShoes) statShoes.textContent = (stats.categories && stats.categories.shoes !== undefined) ? stats.categories.shoes : (stats.shoes_count || 0);
       if (statBrands) statBrands.textContent = stats.total_brands || stats.unique_brands_count || 0;
+      if (statArchived) statArchived.textContent = stats.archived_items !== undefined ? stats.archived_items : 0;
 
       if (statValuation) {
         const currentCat = (collectionState.filterCategory || "all").toLowerCase();
@@ -6254,9 +6285,32 @@
       renderCollectionCards();
     }
 
+    function updateStatusFilterCounts() {
+      const select = document.getElementById("col-status-filter");
+      if (!select) return;
+      const total = collectionState.items.length;
+      const owned = collectionState.items.filter(i => String(i.status || "Owned").trim().toLowerCase() === "owned").length;
+      const archived = collectionState.items.filter(i => String(i.status || "").trim().toLowerCase() === "archived").length;
+      const sold = collectionState.items.filter(i => String(i.status || "").trim().toLowerCase() === "sold").length;
+      const gifted = collectionState.items.filter(i => String(i.status || "").trim().toLowerCase() === "gifted").length;
+      const returned = collectionState.items.filter(i => String(i.status || "").trim().toLowerCase() === "returned").length;
+
+      const opts = select.options;
+      for (let i = 0; i < opts.length; i++) {
+        const val = opts[i].value;
+        if (val === "all") opts[i].text = `Status: All (${total})`;
+        else if (val === "Owned") opts[i].text = `Owned Only (${owned})`;
+        else if (val === "Archived") opts[i].text = `Archived (${archived})`;
+        else if (val === "Sold") opts[i].text = `Sold (${sold})`;
+        else if (val === "Gifted") opts[i].text = `Gifted (${gifted})`;
+        else if (val === "Returned") opts[i].text = `Returned (${returned})`;
+      }
+    }
+
     function onCollectionStatusChange(val) {
       collectionState.filterStatus = val;
       updateCategoryPills();
+      updateStatusFilterCounts();
       const stats = calculateCollectionStats(collectionState.items);
       updateCollectionKPIs(stats);
       renderCollectionCards();
@@ -6317,7 +6371,11 @@
 
       // 2. Filter by status
       if (collectionState.filterStatus !== "all") {
-        filtered = filtered.filter(item => (item.status || "Owned") === collectionState.filterStatus);
+        const target = collectionState.filterStatus.trim().toLowerCase();
+        filtered = filtered.filter(item => {
+          const s = String(item.status || "Owned").trim().toLowerCase();
+          return s === target;
+        });
       }
 
       // 3. Filter by search query (checks brand, model, SKU, nickname, tags, colour, type, material, size, notes, condition, specs)
@@ -6449,8 +6507,10 @@
         const refHtml = refNum ? `<span class="col-ref-code" title="Reference / SKU">${escapeHtml(refNum)}</span>` : "";
 
         // Status badge
-        const isOwned = (item.status || "Owned") === "Owned";
-        const statusHtml = `<span class="collection-status-pill ${isOwned ? 'is-owned' : 'is-archived'}">${isOwned ? '● Owned' : '○ ' + escapeHtml(item.status)}</span>`;
+        const sLower = String(item.status || "Owned").trim().toLowerCase();
+        const isOwned = sLower === "owned";
+        const isArchived = sLower === "archived";
+        const statusHtml = `<span class="collection-status-pill ${isOwned ? 'is-owned' : 'is-archived'}">${isOwned ? '● Owned' : (isArchived ? '📦 Archived' : '○ ' + escapeHtml(item.status))}</span>`;
 
         // Price badge
         const priceVal = item.purchasePrice !== undefined && item.purchasePrice !== null ? item.purchasePrice : item.purchase_price;
@@ -6466,7 +6526,12 @@
               ${imageHtml}
               <div class="collection-card-badges-top">
                 <span class="platform-badge ${catBadgeClass}">${escapeHtml(cat.toUpperCase())}</span>
-                ${statusHtml}
+                <div style="display: inline-flex; align-items: center; gap: 4px;">
+                  ${statusHtml}
+                  <button type="button" class="btn-card-quick-archive" onclick="handleCardQuickArchive(event, '${escapedId}')" title="${isArchived ? 'Restore to Owned' : 'Archive this item'}" aria-label="${isArchived ? 'Restore' : 'Archive'}">
+                    ${isArchived ? '↩️' : '📦'}
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -6490,7 +6555,7 @@
               ` : ''}
 
               <div class="col-card-footer">
-                <span class="col-footer-detail-link">View archive details &rarr;</span>
+                <span class="col-footer-detail-link">${isArchived ? 'Archived &bull; View details &rarr;' : 'View details &rarr;'}</span>
                 ${priceHtml}
               </div>
             </div>
@@ -6518,13 +6583,16 @@
       }
 
       if (statusBadge) {
-        const isOwned = (item.status || "Owned") === "Owned";
-        statusBadge.textContent = isOwned ? "● Owned" : "○ " + item.status;
+        const sLower = String(item.status || "Owned").trim().toLowerCase();
+        const isOwned = sLower === "owned";
+        const isArchived = sLower === "archived";
+        statusBadge.textContent = isOwned ? "● Owned" : (isArchived ? "📦 Archived" : "○ " + item.status);
         statusBadge.className = `collection-status-pill ${isOwned ? "is-owned" : "is-archived"}`;
       }
 
       if (archiveBtn) {
-        archiveBtn.innerHTML = item.status === "Archived" 
+        const isArchived = String(item.status || "").trim().toLowerCase() === "archived";
+        archiveBtn.innerHTML = isArchived 
           ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> <span>Restore to Owned</span>`
           : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg> <span>Archive Item</span>`;
       }
@@ -7222,20 +7290,122 @@
       }
     }
 
+    async function handleCardQuickArchive(event, itemId) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      const item = collectionState.items.find(i => String(i.id).toLowerCase() === String(itemId).toLowerCase());
+      if (!item) return;
+
+      const oldStatus = item.status || "Owned";
+      const sLower = String(oldStatus).trim().toLowerCase();
+      const isArchived = sLower === "archived";
+      const targetStatus = isArchived ? "Owned" : "Archived";
+
+      // 1. Instant optimistic UI update
+      item.status = targetStatus;
+      if (collectionState.selectedItem && String(collectionState.selectedItem.id).toLowerCase() === String(itemId).toLowerCase()) {
+        collectionState.selectedItem.status = targetStatus;
+      }
+      const stats = calculateCollectionStats(collectionState.items);
+      updateCollectionKPIs(stats);
+      updateCategoryPills();
+      updateStatusFilterCounts();
+      renderCollectionCards();
+
+      const itemLabel = `"${item.brand} ${item.model}"`;
+      if (targetStatus === "Archived") {
+        showToast(`${itemLabel} moved to archive. View in Status: Archived filter.`);
+      } else {
+        showToast(`${itemLabel} restored to Owned.`);
+      }
+
+      // 2. Background API call
+      try {
+        const res = await fetch(`/api/collection/${encodeURIComponent(item.id)}/archive`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: targetStatus })
+        });
+        if (!res.ok) throw new Error("Archive API error (" + res.status + ")");
+        const data = await res.json();
+        const updated = data.item || data;
+        if (updated && updated.status) {
+          item.status = updated.status;
+        }
+        try {
+          localStorage.setItem("my_collection_cache", JSON.stringify({ items: collectionState.items, stats }));
+        } catch (e) {}
+      } catch (err) {
+        // Rollback on failure
+        item.status = oldStatus;
+        const rollStats = calculateCollectionStats(collectionState.items);
+        updateCollectionKPIs(rollStats);
+        updateCategoryPills();
+        updateStatusFilterCounts();
+        renderCollectionCards();
+        showToast("⚠️ Archive failed, reverted: " + err.message);
+      }
+    }
+
     async function handleCurrentDetailArchive() {
       if (!collectionState.selectedItem) return;
       const item = collectionState.selectedItem;
+      const itemId = item.id;
+      const oldStatus = item.status || "Owned";
+      const sLower = String(oldStatus).trim().toLowerCase();
+      const isArchived = sLower === "archived";
+      const targetStatus = isArchived ? "Owned" : "Archived";
+
+      // 1. Instant optimistic update
+      item.status = targetStatus;
+      collectionState.selectedItem.status = targetStatus;
+      const inMemoryItem = collectionState.items.find(i => String(i.id).toLowerCase() === String(itemId).toLowerCase());
+      if (inMemoryItem) inMemoryItem.status = targetStatus;
+
+      closeCollectionDetailModal();
+
+      const stats = calculateCollectionStats(collectionState.items);
+      updateCollectionKPIs(stats);
+      updateCategoryPills();
+      updateStatusFilterCounts();
+      renderCollectionCards();
+
+      const itemLabel = `"${item.brand} ${item.model}"`;
+      if (targetStatus === "Archived") {
+        showToast(`${itemLabel} moved to archive. View in Status: Archived filter.`);
+      } else {
+        showToast(`${itemLabel} restored to Owned.`);
+      }
+
+      // 2. Background API call
       try {
-        const res = await fetch(`/api/collection/${encodeURIComponent(item.id)}/archive`, { method: "POST" });
-        if (!res.ok) throw new Error("Archive failed");
+        const res = await fetch(`/api/collection/${encodeURIComponent(itemId)}/archive`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: targetStatus })
+        });
+        if (!res.ok) throw new Error("Archive failed (" + res.status + ")");
         const data = await res.json();
-        const updatedItem = data.item || data;
-        const newStatus = updatedItem.status || (item.status === 'Archived' ? 'Owned' : 'Archived');
-        showToast(`Item ${newStatus === 'Archived' ? 'moved to archive' : 'restored to owned'}`);
-        closeCollectionDetailModal();
-        await fetchCollectionData(true);
+        const updated = data.item || data;
+        if (updated && updated.status && inMemoryItem) {
+          inMemoryItem.status = updated.status;
+          item.status = updated.status;
+        }
+        try {
+          localStorage.setItem("my_collection_cache", JSON.stringify({ items: collectionState.items, stats }));
+        } catch (e) {}
       } catch (err) {
-        showToast("⚠️ " + err.message);
+        // Rollback on failure
+        item.status = oldStatus;
+        if (inMemoryItem) inMemoryItem.status = oldStatus;
+        const rollStats = calculateCollectionStats(collectionState.items);
+        updateCollectionKPIs(rollStats);
+        updateCategoryPills();
+        updateStatusFilterCounts();
+        renderCollectionCards();
+        showToast("⚠️ Archive failed, reverted: " + err.message);
       }
     }
 

@@ -25,8 +25,15 @@ import time
 import urllib.parse
 import urllib.request
 import math
-from datetime import datetime, time as dtime, timedelta
+from datetime import datetime, time as dtime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
+
+
+def get_ist_now() -> datetime:
+    """Return current datetime in Indian Standard Time (IST, UTC+05:30)."""
+    return datetime.now(timezone.utc).astimezone(IST_TZ)
 
 try:
     from cryptography.hazmat.primitives import padding
@@ -481,7 +488,7 @@ def normalize_station_entry(s: dict, running_delay: int = 0) -> dict:
 def fetch_cris_status(train_no: str, date_str: Optional[str] = None) -> dict:
     """Fetch live running status directly from CRIS NTES Wire Protocol."""
     if not date_str:
-        date_str = datetime.now().strftime("%d-%b-%Y")
+        date_str = get_ist_now().strftime("%d-%b-%Y")
     payload = f"service=TrainRunningMob&subService=ShowFullRunJson&trainNo={train_no}&startDate={date_str}"
     raw = query_cris(payload)
 
@@ -507,7 +514,7 @@ def fetch_cris_status(train_no: str, date_str: Optional[str] = None) -> dict:
         "current_station_name": current_station_name,
         "current_status": current_status,
         "delay_minutes": last_known_delay,
-        "last_updated": raw.get("LTIME") or datetime.now().strftime("%H:%M"),
+        "last_updated": raw.get("LTIME") or get_ist_now().strftime("%H:%M"),
         "stations": stations,
         "raw": raw,
     }
@@ -554,7 +561,7 @@ def fetch_confirmtkt_status(train_no: str) -> dict:
         "current_station_name": current_station_name,
         "current_status": current_status,
         "delay_minutes": overall_delay,
-        "last_updated": datetime.now().strftime("%H:%M"),
+        "last_updated": get_ist_now().strftime("%H:%M"),
         "stations": stations,
         "raw": data,
     }
@@ -572,7 +579,7 @@ def fetch_static_fallback_status(train_no: str, empirical_delay: int = 0) -> dic
             "current_station_name": "HOSUR",
             "current_status": "Scheduled timetable (Static fallback)",
             "delay_minutes": empirical_delay,
-            "last_updated": datetime.now().strftime("%H:%M"),
+            "last_updated": get_ist_now().strftime("%H:%M"),
             "stations": [],
         }
 
@@ -605,7 +612,7 @@ def fetch_static_fallback_status(train_no: str, empirical_delay: int = 0) -> dic
         "current_station_name": stations[0]["name"] if stations else "HOSUR",
         "current_status": f"Scheduled timetable + {empirical_delay}m empirical P50 delay",
         "delay_minutes": empirical_delay,
-        "last_updated": datetime.now().strftime("%H:%M"),
+        "last_updated": get_ist_now().strftime("%H:%M"),
         "stations": stations,
     }
 
@@ -839,7 +846,7 @@ def inspect_rake_turnaround(
     Revised Step-Out Time = Projected_HSRA_Departure - LEAD_TIME_HOME_HOSUR (10 mins).
     """
     if not reference_time:
-        reference_time = datetime.now().strftime("%H:%M")
+        reference_time = get_ist_now().strftime("%H:%M")
 
     if allow_network:
         rake_status = get_live_train_status(rake_train, date_str)
@@ -975,7 +982,7 @@ def scan_morning_commute_options(
     it dynamically recommends the best train, calculating revised step-out times and arrival at ETV desk.
     """
     if not reference_time:
-        reference_time = datetime.now().strftime("%H:%M")
+        reference_time = get_ist_now().strftime("%H:%M")
 
     # 1. Inspect Rake Turnaround for Train 66596
     memu_rake = inspect_rake_turnaround(MORNING_TRAIN_MEMU, INCOMING_RAKE_MEMU, date_str, reference_time=reference_time, allow_network=allow_network)
@@ -1194,7 +1201,7 @@ def scan_evening_commute_options(
 ) -> list[dict]:
     """Scan evening trains from BLRR / CRLM corridor to Hosur and compute desk departure advisories."""
     if not reference_time:
-        reference_time = datetime.now().strftime("%H:%M")
+        reference_time = get_ist_now().strftime("%H:%M")
 
     evening_trains = ["66585", "16211", "66583", "16232", "16527", "16236"]
     results = []

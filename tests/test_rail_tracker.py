@@ -1192,3 +1192,119 @@ def test_boarding_status_window():
         assert scan["recommended_train"]["train_no"] == "66596"
 
 
+def test_morning_prompt_strict_guard_at_midday():
+    """CRITICAL TEST: Ensure handle_morning_prompt strictly refuses to fire at 12:29 PM (midday) or any non-morning time."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["morning_prompt_sent"] = False
+
+    # 1. At 12:29 PM (the user's reported bug time), prompt must be strictly rejected
+    daemon.handle_morning_prompt("12:29")
+    assert daemon.bot.send_message.call_count == 0, "Morning prompt must NEVER fire at 12:29 PM"
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_MIDDAY_STANDBY, "Must self-heal to MIDDAY_STANDBY"
+
+    # 2. At 14:15 PM (afternoon), rejected and heals to EVENING_PROMPT
+    daemon.handle_morning_prompt("14:15")
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_PROMPT
+
+    # 3. At 18:00 PM (evening), rejected and heals to EVENING_TRACKING
+    daemon.handle_morning_prompt("18:00")
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_TRACKING
+
+    # 4. At 23:00 PM (night), rejected and heals to NIGHT_SLEEP
+    daemon.handle_morning_prompt("23:00")
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_NIGHT_SLEEP
+
+    # 5. At 07:00 AM (valid morning window), allowed to fire
+    daemon.store.state_data["morning_prompt_sent"] = False
+    with patch("rail_tracker.scan_morning_commute_options") as mock_scan:
+        mock_scan.return_value = {
+            "options": [{"train_no": "66596", "train_name": "MEMU", "scheduled_departure": "08:25", "projected_departure": "08:25", "dest_eta": "09:03", "delay_mins": 0, "is_delayed": False}],
+            "recommended_train": {"train_no": "66596", "train_name": "Hosur MEMU"},
+            "rake_turnaround": {"rake_current_station_name": "Yesvantpur Jn", "rake_delay_mins": 0},
+            "recommendation_reason": "On time",
+        }
+        daemon.handle_morning_prompt("07:00")
+        assert daemon.bot.send_message.call_count == 1
+        assert daemon.store.state_data["morning_prompt_sent"] is True
+
+
+def test_daemon_step_simulated_midday_heals_state():
+    """Verify daemon.step() at 12:29 PM IST transitions erroneous states to MIDDAY_STANDBY without firing morning prompt."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_PROMPT
+
+    # Simulate 12:29 PM IST
+    simulated_midday = datetime(2026, 11, 15, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
+    daemon.last_track_poll_time = 0.0
+
+    daemon.step(now=simulated_midday)
+
+    # State machine must auto-heal to MIDDAY_STANDBY and send zero messages
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_MIDDAY_STANDBY
+    assert daemon.bot.send_message.call_count == 0
+
+
+def test_cmd_track_at_midday_avoids_morning_tracking():
+    """Verify tracking a morning train at 12:29 PM sets the train but preserves MIDDAY_STANDBY."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["state"] = rail_daemon.STATE_MIDDAY_STANDBY
+
+    with patch("rail_daemon.get_ist_now") as mock_now:
+        mock_now.return_value = datetime(2026, 11, 15, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
+        daemon.cmd_track("66596")
+        assert daemon.store.state_data["morning_train"] == "66596"
+        assert daemon.store.state_data["state"] == rail_daemon.STATE_MIDDAY_STANDBY
+
+
+def test_ist_timezone_conversion_from_utc():
+    """Verify UTC 06:59 AM corresponds to IST 12:29 PM and prevents false morning trigger on UTC servers."""
+    utc_dt = datetime(2026, 11, 15, 6, 59, 0, tzinfo=rail_daemon.timezone.utc)
+    ist_dt = utc_dt.astimezone(rail_daemon.IST_TZ)
+    assert ist_dt.strftime("%H:%M") == "12:29", "06:59 UTC must be 12:29 IST"
+
+
+def test_morning_prompt_at_0935_heals_to_morning_tracking():
+    """Verify handle_morning_prompt at 09:35 AM IST self-heals to MORNING_TRACKING without sending alert."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["morning_prompt_sent"] = False
+
+    daemon.handle_morning_prompt("09:35")
+    assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_MORNING_TRACKING
+
+
+def test_evening_prompt_and_tracking_guarded_at_midday():
+    """Verify handle_evening_prompt and handle_evening_tracking reject execution at midday (12:29 PM)."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+
+    daemon.handle_evening_prompt("12:29")
+    assert daemon.bot.send_message.call_count == 0
+
+    daemon.handle_evening_tracking("12:29")
+    assert daemon.bot.send_message.call_count == 0
+
+
+def test_api_rail_status_ist_time():
+    """Verify /api/rail/status returns current IST time regardless of local system timezone."""
+    from fastapi.testclient import TestClient
+    from api.index import app
+    client = TestClient(app)
+
+    with patch("api.index.get_ist_now") as mock_ist:
+        mock_ist.return_value = datetime(2026, 11, 15, 12, 29, 0, tzinfo=rail_daemon.IST_TZ)
+        res = client.get("/api/rail/status")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["current_time"] == "12:29"
+
+
+
+
