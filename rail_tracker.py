@@ -1028,12 +1028,11 @@ def scan_morning_commute_options(
     memu2_step_out = add_minutes_to_time(memu2_projected_dep, -LEAD_TIME_HOME_HOSUR)
 
     # BLRR arrival for 06278
-    if memu2_blrr:
-        memu2_dest_eta = memu2_blrr.get("eta") or add_minutes_to_time(memu2_blrr.get("sta", "07:51"), memu2_effective_delay)
-    elif memu2_crlm:
-        memu2_dest_eta = memu2_crlm.get("eta") or add_minutes_to_time(memu2_crlm.get("sta", "07:44"), memu2_effective_delay)
+    memu2_sta = memu2_blrr.get("sta", "07:51") if memu2_blrr else "07:51"
+    if memu2_effective_delay > 0:
+        memu2_dest_eta = add_minutes_to_time(memu2_sta, memu2_effective_delay)
     else:
-        memu2_dest_eta = add_minutes_to_time("07:51", memu2_effective_delay)
+        memu2_dest_eta = (memu2_blrr.get("eta") if memu2_blrr else None) or memu2_sta
 
     memu2_desk_eta = add_minutes_to_time(memu2_dest_eta, WALK_TIME_BLRR_DESK)
     memu2_minutes_until_dep = minutes_difference(reference_time, memu2_projected_dep)
@@ -1052,12 +1051,16 @@ def scan_morning_commute_options(
     exp_projected_dep = exp_hsra.get("etd", "") if (exp_hsra and exp_hsra.get("etd") not in ("Destination", "")) else add_minutes_to_time(exp_sch_dep, exp_delay)
     exp_step_out = add_minutes_to_time(exp_projected_dep, -LEAD_TIME_HOME_HOSUR)
 
-    if exp_blrr:
-        exp_dest_eta = exp_blrr.get("eta") or add_minutes_to_time(exp_blrr.get("sta", "08:59"), exp_delay)
-    elif exp_crlm:
-        exp_dest_eta = exp_crlm.get("eta") or add_minutes_to_time(exp_crlm.get("sta", "09:05"), exp_delay)
+    exp_sta = exp_blrr.get("sta", "08:59") if exp_blrr else ("09:05" if exp_crlm else "08:59")
+    if exp_delay > 0:
+        if exp_blrr and exp_blrr.get("eta") and exp_blrr.get("eta") != exp_sta:
+            exp_dest_eta = exp_blrr.get("eta")
+        elif exp_crlm and exp_crlm.get("eta") and exp_crlm.get("eta") != exp_sta:
+            exp_dest_eta = exp_crlm.get("eta")
+        else:
+            exp_dest_eta = add_minutes_to_time(exp_sta, exp_delay)
     else:
-        exp_dest_eta = add_minutes_to_time("08:59", exp_delay)
+        exp_dest_eta = (exp_blrr.get("eta") if exp_blrr else None) or exp_sta
 
     exp_desk_eta = add_minutes_to_time(exp_dest_eta, WALK_TIME_BLRR_DESK)
     exp_minutes_until_dep = minutes_difference(reference_time, exp_projected_dep)
@@ -1065,10 +1068,11 @@ def scan_morning_commute_options(
     # 4. MEMU 66596 destination arrival (BLRR)
     memu_blrr = next((s for s in memu_rake["memu_status"].get("stations", []) if s["code"] == STN_BELLANDUR), None)
     memu_delay = memu_rake["effective_delay_mins"]
-    if memu_blrr:
-        memu_blrr_eta = memu_blrr.get("eta") or add_minutes_to_time(memu_blrr.get("sta", "09:03"), memu_delay)
+    memu_sta = memu_blrr.get("sta", "09:03") if memu_blrr else "09:03"
+    if memu_delay > 0:
+        memu_blrr_eta = add_minutes_to_time(memu_sta, memu_delay)
     else:
-        memu_blrr_eta = add_minutes_to_time("09:03", memu_delay)
+        memu_blrr_eta = (memu_blrr.get("eta") if memu_blrr else None) or memu_sta
 
     memu_desk_eta = add_minutes_to_time(memu_blrr_eta, WALK_TIME_BLRR_DESK)
     memu_minutes_until_dep = (
@@ -1187,6 +1191,12 @@ def scan_morning_commute_options(
                 f"⚠️ Train {MORNING_TRAIN_MEMU} rake is CANCELLED! Recommend taking Train {recommended['train_no']} "
                 f"({recommended['train_name']}) departing Hosur at ~{recommended['projected_departure']} AM. "
                 f"Reaches BLRR at ~{recommended['dest_eta']} AM (ETV Desk: ~{recommended['desk_eta']} AM)."
+            )
+        elif len(pool) == 1:
+            delay_note = f" (delay: +{recommended['delay_mins']}m)" if recommended.get("is_delayed") else " (on schedule)"
+            rec_reason = (
+                f"Train {recommended['train_no']} ({recommended['train_name']}) is your sole qualifying option reaching desk before 11:30 AM "
+                f"(departs Hosur at ~{recommended['projected_departure']} AM{delay_note}, BLRR ~{recommended['dest_eta']} AM, Desk ~{recommended['desk_eta']} AM)."
             )
         else:
             delay_note = f" (delay: +{recommended['delay_mins']}m)" if recommended.get("is_delayed") else " (on schedule)"
