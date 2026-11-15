@@ -334,13 +334,13 @@ class CommuteStateStore:
                 "state": self.state_data.get("state", STATE_MIDDAY_STANDBY),
                 "morning_train": self.state_data.get("morning_train", rail_tracker.MORNING_TRAIN_MEMU if rail_tracker else "66596"),
                 "morning_step_out_time": self.state_data.get("morning_step_out_time", "08:15"),
-                "morning_revised_dep": self.state_data.get("morning_projected_dep", "08:25"),
+                "morning_revised_dep": self.state_data.get("morning_projected_dep") or self.state_data.get("morning_revised_dep", "08:25"),
                 "morning_delay_mins": self.state_data.get("morning_delay_mins", 0),
-                "morning_status": "COMPLETED" if self.state_data.get("morning_completed", False) else "ACTIVE",
+                "morning_status": "COMPLETED" if (self.state_data.get("morning_completed", False) or self.state_data.get("morning_status") == "COMPLETED") else "ACTIVE",
                 "evening_train": self.state_data.get("evening_train", "16232"),
-                "evening_milestone_fired": self.state_data.get("evening_milestone_fired", False),
-                "evening_status": "COMPLETED" if self.state_data.get("evening_completed", False) else "ACTIVE",
-                "alerts_enabled": self.state_data.get("alerts_enabled", True),
+                "evening_milestone_fired": bool(self.state_data.get("evening_milestone_fired", False)),
+                "evening_status": "COMPLETED" if (self.state_data.get("evening_completed", False) or self.state_data.get("evening_status") == "COMPLETED") else "ACTIVE",
+                "alerts_enabled": bool(self.state_data.get("alerts_enabled", True)),
                 "notes": self.state_data.get("notes", ""),
                 "last_updated": self.state_data.get("last_updated", get_ist_now().isoformat()),
             }
@@ -365,7 +365,7 @@ class CommuteStateStore:
                     err_body = http_err.read().decode("utf-8")
                 except Exception:
                     pass
-                if http_err.code == 400 and ("PGRST204" in err_body or "alerts_enabled" in err_body):
+                if http_err.code == 400 and ("pgrst204" in err_body.lower() or "alerts_enabled" in err_body.lower()):
                     logger.warning(
                         "Supabase commute_daily_state schema cache missing alerts_enabled column (PGRST204: %s). "
                         "Retrying upsert without alerts_enabled to preserve core telemetry.",
@@ -794,7 +794,9 @@ class RailDaemon:
 
         # Check if train has departed CRLM/BLRR or passed 22:30
         crlm_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_CARMELARAM), None)
-        if crlm_stn and crlm_stn.get("has_departed"):
+        blrr_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_BELLANDUR), None)
+        has_departed_boarding = (crlm_stn and crlm_stn.get("has_departed")) or (not crlm_stn and blrr_stn and blrr_stn.get("has_departed"))
+        if has_departed_boarding:
             if not self.store.state_data.get("evening_completed"):
                 if self.store.state_data.get("alerts_enabled", True):
                     self.bot.send_message(f"🚆 Train {active_train} is en route to Hosur. Enjoy the ride home!")

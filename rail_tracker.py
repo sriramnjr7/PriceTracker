@@ -470,7 +470,7 @@ def add_minutes_to_time(base_time: str, minutes_to_add: int) -> str:
     try:
         parts = clean.split(":")
         base_dt = datetime(2026, 1, 1, int(parts[0]), int(parts[1]))
-        res_dt = base_dt + timedelta(minutes=minutes_to_add)
+        res_dt = base_dt + timedelta(minutes=int(minutes_to_add))
         return res_dt.strftime("%H:%M")
     except Exception:
         return base_time
@@ -1539,6 +1539,10 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
 
     m_stn = next((s for s in stations if s.get("code") == milestone_code), None)
     target_stn = next((s for s in stations if s.get("code") == target_code), None)
+
+    # If the train has already departed the target boarding station, milestone trigger is expired
+    if target_stn and target_stn.get("has_departed"):
+        return None
 
     if m_stn and (m_stn.get("has_departed") or m_stn.get("effective_delay") is not None):
         if m_stn.get("has_departed"):

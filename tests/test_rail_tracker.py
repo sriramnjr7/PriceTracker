@@ -2683,6 +2683,80 @@ def test_resilient_supabase_sync_pgrst204_fallback_api():
     assert call_payloads[1]["state"] == "EVENING_TRACKING"
 
 
+def test_evening_milestone_trigger_suppressed_if_target_already_departed():
+    """Verify check_evening_milestone_trigger returns None if the target station has already departed."""
+    # 1. CRLM target train (16232)
+    status_16232 = {
+        "train_no": "16232",
+        "delay_minutes": 5,
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "has_departed": True, "etd": "19:15"},
+            {"code": "CRLM", "name": "CARMELARAM", "has_departed": True, "sta": "19:35", "etd": "19:40"},
+        ],
+    }
+    trigger = rail_tracker.check_evening_milestone_trigger("16232", status_16232)
+    assert trigger is None
+
+    # 2. BLRR target train (66585)
+    status_66585 = {
+        "train_no": "66585",
+        "delay_minutes": 2,
+        "stations": [
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "has_departed": True, "etd": "15:43"},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "has_departed": True, "sta": "15:58", "etd": "16:00"},
+        ],
+    }
+    trigger_blrr = rail_tracker.check_evening_milestone_trigger("66585", status_66585)
+    assert trigger_blrr is None
+
+
+def test_add_minutes_to_time_string_tolerance():
+    """Verify add_minutes_to_time safely handles string integers without crashing."""
+    assert rail_tracker.add_minutes_to_time("19:35", "5") == "19:40"
+    assert rail_tracker.add_minutes_to_time("08:15", "-10") == "08:05"
+
+
+def test_fetch_supabase_commute_state_parses_completion_and_milestones():
+    """Verify _fetch_supabase_commute_state parses morning_status, evening_status, and evening_milestone_fired."""
+    import httpx
+    from api.index import _fetch_supabase_commute_state
+
+    mock_row = {
+        "date": "2026-11-16",
+        "state": "MIDDAY_STANDBY",
+        "morning_train": "66596",
+        "morning_step_out_time": "08:15",
+        "morning_revised_dep": "08:25",
+        "morning_delay_mins": 0,
+        "morning_status": "COMPLETED",
+        "evening_train": "16232",
+        "evening_status": "COMPLETED",
+        "evening_milestone_fired": True,
+        "alerts_enabled": False,
+        "notes": "Arrived on time",
+    }
+
+    async def mock_get(self, url, headers=None):
+        req = httpx.Request("GET", url)
+        return httpx.Response(200, json=[mock_row], request=req)
+
+    async def _test():
+        with patch.dict(os.environ, {"SUPABASE_URL": "https://mock.supabase.co", "SUPABASE_KEY": "mock-key"}), \
+             patch.object(httpx.AsyncClient, "get", mock_get):
+            parsed = await _fetch_supabase_commute_state("2026-11-16")
+            assert parsed is not None
+            assert parsed["morning_status"] == "COMPLETED"
+            assert parsed["morning_completed"] is True
+            assert parsed["evening_status"] == "COMPLETED"
+            assert parsed["evening_completed"] is True
+            assert parsed["evening_milestone_fired"] is True
+            assert parsed["alerts_enabled"] is False
+
+    import asyncio
+    asyncio.run(_test())
+
+
+
 
 
 

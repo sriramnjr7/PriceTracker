@@ -1321,10 +1321,19 @@ async def _fetch_supabase_commute_state(target_date: Optional[str] = None) -> Op
                         parsed["morning_step_out_time"] = row["morning_step_out_time"]
                     if row.get("morning_revised_dep"):
                         parsed["morning_projected_dep"] = row["morning_revised_dep"]
+                        parsed["morning_revised_dep"] = row["morning_revised_dep"]
                     if row.get("morning_delay_mins") is not None:
                         parsed["morning_delay_mins"] = int(row["morning_delay_mins"])
+                    if row.get("morning_status"):
+                        parsed["morning_status"] = row["morning_status"]
+                        parsed["morning_completed"] = (row["morning_status"] == "COMPLETED")
                     if row.get("evening_train"):
                         parsed["evening_train"] = row["evening_train"]
+                    if row.get("evening_status"):
+                        parsed["evening_status"] = row["evening_status"]
+                        parsed["evening_completed"] = (row["evening_status"] == "COMPLETED")
+                    if "evening_milestone_fired" in row and row.get("evening_milestone_fired") is not None:
+                        parsed["evening_milestone_fired"] = bool(row["evening_milestone_fired"])
                     if row.get("notes"):
                         parsed["notes"] = row["notes"]
                     if "alerts_enabled" in row and row.get("alerts_enabled") is not None:
@@ -1354,13 +1363,13 @@ async def _sync_to_supabase(state_data: dict[str, Any]) -> bool:
             "state": state_data.get("state", "MIDDAY_STANDBY"),
             "morning_train": state_data.get("morning_train", "66596"),
             "morning_step_out_time": state_data.get("morning_step_out_time", "08:15"),
-            "morning_revised_dep": state_data.get("morning_projected_dep", "08:25"),
+            "morning_revised_dep": state_data.get("morning_projected_dep") or state_data.get("morning_revised_dep", "08:25"),
             "morning_delay_mins": state_data.get("morning_delay_mins", 0),
-            "morning_status": "COMPLETED" if state_data.get("morning_completed", False) else "ACTIVE",
+            "morning_status": "COMPLETED" if (state_data.get("morning_completed", False) or state_data.get("morning_status") == "COMPLETED") else "ACTIVE",
             "evening_train": state_data.get("evening_train", "16232"),
-            "evening_milestone_fired": state_data.get("evening_milestone_fired", False),
-            "evening_status": "COMPLETED" if state_data.get("evening_completed", False) else "ACTIVE",
-            "alerts_enabled": state_data.get("alerts_enabled", True),
+            "evening_milestone_fired": bool(state_data.get("evening_milestone_fired", False)),
+            "evening_status": "COMPLETED" if (state_data.get("evening_completed", False) or state_data.get("evening_status") == "COMPLETED") else "ACTIVE",
+            "alerts_enabled": bool(state_data.get("alerts_enabled", True)),
             "notes": state_data.get("notes", ""),
             "last_updated": state_data.get("last_updated", get_ist_now().isoformat()),
         }
@@ -1369,7 +1378,7 @@ async def _sync_to_supabase(state_data: dict[str, Any]) -> bool:
             if resp.status_code in (200, 201):
                 logger.info("Successfully synced commute state to Supabase via API.")
                 return True
-            if resp.status_code == 400 and ("PGRST204" in resp.text or "alerts_enabled" in resp.text):
+            if resp.status_code == 400 and ("pgrst204" in resp.text.lower() or "alerts_enabled" in resp.text.lower()):
                 logger.warning(
                     "Supabase schema cache missing alerts_enabled column (PGRST204: %s). Retrying without alerts_enabled.",
                     resp.text.strip(),
@@ -1565,6 +1574,10 @@ async def api_rail_status():
         if sb_state:
             state_data.update(sb_state)
 
+        # Weekend enforcement guard: Automated weekday tracking states must never leak into weekends
+        if is_weekend and state_data.get("state") not in ("WEEKEND_REST", "WFH", "BIKE"):
+            state_data["state"] = "WEEKEND_REST"
+
         # Smart Window Scrape:
         # Morning window (05:00 to 12:00): live-scan morning corridor trains only and fetch static/cached for evening.
         # Evening window (14:00 to 23:30): live-scan evening corridor trains only and fetch static/cached for morning.
@@ -1741,6 +1754,11 @@ async def api_rail_action(request: Request):
 
         store = rail_daemon.CommuteStateStore()
 
+        # Hydrate existing commute state from Supabase so serverless action does not overwrite core telemetry
+        sb_state = await _fetch_supabase_commute_state()
+        if sb_state:
+            store.state_data.update(sb_state)
+
         if action == "wfh":
             store.transition_state(rail_daemon.STATE_WFH, "Marked WFH from dashboard")
             msg = "Marked as Work From Home."
@@ -1771,10 +1789,12 @@ async def api_rail_action(request: Request):
             is_evening = "EVENING" in state or ("13:00" <= now_time < "23:30" and not ("06:00" <= now_time < "12:00"))
             if is_evening:
                 store.state_data["evening_completed"] = True
+                store.state_data["evening_status"] = "COMPLETED"
                 store.transition_state(rail_daemon.STATE_HIBERNATION, "Reached evening station / destination")
                 msg = "Reached destination! Evening commute completed."
             else:
                 store.state_data["morning_completed"] = True
+                store.state_data["morning_status"] = "COMPLETED"
                 store.transition_state(rail_daemon.STATE_MIDDAY_STANDBY, "Reached station platform")
                 msg = "Reached station platform!"
         elif action == "stay":
