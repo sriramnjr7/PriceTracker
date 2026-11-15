@@ -482,11 +482,6 @@ class RailDaemon:
                 self.store.transition_state(STATE_NIGHT_SLEEP, "Self-heal: Night sleep mode")
             return
 
-        # Alerts master kill switch guard: suppress proactive prompt if alerts disabled
-        if not self.store.state_data.get("alerts_enabled", True):
-            logger.info("Suppressed handle_morning_prompt: Alerts are muted (alerts_enabled=False)")
-            return
-
         if self.store.state_data.get("morning_prompt_sent"):
             return
 
@@ -513,7 +508,12 @@ class RailDaemon:
             f"Select your mode of commute today:"
         )
 
-        self.bot.send_message(msg, reply_markup=self.get_morning_keyboard())
+        # Alerts master kill switch guard: suppress proactive prompt if alerts disabled
+        if self.store.state_data.get("alerts_enabled", True):
+            self.bot.send_message(msg, reply_markup=self.get_morning_keyboard())
+        else:
+            logger.info("Suppressed morning prompt push alert: Alerts are muted (alerts_enabled=False)")
+
         self.store.state_data["morning_prompt_sent"] = True
         self.store.state_data["morning_train"] = rec["train_no"]
         self.store.state_data["last_recommended_train"] = rec["train_no"]
@@ -706,11 +706,6 @@ class RailDaemon:
             logger.warning("Rejected handle_evening_prompt execution: current_time %s is outside evening prompt window (14:00 - 18:00 IST)", current_time)
             return
 
-        # Alerts master kill switch guard: suppress proactive prompt if alerts disabled
-        if not self.store.state_data.get("alerts_enabled", True):
-            logger.info("Suppressed handle_evening_prompt: Proactive alerts are muted (alerts_enabled=False)")
-            return
-
         if self.store.state_data.get("evening_prompt_sent"):
             return
 
@@ -724,7 +719,13 @@ class RailDaemon:
             msg += f"• *{opt['train_no']}* ({opt['boarding_station']}): Sch {opt['scheduled_departure']} | Leave desk: ~{opt['leave_desk_time']}\n"
         
         msg += f"\nSelect which train you plan to take tonight:"
-        self.bot.send_message(msg, reply_markup=self.get_evening_keyboard())
+
+        # Alerts master kill switch guard: suppress proactive prompt if alerts disabled
+        if self.store.state_data.get("alerts_enabled", True):
+            self.bot.send_message(msg, reply_markup=self.get_evening_keyboard())
+        else:
+            logger.info("Suppressed evening prompt push alert: Proactive alerts are muted (alerts_enabled=False)")
+
         self.store.state_data["evening_prompt_sent"] = True
         self.store.transition_state(STATE_EVENING_PROMPT, "Sent 14:00 PM evening check-in")
 
@@ -1386,10 +1387,13 @@ class RailDaemon:
                 self.handle_evening_tracking(current_time, now=now)
 
             # Check watchdog fail-safe (suppressed during weekend rest or when alerts muted)
-            if state != STATE_WEEKEND_REST and self.store.state_data.get("alerts_enabled", True):
+            if state != STATE_WEEKEND_REST:
                 pending_wd = rail_tracker.watchdog.get_pending_alert()
                 if pending_wd and pending_wd.get("triggered"):
-                    self.bot.send_message(pending_wd["message"])
+                    if self.store.state_data.get("alerts_enabled", True):
+                        self.bot.send_message(pending_wd["message"])
+                    else:
+                        logger.info("Suppressed watchdog fail-safe alert push: Alerts are muted (alerts_enabled=False)")
 
         # 3. Always poll for Telegram user interactions
         self.process_telegram_updates()

@@ -2372,9 +2372,11 @@ def test_alerts_muted_suppresses_proactive_pushes_while_preserving_state(tmp_pat
     daemon = rail_daemon.RailDaemon(store=store)
     daemon.bot.send_message = MagicMock()
 
-    # 1. handle_morning_prompt: Should suppress Telegram message dispatch
+    # 1. handle_morning_prompt: Should suppress Telegram message dispatch but record state
     daemon.handle_morning_prompt(current_time="07:15")
     assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["morning_prompt_sent"] is True
+    assert daemon.store.state_data["morning_train"] is not None
 
     # 2. handle_morning_tracking: Telegram push suppressed, but delay and step-out state MUST be recorded
     fake_scan = {
@@ -2420,10 +2422,12 @@ def test_alerts_muted_suppresses_proactive_pushes_while_preserving_state(tmp_pat
         assert daemon.store.state_data["morning_step_out_time"] == "08:35"
         assert daemon.store.state_data["morning_stepped_out"] is True
 
-    # 3. handle_evening_prompt: Should suppress message
+    # 3. handle_evening_prompt: Should suppress message but record prompt sent and transition
     daemon.store.state_data["evening_prompt_sent"] = False
     daemon.handle_evening_prompt(current_time="14:15")
     assert daemon.bot.send_message.call_count == 0
+    assert daemon.store.state_data["evening_prompt_sent"] is True
+    assert daemon.store.state_data["state"] == rail_daemon.STATE_EVENING_PROMPT
 
     # 4. handle_evening_tracking: Milestone trigger should NOT push message, but record fired
     fake_status = {
@@ -2526,6 +2530,28 @@ def test_api_rail_status_and_action_toggle_alerts(client):
     set_true_res = client.post("/api/rail/action", json={"action": "unmute_alerts"})
     assert set_true_res.status_code == 200
     assert set_true_res.json()["alerts_enabled"] is True
+
+
+def test_watchdog_alert_consumed_and_suppressed_when_muted(tmp_path):
+    """Verify watchdog fail-safe alert is consumed and not sent when alerts are muted."""
+    state_file = str(tmp_path / "commute_test_wd.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    now_dt = datetime(2026, 11, 16, 11, 0)
+    store.state_data["date"] = now_dt.strftime("%Y-%m-%d")
+    store.state_data["alerts_enabled"] = False
+    store.state_data["state"] = rail_daemon.STATE_MIDDAY_STANDBY
+    store.save()
+
+    daemon = rail_daemon.RailDaemon(store=store)
+    daemon.bot.send_message = MagicMock()
+
+    rail_tracker.watchdog._pending_alert = {"triggered": True, "message": "CRIS scraping failed"}
+    daemon.step(now=now_dt)
+    # Assert message was suppressed
+    assert daemon.bot.send_message.call_count == 0
+    # Assert watchdog pending alert was consumed so it doesn't leak later
+    assert rail_tracker.watchdog.get_pending_alert() is None
+
 
 
 

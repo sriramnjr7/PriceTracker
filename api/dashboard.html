@@ -5456,7 +5456,7 @@
 
               <!-- Commute Action Control Buttons -->
               <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <button class="btn-ui" id="rail-alerts-toggle-btn" onclick="toggleRailAlerts()" style="background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.35); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;" title="Emergency kill switch to mute all proactive Telegram push alerts">
+                <button class="btn-ui" id="rail-alerts-toggle-btn" onclick="toggleRailAlerts()" aria-pressed="true" aria-label="Toggle rail alerts" style="background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.35); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;" title="Emergency kill switch to mute all proactive Telegram push alerts">
                   <span id="rail-alerts-btn-icon">🔕</span>
                   <span id="rail-alerts-btn-label">Mute Alerts</span>
                 </button>
@@ -9643,6 +9643,7 @@
       }
 
       if (alertsToggleBtn) {
+        alertsToggleBtn.setAttribute("aria-pressed", alertsEnabled ? "true" : "false");
         if (alertsEnabled) {
           alertsToggleBtn.style.background = "rgba(239, 68, 68, 0.12)";
           alertsToggleBtn.style.color = "#f87171";
@@ -9873,14 +9874,20 @@
     }
 
     async function toggleRailAlerts() {
+      const btn = document.getElementById("rail-alerts-toggle-btn");
+      if (btn && btn.disabled) return;
+      if (btn) btn.disabled = true;
+
       const current = (railRadarState.status && railRadarState.status.alerts_enabled !== false);
       const targetState = !current;
 
       // Optimistic UI update
-      if (railRadarState.status) {
+      if (!railRadarState.status) {
+        railRadarState.status = { alerts_enabled: targetState };
+      } else {
         railRadarState.status.alerts_enabled = targetState;
-        renderRailHero(railRadarState.status);
       }
+      renderRailHero(railRadarState.status);
       showToast(targetState ? "Resuming Telegram alerts..." : "Muting Telegram alerts...");
 
       try {
@@ -9905,6 +9912,8 @@
           renderRailHero(railRadarState.status);
         }
         showToast("Error toggling alerts: " + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
 

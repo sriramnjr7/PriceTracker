@@ -516,8 +516,11 @@ class TelegramAssistant:
             return
 
         # 2b. /mute or /unmute (Emergency kill switch for proactive alerts)
-        if text.lower() in {"/mute", "/unmute"} or text.lower().startswith(("/mute ", "/unmute ")):
-            is_mute = text.lower().startswith("/mute")
+        text_lower = text.lower().strip()
+        is_mute_cmd = text_lower in {"/mute", "/silence"} or text_lower.startswith(("/mute ", "/silence ", "/pause alerts", "/pause rail"))
+        is_unmute_cmd = text_lower in {"/unmute"} or text_lower.startswith(("/unmute ", "/resume alerts", "/resume rail", "/unpause alerts", "/unpause rail"))
+        if is_mute_cmd or is_unmute_cmd:
+            is_mute = is_mute_cmd
             try:
                 import rail_daemon
                 store = rail_daemon.CommuteStateStore()

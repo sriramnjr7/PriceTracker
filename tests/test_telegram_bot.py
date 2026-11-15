@@ -439,6 +439,22 @@ async def test_handle_message_mute_and_unmute(bot):
     store2 = rail_daemon.CommuteStateStore()
     assert store2.state_data.get("alerts_enabled") is True
 
+    # Test /silence alias
+    bot.send_reply.reset_mock()
+    await bot.handle_message({"chat": {"id": 123}, "text": "/silence"})
+    bot.send_reply.assert_called_once()
+    assert "Muted" in bot.send_reply.call_args[0][1]
+    store3 = rail_daemon.CommuteStateStore()
+    assert store3.state_data.get("alerts_enabled") is False
+
+    # Test /resume alerts alias
+    bot.send_reply.reset_mock()
+    await bot.handle_message({"chat": {"id": 123}, "text": "/resume alerts"})
+    bot.send_reply.assert_called_once()
+    assert "Resumed" in bot.send_reply.call_args[0][1]
+    store4 = rail_daemon.CommuteStateStore()
+    assert store4.state_data.get("alerts_enabled") is True
+
 
 
 
