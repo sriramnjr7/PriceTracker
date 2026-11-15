@@ -83,6 +83,42 @@ def get_dashboard_html() -> str:
     return "<html><body style='background:#060911;color:#fff;font-family:sans-serif;padding:40px;'><h2>PriceTracker Engine Online</h2><p>Dashboard template missing or loading...</p></body></html>"
 
 
+def get_guide_html() -> Optional[str]:
+    """Read the standalone RailRadar Real-Life Commute Guide HTML."""
+    candidate_paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "commute_real_life_guide.html"),
+        os.path.join(root_dir, "commute_real_life_guide.html"),
+        os.path.join(os.getcwd(), "commute_real_life_guide.html"),
+        os.path.join(os.getcwd(), "api", "commute_real_life_guide.html"),
+    ]
+    for p in candidate_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as exc:
+                logger.error("Error reading commute_real_life_guide.html at %s: %s", p, exc)
+    return None
+
+
+def get_math_html() -> Optional[str]:
+    """Read the standalone RailRadar Mathematical Deep-Dive HTML."""
+    candidate_paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_math_deepdive.html"),
+        os.path.join(root_dir, "train_math_deepdive.html"),
+        os.path.join(os.getcwd(), "train_math_deepdive.html"),
+        os.path.join(os.getcwd(), "api", "train_math_deepdive.html"),
+    ]
+    for p in candidate_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as exc:
+                logger.error("Error reading train_math_deepdive.html at %s: %s", p, exc)
+    return None
+
+
 def is_browser_request(request: Request) -> bool:
     """Check if the incoming request accepts HTML."""
     accept = request.headers.get("accept", "").lower()
@@ -140,6 +176,47 @@ async def api_auth_login(payload: LoginPayload):
 
 
 # ==========================================
+# STANDALONE RAILRADAR GUIDES & DEEPDIVES
+# ==========================================
+
+@app.get("/commute-guide")
+@app.get("/real-life-guide")
+@app.get("/commute_guide")
+@app.get("/commute-real-life-guide")
+@app.get("/commute_real_life_guide.html")
+@app.get("/api/commute-guide")
+async def serve_commute_guide(request: Request):
+    """Direct route for Real-Life Commute & Walking Guide."""
+    content = get_guide_html()
+    if content:
+        return HTMLResponse(
+            content=content,
+            status_code=200,
+            headers={"Cache-Control": "public, max-age=60, s-maxage=300"},
+        )
+    return HTMLResponse(content="<h1>Commute Guide Not Found</h1>", status_code=404)
+
+
+@app.get("/math")
+@app.get("/train-math")
+@app.get("/train_math")
+@app.get("/math-deepdive")
+@app.get("/train-math-deepdive")
+@app.get("/train_math_deepdive.html")
+@app.get("/api/math")
+async def serve_train_math(request: Request):
+    """Direct route for RailRadar Mathematical Deep-Dive."""
+    content = get_math_html()
+    if content:
+        return HTMLResponse(
+            content=content,
+            status_code=200,
+            headers={"Cache-Control": "public, max-age=60, s-maxage=300"},
+        )
+    return HTMLResponse(content="<h1>Train Math Deepdive Not Found</h1>", status_code=404)
+
+
+# ==========================================
 # CORE DASHBOARD & STATUS ROUTES
 # ==========================================
 
@@ -156,25 +233,24 @@ async def root(request: Request):
     method = request.method.upper()
 
     # Route based on rewritten target if applicable
-    # 0. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
+    # 1. Standalone Rail Documentation & Guides (must precede SPA browser catch-all)
+    if method == "GET" and clean in ("math", "train-math", "train_math", "math-deepdive", "train-math-deepdive", "math.html", "train_math_deepdive.html"):
+        content = get_math_html()
+        if content:
+            return HTMLResponse(content=content, status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
+
+    if method == "GET" and clean in ("commute-guide", "real-life-guide", "commute_guide", "commute-real-life-guide", "guide", "commute_real_life_guide.html"):
+        content = get_guide_html()
+        if content:
+            return HTMLResponse(content=content, status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
+
+    # 2. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
     if is_browser_request(request) and not clean.startswith("api/") and not clean.startswith("assets/"):
         return HTMLResponse(
             content=get_dashboard_html(),
             status_code=200,
             headers={"Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600"},
         )
-
-    if method == "GET" and clean in ("math", "train-math", "train_math", "math-deepdive"):
-        math_file = os.path.join(root_dir, "train_math_deepdive.html")
-        if os.path.exists(math_file):
-            with open(math_file, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
-
-    if method == "GET" and clean in ("commute-guide", "real-life-guide", "commute_guide"):
-        guide_file = os.path.join(root_dir, "commute_real_life_guide.html")
-        if os.path.exists(guide_file):
-            with open(guide_file, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
 
     if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs", "rail-radar", "rail", "commute", "railradar"):
         return HTMLResponse(
@@ -2716,21 +2792,20 @@ async def catch_all(request: Request, full_path: str):
     clean = extract_path(request, full_path)
     method = request.method.upper()
 
-    # 0. SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
+    # PRIORITY 1: Standalone Rail Documentation & Guides (must precede SPA browser catch-all)
+    if method == "GET" and clean in ("math", "train-math", "train_math", "math-deepdive", "train-math-deepdive", "math.html", "train_math_deepdive.html"):
+        content = get_math_html()
+        if content:
+            return HTMLResponse(content=content, status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
+
+    if method == "GET" and clean in ("commute-guide", "real-life-guide", "commute_guide", "commute-real-life-guide", "guide", "commute_real_life_guide.html"):
+        content = get_guide_html()
+        if content:
+            return HTMLResponse(content=content, status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
+
+    # PRIORITY 2: SPA Page Routes: If accessed by a web browser (Accept: text/html) or accessing client-side dashboard routes, serve Dashboard HTML
     if is_browser_request(request) and not clean.startswith("api/") and not clean.startswith("assets/"):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)
-
-    if method == "GET" and clean in ("math", "train-math", "train_math", "math-deepdive"):
-        math_file = os.path.join(root_dir, "train_math_deepdive.html")
-        if os.path.exists(math_file):
-            with open(math_file, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
-
-    if method == "GET" and clean in ("commute-guide", "real-life-guide", "commute_guide"):
-        guide_file = os.path.join(root_dir, "commute_real_life_guide.html")
-        if os.path.exists(guide_file):
-            with open(guide_file, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200, headers={"Cache-Control": "public, max-age=60, s-maxage=300"})
 
     if method == "GET" and clean in ("", "dashboard", "index", "index.py", "my-collection", "collection", "my_collection", "running-shoes", "running_shoes", "shoes", "logs", "rail-radar", "rail", "commute", "railradar"):
         return HTMLResponse(content=get_dashboard_html(), status_code=200)

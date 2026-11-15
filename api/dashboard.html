@@ -4274,6 +4274,28 @@
 
           </div>
 
+          <!-- Subtle Quick Reference Legend in Sidebar -->
+          <div class="sidebar-rail-legend" style="padding: 10px 14px; margin: 0 12px 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted);">Rail Resources</span>
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+              <a href="/commute-guide" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: none; font-size: 11px; display: flex; align-items: center; justify-content: space-between; transition: color 0.15s ease;" title="Step-by-step real-world commute guide">
+                <span>🗺️ Real-Life Guide</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+              <a href="/math" target="_blank" rel="noopener noreferrer" style="color: #c084fc; text-decoration: none; font-size: 11px; display: flex; align-items: center; justify-content: space-between; transition: color 0.15s ease;" title="Algorithmic mathematics deep dive">
+                <span>📐 Math Deep-Dive</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+              <a href="https://t.me/SriTrainBot" target="_blank" rel="noopener noreferrer" style="color: #34d399; text-decoration: none; font-size: 11px; display: flex; align-items: center; justify-content: space-between; transition: color 0.15s ease;" title="Telegram Assistant Bot">
+                <span>🤖 @SriTrainBot</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+            </div>
+          </div>
+
           <!-- User Identity & Sign Out -->
           <div class="sidebar-footer">
             <div class="user-profile-meta">
@@ -5492,6 +5514,33 @@
               <!-- Chart.js Canvas -->
               <div style="position: relative; height: 260px; width: 100%;">
                 <canvas id="rail-punctuality-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- RAILRADAR COMPANION RESOURCES & REAL-LIFE COMMUTE LEGEND -->
+            <div class="rail-resources-legend" style="margin-top: 20px; padding: 14px 20px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                  🧭
+                </div>
+                <div>
+                  <div style="font-weight: 600; color: #fff; font-size: 12px; letter-spacing: 0.2px;">RailRadar Documentation &amp; Companion Guides</div>
+                  <div style="color: var(--text-muted); font-size: 11px;">Field handbook, mathematical models &amp; real-time Telegram assistant</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <a href="/commute-guide" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; color: #38bdf8; text-decoration: none; padding: 7px 14px; border-radius: 8px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); font-size: 12px; font-weight: 500; transition: all 0.2s ease;">
+                  <span>🗺️ Real-Life Walking Guide</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+                <a href="/math" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; color: #c084fc; text-decoration: none; padding: 7px 14px; border-radius: 8px; background: rgba(192, 132, 252, 0.08); border: 1px solid rgba(192, 132, 252, 0.25); font-size: 12px; font-weight: 500; transition: all 0.2s ease;">
+                  <span>📐 Math &amp; Probability Deep-Dive</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+                <a href="https://t.me/SriTrainBot" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; color: #34d399; text-decoration: none; padding: 7px 14px; border-radius: 8px; background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.25); font-size: 12px; font-weight: 500; transition: all 0.2s ease;">
+                  <span>🤖 Telegram @SriTrainBot</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
               </div>
             </div>
 
