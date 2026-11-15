@@ -263,11 +263,20 @@ The bot operates on dedicated token `9074983932:AAFEZubE34Mw4ORMPgJsRJgsjrH6DEyq
 1. **Rake Cancellation Protocol:**
    - If incoming rake Train 66595 is cancelled or delayed > 90 mins, Train 66596 is automatically flagged as `CANCELLED_RAKE`.
    - Primary recommendation instantly pivots to **Train 16212 (Salem Express)**.
-2. **2-Strike Scraper Watchdog:**
+2. **Dynamic Train Order Flip Protocol:**
+   - Evaluated every polling cycle across both Salem Express (16212) and Hosur MEMU (66596).
+   - If Salem Express runs on time / early (departs ~08:20 AM) and Hosur MEMU is delayed (e.g. departing ~08:50 AM):
+     - Both trains arrive comfortably before the 11:30 AM desk cutoff.
+     - The Max-Sleep optimizer dynamically flags Train 66596 as the new #1 choice because it departs latest.
+     - The daemon fires an immediate alert to `@SriTrainBot`:
+       `🔄 Commute Recommendation Shift: Train Order Flipped!`
+       `Hosur MEMU (66596) is now departing latest (~08:50 AM). New step-out: ~08:40 AM (+30m extra sleep!).`
+     - Inline keyboard offers 1-tap option to confirm switch or stay on the earlier train.
+3. **2-Strike Scraper Watchdog:**
    - If CRIS NTES API fails or rotates tokens, RailRadar retries once with fallback headers.
    - If 2 consecutive queries fail, a fail-safe Telegram alert is pushed with a 1-tap direct NTES web link:
      `https://enquiry.indianrail.gov.in/mntes/`
-3. **Severe Train Delay (> 2.5 hours):**
+4. **Severe Train Delay (> 2.5 hours):**
    - If Train 16212 delay pushes desk ETA past 11:30 AM, the optimizer immediately re-evaluates and switches priority to Train 66596 or 06278 to protect the 12:00 PM shift.
 
 ---
@@ -306,3 +315,4 @@ RailRadar maintains a comprehensive unit and integration test suite in `tests/te
 python -m pytest tests/test_rail_tracker.py
 ```
 *Current test suite status: 31 passed, 0 failed.*
+

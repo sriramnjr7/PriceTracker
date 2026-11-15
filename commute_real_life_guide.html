@@ -820,7 +820,7 @@
                     <span class="text-xs font-mono px-3 py-1 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30">3-Tier Fallback</span>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                     <!-- Scenario 1: Incoming Rake Cancelled -->
                     <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
                         <div class="flex items-center space-x-2 text-rose-400 font-bold text-sm">
@@ -835,31 +835,45 @@
                         </div>
                     </div>
 
-                    <!-- Scenario 2: Scraper / NTES Blocked -->
+                    <!-- Scenario 2: Dynamic Train Order Flip -->
+                    <div class="p-4 rounded-xl bg-slate-900 border border-indigo-500/40 space-y-3">
+                        <div class="flex items-center space-x-2 text-indigo-400 font-bold text-sm">
+                            <i data-lucide="repeat" class="w-4 h-4"></i>
+                            <span>2. Train Order Flip (Dynamic)</span>
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            If Salem Exp (16212) runs on time (08:20 AM) and Hosur MEMU (66596) is delayed (e.g. 08:50 AM).
+                        </p>
+                        <div class="p-2.5 rounded bg-slate-800 text-[11px] text-slate-300">
+                            🔄 <strong>RailRadar Action:</strong> Auto-detects that 66596 departs latest. Dispatches Telegram alert: <em>"🔄 Train Order Flipped! 66596 is now the latest train."</em> Shifts step-out to 08:40 AM for 30m extra sleep!
+                        </div>
+                    </div>
+
+                    <!-- Scenario 3: Scraper / NTES Blocked -->
                     <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
                         <div class="flex items-center space-x-2 text-amber-400 font-bold text-sm">
                             <i data-lucide="cloud-off" class="w-4 h-4"></i>
-                            <span>2. CRIS / NTES Scraper Outage</span>
+                            <span>3. CRIS / NTES Scraper Outage</span>
                         </div>
                         <p class="text-xs text-slate-300">
                             If CRIS NTES API rotates keys or encounters network timeout.
                         </p>
                         <div class="p-2.5 rounded bg-slate-800 text-[11px] text-slate-300">
-                            🛡️ <strong>RailRadar Action:</strong> Automatic fallback to Secondary Scrapling engine + NTES backup endpoint. If all fail for 3 consecutive polls, bot alerts: <em>"⚠️ Scraper degraded. Please check NTES manually."</em>
+                            🛡️ <strong>RailRadar Action:</strong> Automatic fallback to Secondary Scrapling engine + NTES backup endpoint. If all fail for 3 consecutive polls, bot alerts with direct 1-tap manual link.
                         </div>
                     </div>
 
-                    <!-- Scenario 3: Extreme Delay past 11:30 AM -->
+                    <!-- Scenario 4: Extreme Delay past 11:30 AM -->
                     <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
                         <div class="flex items-center space-x-2 text-sky-400 font-bold text-sm">
                             <i data-lucide="clock-alert" class="w-4 h-4"></i>
-                            <span>3. Extreme Delay Past Cutoff</span>
+                            <span>4. Delay Past 11:30 AM Cutoff</span>
                         </div>
                         <p class="text-xs text-slate-300">
                             If Train 16212 is delayed > 2.5 hours, pushing desk ETA past 11:30 AM.
                         </p>
                         <div class="p-2.5 rounded bg-slate-800 text-[11px] text-slate-300">
-                            🛡️ <strong>RailRadar Action:</strong> The Max-Sleep optimizer automatically disqualifies 16212 and promotes <strong>Train 66596</strong> to ensure you arrive comfortably before your 12:00 PM shift.
+                            🛡️ <strong>RailRadar Action:</strong> Max-Sleep optimizer automatically disqualifies 16212 and promotes <strong>Train 66596</strong> to ensure you arrive comfortably before your 12:00 PM shift.
                         </div>
                     </div>
                 </div>
@@ -946,3 +960,4 @@
     </script>
 </body>
 </html>
+

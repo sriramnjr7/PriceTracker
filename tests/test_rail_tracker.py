@@ -127,7 +127,7 @@ def test_rake_turnaround_on_time():
             },
         }[t]
 
-        rake_info = rail_tracker.inspect_rake_turnaround("66596", "66595")
+        rake_info = rail_tracker.inspect_rake_turnaround("66596", "66595", reference_time="08:00")
         assert rake_info["is_delayed"] is False
         assert rake_info["scheduled_hsra_departure"] == "08:25"
         assert rake_info["projected_hsra_departure"] == "08:25"
@@ -162,7 +162,7 @@ def test_rake_turnaround_delayed_rake_shifts_step_out():
             },
         }[t]
 
-        rake_info = rail_tracker.inspect_rake_turnaround("66596", "66595")
+        rake_info = rail_tracker.inspect_rake_turnaround("66596", "66595", reference_time="08:00")
         assert rake_info["is_delayed"] is True
         assert rake_info["projected_hsra_departure"] == "08:32"
         # 08:32 - 10m lead time = 08:22 step-out time
@@ -473,6 +473,88 @@ def test_daemon_cmd_reached_transitions_and_quiets(tmp_path):
     daemon.execute_command("reached", chat_id="12345")
     assert store.state_data["state"] == rail_daemon.STATE_HIBERNATION
     assert "Welcome Home to Hosur" in mock_bot.messages[-1]
+
+
+def test_daemon_morning_recommendation_flip_notifies_user(tmp_path, monkeypatch):
+    """Verify that when Salem Express arrives early/on-time and Hosur MEMU is delayed, a flip alert is sent."""
+    test_state_file = os.path.join(tmp_path, "test_flip_state.json")
+    store = rail_daemon.CommuteStateStore(file_path=test_state_file)
+
+    class MockBot:
+        def __init__(self):
+            self.messages = []
+            self.reply_markups = []
+        def send_message(self, text, reply_markup=None, **kwargs):
+            self.messages.append(text)
+            self.reply_markups.append(reply_markup)
+            return {"ok": True}
+        def get_updates(self, **kwargs):
+            return []
+
+    mock_bot = MockBot()
+    daemon = rail_daemon.RailDaemon(store=store, bot=mock_bot)
+
+    # Initially tracking 16212 (Salem Express) as recommended
+    store.state_data["state"] = rail_daemon.STATE_MORNING_TRACKING
+    store.state_data["morning_train"] = "16212"
+    store.state_data["last_recommended_train"] = "16212"
+
+    # Now simulate condition: Salem Exp 16212 is ON TIME (dep 08:20) and Hosur MEMU 66596 is DELAYED (dep 08:50)
+    mock_scan = {
+        "reference_time": "07:45",
+        "recommended_train": {
+            "train_no": "66596",
+            "train_name": "Hosur - Yesvantpur MEMU",
+            "scheduled_departure": "08:25",
+            "projected_departure": "08:50",
+            "step_out_time": "08:40",
+            "dest_eta": "09:32",
+            "desk_eta": "10:02",
+            "delay_mins": 25,
+            "status": "VIABLE",
+        },
+        "recommendation_reason": "Train 66596 departs latest at ~08:50 AM, giving extra sleep!",
+        "options": [
+            {
+                "train_no": "66596",
+                "train_name": "Hosur - Yesvantpur MEMU",
+                "projected_departure": "08:50",
+                "step_out_time": "08:40",
+                "dest_eta": "09:32",
+                "desk_eta": "10:02",
+                "delay_mins": 25,
+                "status": "VIABLE",
+            },
+            {
+                "train_no": "16212",
+                "train_name": "Salem - Yesvantpur Express",
+                "projected_departure": "08:20",
+                "step_out_time": "08:10",
+                "dest_eta": "09:20",
+                "desk_eta": "09:50",
+                "delay_mins": 0,
+                "status": "VIABLE",
+            },
+        ],
+        "rake_turnaround": {"incoming_rake_train": "66595", "rake_delay_mins": 25},
+    }
+
+    monkeypatch.setattr(rail_tracker, "scan_morning_commute_options", lambda reference_time=None: mock_scan)
+
+    # Run morning tracking cycle
+    daemon.handle_morning_tracking("07:45")
+
+    # Verify flip alert sent!
+    assert any("Train Order Flipped" in m for m in mock_bot.messages)
+    flip_msg = next(m for m in mock_bot.messages if "Train Order Flipped" in m)
+    assert "66596" in flip_msg
+    assert "16212" in flip_msg
+    assert "08:50 AM" in flip_msg
+
+    # Verify state updated to new optimal train 66596
+    assert store.state_data["morning_train"] == "66596"
+    assert store.state_data["last_recommended_train"] == "66596"
+    assert store.state_data["morning_step_out_time"] == "08:40"
 
 
 # =============================================================================

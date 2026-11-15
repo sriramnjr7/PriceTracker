@@ -406,20 +406,25 @@ class RailDaemon:
 
         self.bot.send_message(msg, reply_markup=self.get_morning_keyboard())
         self.store.state_data["morning_prompt_sent"] = True
+        self.store.state_data["morning_train"] = rec["train_no"]
+        self.store.state_data["last_recommended_train"] = rec["train_no"]
         self.store.save()
 
     def handle_morning_tracking(self, current_time: str) -> None:
         """
-        Continuously tracks Train 66596 and incoming rake 66595 (or active selected train).
-        Dynamically shifts step-out alert and sends delay notifications if delayed.
+        Continuously tracks active morning train (16212 Salem Exp, 66596 MEMU, or 06278 MEMU).
+        Dynamically shifts step-out alerts, detects recommendation flips, and pushes alerts.
         """
-        active_train = self.store.state_data.get("morning_train", rail_tracker.MORNING_TRAIN_MEMU)
-        
-        # 1. Evaluate Rake Turnaround & Morning Scanner
         scan = rail_tracker.scan_morning_commute_options(reference_time=current_time)
-        active_opt = next((o for o in scan["options"] if o["train_no"] == active_train), scan["options"][0])
         rec_opt = scan["recommended_train"]
         rake = scan["rake_turnaround"]
+
+        # Default active train to current optimal recommendation if unset
+        if not self.store.state_data.get("morning_train"):
+            self.store.state_data["morning_train"] = rec_opt["train_no"]
+
+        active_train = self.store.state_data.get("morning_train", rec_opt["train_no"])
+        active_opt = next((o for o in scan["options"] if o["train_no"] == active_train), scan["options"][0])
 
         projected_dep = active_opt["projected_departure"]
         step_out_time = active_opt["step_out_time"]
@@ -430,15 +435,57 @@ class RailDaemon:
         self.store.state_data["morning_step_out_time"] = step_out_time
         self.store.state_data["morning_delay_mins"] = current_delay
 
+        last_rec = self.store.state_data.get("last_recommended_train")
+        curr_rec = rec_opt["train_no"]
+
+        # 1. Recommendation Flip Detection
+        # Detects if relative train arrival/departure order changes (e.g. Salem Exp on time while Hosur MEMU delayed)
+        if not last_rec:
+            self.store.state_data["last_recommended_train"] = curr_rec
+        elif curr_rec != last_rec and rec_opt["status"] in ("VIABLE", "BOARDING"):
+            prev_opt = next((o for o in scan["options"] if o["train_no"] == last_rec), None)
+            prev_name = prev_opt["train_name"] if prev_opt else f"Train {last_rec}"
+            prev_dep = prev_opt["projected_departure"] if prev_opt else "earlier"
+
+            flip_msg = (
+                f"🔄 *Commute Recommendation Shift: Train Order Flipped!*\n\n"
+                f"Dynamic schedule update in Hosur morning corridor:\n"
+                f"• *{rec_opt['train_name']} ({curr_rec})* is now departing latest at ~*{rec_opt['projected_departure']} AM* (Desk ETA: *{rec_opt['desk_eta']} AM*).\n"
+                f"• *{prev_name} ({last_rec})* departs at ~*{prev_dep} AM*.\n\n"
+                f"💡 *New Optimal Train*: *{rec_opt['train_name']}*!\n"
+                f"{scan.get('recommendation_reason', '')}\n\n"
+                f"Revised step-out time from home: ~*{rec_opt['step_out_time']} AM*."
+            )
+            kb = {
+                "inline_keyboard": [
+                    [{"text": f"🚆 Switch to {curr_rec} (~{rec_opt['projected_departure']})", "callback_data": f"train:{curr_rec}"}],
+                    [{"text": f"Stay with {active_train}", "callback_data": "action:ack"}],
+                ]
+            }
+            self.bot.send_message(flip_msg, reply_markup=kb)
+
+            # Auto-update active tracking if user hasn't pinned a specific train manually
+            if not self.store.state_data.get("user_manually_selected_train"):
+                self.store.state_data["morning_train"] = curr_rec
+                active_train = curr_rec
+                active_opt = rec_opt
+                projected_dep = active_opt["projected_departure"]
+                step_out_time = active_opt["step_out_time"]
+                current_delay = active_opt["delay_mins"]
+                self.store.state_data["morning_projected_dep"] = projected_dep
+                self.store.state_data["morning_step_out_time"] = step_out_time
+                self.store.state_data["morning_delay_mins"] = current_delay
+
+            self.store.state_data["last_recommended_train"] = curr_rec
+            self.store.state_data["last_delay_reported"] = current_delay
+            self.store.state_data["last_step_out_reported"] = step_out_time
+            self.store.save(sync_supabase=True)
+
         last_reported_delay = self.store.state_data.get("last_delay_reported", 0)
         last_reported_step_out = self.store.state_data.get("last_step_out_reported", "08:15")
 
         # 2. Check if delay changed noticeably (>= 3 minutes shift)
         if abs(current_delay - last_reported_delay) >= 3 or (current_delay > 0 and last_reported_delay == 0):
-            # Proactive Delay Alert Requirement:
-            # "Wait, that shouldnt be the case right? Lets say if the other memu is delayed, you need to recommend
-            # that memu train to me, I want the last delayed one, and also, if it is delayed, you'll be notifying with the delay,
-            # like later, send a message saying hey there is a delay, the train is stil at here, so possible delay."
             if current_delay > last_reported_delay:
                 extra_mins = current_delay - last_reported_delay
                 time_note = f"⏳ Departure delayed by an additional *{extra_mins} mins*. You have an extra *{extra_mins} mins* at home! Relax."
@@ -448,17 +495,23 @@ class RailDaemon:
             else:
                 time_note = f"ℹ️ Revised departure from Hosur is ~*{projected_dep} AM* (Step-out: ~*{step_out_time} AM*)."
 
-            rake_loc_str = f"*{rake.get('rake_current_station_name', 'En route')}* ({rake.get('rake_current_station', '')})"
+            if active_train == rail_tracker.MORNING_TRAIN_MEMU:
+                rake_loc_str = f"*{rake.get('rake_current_station_name', 'En route')}* ({rake.get('rake_current_station', '')})"
+                delay_reason_str = f"Incoming rake ({rake.get('incoming_rake_train', '66595')}) is near {rake_loc_str}, causing turnaround delay at Hosur."
+            else:
+                loc_str = active_opt.get("current_location", "En route")
+                delay_reason_str = f"Train {active_train} is currently near *{loc_str}* with +{current_delay}m delay."
+
             delay_msg = (
-                f"⚠️ *Commute Delay Alert: Train {active_train}*\n\n"
-                f"Hey Sriram, there is a delay! Incoming rake ({rake.get('incoming_rake_train', '66595')}) is still near {rake_loc_str}, so possible delay from Hosur.\n"
+                f"⚠️ *Commute Delay Alert: Train {active_train} ({active_opt['train_name']})*\n\n"
+                f"Hey Sriram, there is a delay! {delay_reason_str}\n"
                 f"• *Current Delay*: *{current_delay} mins*\n"
                 f"• *Revised Hosur Departure*: ~*{projected_dep} AM*\n"
                 f"• *New Step-Out Time*: ~*{step_out_time} AM* (was {last_reported_step_out})\n\n"
                 f"{time_note}"
             )
             
-            # If an earlier delayed train (e.g. 06278 or 16212) becomes a better recommendation
+            # If another train is viable and departing later or sooner
             if rec_opt["train_no"] != active_train and rec_opt["status"] in ("VIABLE", "BOARDING"):
                 delay_msg += (
                     f"\n\n💡 *Alternative Available*: Train *{rec_opt['train_no']}* departs at ~*{rec_opt['projected_departure']}* "
@@ -467,7 +520,7 @@ class RailDaemon:
                 kb = {
                     "inline_keyboard": [
                         [{"text": f"🚆 Switch to {rec_opt['train_no']}", "callback_data": f"train:{rec_opt['train_no']}"}],
-                        [{"text": "Stay with MEMU", "callback_data": "action:ack"}],
+                        [{"text": f"Stay with {active_train}", "callback_data": "action:ack"}],
                     ]
                 }
                 self.bot.send_message(delay_msg, reply_markup=kb)
@@ -696,9 +749,11 @@ class RailDaemon:
 
         if is_evening:
             self.store.state_data["evening_train"] = t_no
+            self.store.state_data["user_manually_selected_train"] = True
             self.store.transition_state(STATE_EVENING_TRACKING, f"User tracking evening train {t_no}")
         else:
             self.store.state_data["morning_train"] = t_no
+            self.store.state_data["user_manually_selected_train"] = True
             self.store.transition_state(STATE_MORNING_TRACKING, f"User tracking morning train {t_no}")
 
         self.bot.send_message(f"✅ Now tracking Train *{t_no}*. Dynamic alerts and departure countdowns are active.", chat_id=chat_id)
