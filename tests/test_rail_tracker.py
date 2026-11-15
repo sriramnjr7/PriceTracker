@@ -1244,6 +1244,7 @@ def test_daemon_step_simulated_midday_heals_state():
     """Verify daemon.step() at 12:29 PM IST on a weekday transitions erroneous states to MIDDAY_STANDBY without firing morning prompt."""
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
+    daemon.bot.get_updates = MagicMock(return_value=[])
     daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_PROMPT
 
     # Simulate 12:29 PM IST on a weekday (Monday Nov 16, 2026)
@@ -1324,6 +1325,7 @@ def test_weekend_rest_state_transition():
     """Verify daemon.step() on Sunday/Saturday enters STATE_WEEKEND_REST and stays silent."""
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
+    daemon.bot.get_updates = MagicMock(return_value=[])
     daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_PROMPT
 
     # Sunday, Nov 15, 2026 at 12:29 PM IST
@@ -1432,6 +1434,7 @@ def test_monday_morning_boundary_transition_0644_to_0645():
     rail_tracker.watchdog.reset()
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
+    daemon.bot.get_updates = MagicMock(return_value=[])
 
     # 1. Monday at 06:44 AM (window not yet opened)
     monday_0644 = datetime(2026, 11, 16, 6, 44, 0, tzinfo=rail_daemon.IST_TZ)
@@ -1460,6 +1463,7 @@ def test_weekend_guards_when_now_is_none():
     """Verify weekend suppression works in daemon.step() when now argument is omitted (now=None)."""
     daemon = rail_daemon.RailDaemon()
     daemon.bot.send_message = MagicMock()
+    daemon.bot.get_updates = MagicMock(return_value=[])
     sunday_dt = datetime(2026, 11, 15, 8, 30, 0, tzinfo=rail_daemon.IST_TZ)
 
     with patch("rail_daemon.get_ist_now", return_value=sunday_dt):
@@ -2239,7 +2243,7 @@ def test_check_evening_milestone_trigger_safe_dict_access():
     trig = rail_tracker.check_evening_milestone_trigger("16232", status_sparse)
     assert trig is None
 
-    # When has_departed is True but eta is missing
+    # When has_departed is True but eta is missing (computed dynamically from sta 19:35 + 0 delay)
     status_departed = {
         "train_no": "16232",
         "stations": [
@@ -2250,7 +2254,9 @@ def test_check_evening_milestone_trigger_safe_dict_access():
     trig2 = rail_tracker.check_evening_milestone_trigger("16232", status_departed)
     assert trig2 is not None
     assert trig2["triggered"] is True
-    assert trig2["crlm_eta"] == "19:38"
+    assert trig2["crlm_eta"] == "19:35"
+    assert trig2["boarding_station"] == "CRLM"
+    assert trig2["lead_time_mins"] == 25
 
 
 def test_api_rail_action_stay():
@@ -2551,6 +2557,131 @@ def test_watchdog_alert_consumed_and_suppressed_when_muted(tmp_path):
     assert daemon.bot.send_message.call_count == 0
     # Assert watchdog pending alert was consumed so it doesn't leak later
     assert rail_tracker.watchdog.get_pending_alert() is None
+
+
+# =============================================================================
+# TESTS: GENERALIZED MILESTONES, PARALLEL SCRAPING & RESILIENT SUPABASE SYNC
+# =============================================================================
+
+def test_dynamic_evening_milestone_blrr():
+    """Verify check_evening_milestone_trigger dynamically selects BLRR with 20m lead time for trains stopping at BLRR."""
+    status_66585 = {
+        "train_no": "66585",
+        "delay_minutes": 7,
+        "stations": [
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "has_departed": True, "etd": "15:48", "std": "15:41"},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "15:58", "std": "15:59"},  # eta missing, sta=15:58 + 7m delay = 16:05
+        ],
+    }
+    trigger = rail_tracker.check_evening_milestone_trigger("66585", status_66585)
+    assert trigger is not None
+    assert trigger["triggered"] is True
+    assert trigger["boarding_station"] == "BLRR"
+    assert trigger["lead_time_mins"] == 20
+    assert trigger["boarding_eta"] == "16:05"
+    assert trigger["crlm_eta"] == "16:05"
+    assert "Bellandur Road (BLRR)" in trigger["message"]
+    assert "20 mins lead time" in trigger["message"]
+
+
+def test_dynamic_evening_milestone_crlm_with_delay():
+    """Verify check_evening_milestone_trigger computes CRLM dynamic ETA from scheduled sta + delay when eta is missing."""
+    status_16232 = {
+        "train_no": "16232",
+        "delay_minutes": 5,
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "has_departed": True, "etd": "19:15", "std": "19:10"},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "19:35", "std": "19:36"},
+        ],
+    }
+    trigger = rail_tracker.check_evening_milestone_trigger("16232", status_16232)
+    assert trigger is not None
+    assert trigger["triggered"] is True
+    assert trigger["boarding_station"] == "CRLM"
+    assert trigger["lead_time_mins"] == 25
+    assert trigger["boarding_eta"] == "19:40"
+    assert trigger["crlm_eta"] == "19:40"
+    assert "Carmelaram (CRLM)" in trigger["message"]
+    assert "25 mins lead time" in trigger["message"]
+
+
+def test_resilient_supabase_sync_pgrst204_fallback_daemon(tmp_path, guard_supabase_sync, monkeypatch):
+    """Verify rail_daemon._sync_to_supabase catches HTTP 400 PGRST204 and retries without alerts_enabled."""
+    import urllib.error
+    import io
+
+    state_file = str(tmp_path / "commute_test_pgrst.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    store.state_data["state"] = rail_daemon.STATE_MORNING_TRACKING
+    store.state_data["alerts_enabled"] = True
+
+    calls = []
+
+    def mock_urlopen(req, timeout=5):
+        data = json.loads(req.data.decode("utf-8"))
+        calls.append(data)
+        if len(calls) == 1:
+            # First attempt: Supabase returns 400 with PGRST204
+            err_body = json.dumps({
+                "code": "PGRST204",
+                "message": "Could not find the 'alerts_enabled' column of 'commute_daily_state' in the schema cache"
+            }).encode("utf-8")
+            fp = io.BytesIO(err_body)
+            raise urllib.error.HTTPError(req.full_url, 400, "Bad Request", hdrs={}, fp=fp)
+        # Second attempt succeeds
+        return io.BytesIO(b"{}")
+
+    monkeypatch.setattr(rail_daemon, "SUPABASE_URL", "https://mock.supabase.co")
+    monkeypatch.setattr(rail_daemon, "SUPABASE_KEY", "mock-key")
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        guard_supabase_sync._original(store)
+
+    assert len(calls) == 2
+    assert "alerts_enabled" in calls[0]
+    assert "alerts_enabled" not in calls[1]
+    assert calls[1]["state"] == rail_daemon.STATE_MORNING_TRACKING
+
+
+def test_resilient_supabase_sync_pgrst204_fallback_api():
+    """Verify api.index._sync_to_supabase retries without alerts_enabled on HTTP 400 PGRST204."""
+    import httpx
+    from api.index import _sync_to_supabase
+
+    state_payload = {
+        "date": "2026-11-16",
+        "state": "EVENING_TRACKING",
+        "morning_train": "66596",
+        "evening_train": "16232",
+        "alerts_enabled": True,
+    }
+
+    call_payloads = []
+
+    async def mock_post(self, url, headers=None, json=None):
+        call_payloads.append(json)
+        if len(call_payloads) == 1:
+            req = httpx.Request("POST", url)
+            return httpx.Response(
+                400,
+                text='{"code": "PGRST204", "message": "Could not find \'alerts_enabled\' in schema cache"}',
+                request=req
+            )
+        req = httpx.Request("POST", url)
+        return httpx.Response(201, text='{"status": "created"}', request=req)
+
+    async def _test():
+        with patch.dict(os.environ, {"SUPABASE_URL": "https://mock.supabase.co", "SUPABASE_KEY": "mock-key"}), \
+             patch.object(httpx.AsyncClient, "post", mock_post):
+            success = await _sync_to_supabase(state_payload)
+            assert success is True
+
+    import asyncio
+    asyncio.run(_test())
+    assert len(call_payloads) == 2
+    assert "alerts_enabled" in call_payloads[0]
+    assert "alerts_enabled" not in call_payloads[1]
+    assert call_payloads[1]["state"] == "EVENING_TRACKING"
+
 
 
 

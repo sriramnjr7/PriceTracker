@@ -1335,6 +1335,59 @@ async def _fetch_supabase_commute_state(target_date: Optional[str] = None) -> Op
     return None
 
 
+async def _sync_to_supabase(state_data: dict[str, Any]) -> bool:
+    """Sync commute state to Supabase commute_daily_state table with resilient PGRST204 schema cache fallback."""
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not (supabase_url and supabase_key):
+        return False
+    try:
+        url = f"{supabase_url}/rest/v1/commute_daily_state"
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Prefer": "resolution=merge-duplicates",
+        }
+        payload = {
+            "date": state_data.get("date", get_ist_now().strftime("%Y-%m-%d")),
+            "state": state_data.get("state", "MIDDAY_STANDBY"),
+            "morning_train": state_data.get("morning_train", "66596"),
+            "morning_step_out_time": state_data.get("morning_step_out_time", "08:15"),
+            "morning_revised_dep": state_data.get("morning_projected_dep", "08:25"),
+            "morning_delay_mins": state_data.get("morning_delay_mins", 0),
+            "morning_status": "COMPLETED" if state_data.get("morning_completed", False) else "ACTIVE",
+            "evening_train": state_data.get("evening_train", "16232"),
+            "evening_milestone_fired": state_data.get("evening_milestone_fired", False),
+            "evening_status": "COMPLETED" if state_data.get("evening_completed", False) else "ACTIVE",
+            "alerts_enabled": state_data.get("alerts_enabled", True),
+            "notes": state_data.get("notes", ""),
+            "last_updated": state_data.get("last_updated", get_ist_now().isoformat()),
+        }
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            if resp.status_code in (200, 201):
+                logger.info("Successfully synced commute state to Supabase via API.")
+                return True
+            if resp.status_code == 400 and ("PGRST204" in resp.text or "alerts_enabled" in resp.text):
+                logger.warning(
+                    "Supabase schema cache missing alerts_enabled column (PGRST204: %s). Retrying without alerts_enabled.",
+                    resp.text.strip(),
+                )
+                fallback_payload = dict(payload)
+                fallback_payload.pop("alerts_enabled", None)
+                fallback_resp = await client.post(url, headers=headers, json=fallback_payload)
+                if fallback_resp.status_code in (200, 201):
+                    logger.info("Successfully synced commute state to Supabase via API (resilient fallback without alerts_enabled).")
+                    return True
+                logger.warning("Supabase fallback sync failed with status %s: %s", fallback_resp.status_code, fallback_resp.text)
+            else:
+                logger.warning("Supabase sync failed with status %s: %s", resp.status_code, resp.text)
+    except Exception as exc:
+        logger.warning("Supabase sync warning in api/index.py: %s", exc)
+    return False
+
+
 def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dict[str, Any]:
     """Fast offline fallback status when rail modules cannot be loaded or network fails."""
     default_state = "NIGHT_SLEEP" if (now_time >= "23:30" or now_time < "06:45") else "STANDBY"
@@ -1497,6 +1550,7 @@ async def api_rail_status():
             "morning_delay_mins": 0,
             "alerts_enabled": True,
         }
+        # 1. Hydrate state from local file if available (on VM)
         if rail_daemon and hasattr(rail_daemon, "LOCAL_STATE_FILE") and os.path.exists(rail_daemon.LOCAL_STATE_FILE):
             try:
                 with open(rail_daemon.LOCAL_STATE_FILE, "r", encoding="utf-8") as f:
@@ -1506,14 +1560,44 @@ async def api_rail_status():
             except Exception:
                 pass
 
-        # Serverless timeout guard: Quick 3.5s timeout for live CRIS queries
+        # 2. Hydrate state from Supabase before the scan so dashboard immediately reflects manual Telegram overrides (/wfh, /bike, /reached, /mute)
+        sb_state = await _fetch_supabase_commute_state()
+        if sb_state:
+            state_data.update(sb_state)
+
+        # Smart Window Scrape:
+        # Morning window (05:00 to 12:00): live-scan morning corridor trains only and fetch static/cached for evening.
+        # Evening window (14:00 to 23:30): live-scan evening corridor trains only and fetch static/cached for morning.
+        # Midday / night standby: use cached/static.
+        is_morning_window = "05:00" <= now_time < "12:00"
+        is_evening_window = "14:00" <= now_time < "23:30"
+        curr_state = state_data.get("state", "")
+        skip_network = (
+            curr_state in ("WFH", "BIKE", "WEEKEND_REST", "NIGHT_SLEEP")
+            or (is_morning_window and state_data.get("morning_status") == "COMPLETED")
+            or (is_evening_window and state_data.get("evening_status") == "COMPLETED")
+        )
+
+        # Serverless timeout guard: Quick 3.5s timeout for live parallel CRIS queries (< 1.0s)
         scan = None
         evening_opts = None
         try:
             loop = asyncio.get_running_loop()
             def _live_scan():
-                s = rail_tracker.scan_morning_commute_options(reference_time=now_time)
-                e = rail_tracker.scan_evening_commute_options(reference_time=now_time)
+                if skip_network:
+                    s = rail_tracker.get_static_morning_commute_options(reference_time=now_time)
+                    e = rail_tracker.get_static_evening_commute_options(reference_time=now_time)
+                    return s, e
+
+                if is_morning_window:
+                    s = rail_tracker.scan_morning_commute_options(reference_time=now_time, allow_network=True)
+                    e = rail_tracker.get_static_evening_commute_options(reference_time=now_time)
+                elif is_evening_window:
+                    s = rail_tracker.get_static_morning_commute_options(reference_time=now_time)
+                    e = rail_tracker.scan_evening_commute_options(reference_time=now_time, allow_network=True)
+                else:
+                    s = rail_tracker.get_static_morning_commute_options(reference_time=now_time)
+                    e = rail_tracker.get_static_evening_commute_options(reference_time=now_time)
                 return s, e
 
             scan, evening_opts = await asyncio.wait_for(
@@ -1523,11 +1607,12 @@ async def api_rail_status():
         except (asyncio.TimeoutError, Exception) as exc:
             logger.warning("Live CRIS scan timed out or failed in serverless (%s). Falling back to Supabase cache / fast fallback.", exc)
 
-        # If live scan timed out or failed, retrieve Supabase cache & build fast fallback
+        # If live scan timed out or failed, retrieve static options & patch state
         if scan is None or evening_opts is None:
-            sb_state = await _fetch_supabase_commute_state()
-            if sb_state:
-                state_data.update(sb_state)
+            if not sb_state:
+                sb_state = await _fetch_supabase_commute_state()
+                if sb_state:
+                    state_data.update(sb_state)
 
             scan = rail_tracker.get_static_morning_commute_options(reference_time=now_time)
             evening_opts = rail_tracker.get_static_evening_commute_options(reference_time=now_time)
@@ -1737,6 +1822,9 @@ async def api_rail_action(request: Request):
             msg = f"Commute state reset to {init_state}."
         else:
             return JSONResponse(status_code=400, content={"status": "error", "message": f"Unknown action: {action}"})
+
+        # Synchronize commute state to Supabase with resilient fallback for serverless execution
+        await _sync_to_supabase(store.state_data)
 
         return JSONResponse(content={
             "status": "ok",

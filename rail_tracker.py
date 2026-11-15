@@ -15,12 +15,14 @@ from __future__ import annotations
 
 import base64
 import binascii
+import concurrent.futures
 import hashlib
 import json
 import logging
 import os
 import re
 import ssl
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -706,6 +708,7 @@ class RailWatchdog:
     """2-Strike Watchdog monitor with circuit-breaker protection and fail-safe alerts."""
 
     def __init__(self, failure_threshold: int = 2, circuit_cooldown_seconds: float = 60.0):
+        self._lock = threading.Lock()
         self.failure_threshold = failure_threshold
         self.circuit_cooldown_seconds = circuit_cooldown_seconds
         self.consecutive_failures = 0
@@ -716,16 +719,18 @@ class RailWatchdog:
 
     def is_circuit_open(self) -> bool:
         """Circuit breaker: If failures reach threshold within cooldown window, block network queries."""
-        if self.consecutive_failures >= self.failure_threshold:
-            if (time.time() - self.last_failure_timestamp) < self.circuit_cooldown_seconds:
-                return True
-        return False
+        with self._lock:
+            if self.consecutive_failures >= self.failure_threshold:
+                if (time.time() - self.last_failure_timestamp) < self.circuit_cooldown_seconds:
+                    return True
+            return False
 
     def record_success(self) -> None:
-        self.consecutive_failures = 0
-        self.last_failure_reason = ""
-        self.alert_triggered = False
-        self._pending_alert = None
+        with self._lock:
+            self.consecutive_failures = 0
+            self.last_failure_reason = ""
+            self.alert_triggered = False
+            self._pending_alert = None
 
     def reset(self) -> None:
         """Reset watchdog failure counters and pending alerts."""
@@ -733,46 +738,48 @@ class RailWatchdog:
 
     def get_pending_alert(self) -> Optional[Dict[str, Any]]:
         """Retrieve and consume any pending watchdog fail-safe alert for Telegram dispatch."""
-        alert = self._pending_alert
-        if alert:
-            self._pending_alert = None
-            return alert
-        return None
+        with self._lock:
+            alert = self._pending_alert
+            if alert:
+                self._pending_alert = None
+                return alert
+            return None
 
     def record_failure(self, train_no: str, error: Exception | str) -> Optional[Dict[str, Any]]:
-        self.consecutive_failures += 1
-        self.last_failure_timestamp = time.time()
-        self.last_failure_reason = str(error)
-        logger.warning(
-            "RailWatchdog: Scraping failure #%d for train %s: %s",
-            self.consecutive_failures,
-            train_no,
-            error,
-        )
-
-        if self.consecutive_failures >= self.failure_threshold and not self.alert_triggered:
-            self.alert_triggered = True
-            msg = (
-                f"⚠️ *RailRadar Watchdog Fail-Safe Triggered*\n"
-                f"Both Indian Railways CRIS NTES and ConfirmTkt were unresponsive after {self.consecutive_failures} consecutive queries.\n\n"
-                f"Falling back to *Empirical P50 Timetables*. Click below for 1-tap manual inspection:\n"
-                f"• [Direct CRIS NTES Portal](https://enquiry.indianrail.gov.in/crisns/)\n"
-                f"• [ConfirmTkt Live Status](https://www.confirmtkt.com/train-running-status/{train_no})\n"
-                f"• [Where Is My Train Live](https://www.whereismytrain.in/)"
+        with self._lock:
+            self.consecutive_failures += 1
+            self.last_failure_timestamp = time.time()
+            self.last_failure_reason = str(error)
+            logger.warning(
+                "RailWatchdog: Scraping failure #%d for train %s: %s",
+                self.consecutive_failures,
+                train_no,
+                error,
             )
-            alert_dict = {
-                "triggered": True,
-                "consecutive_failures": self.consecutive_failures,
-                "train_no": train_no,
-                "message": msg,
-                "links": [
-                    {"label": "CRIS NTES", "url": "https://enquiry.indianrail.gov.in"},
-                    {"label": "ConfirmTkt", "url": f"https://www.confirmtkt.com/train-running-status/{train_no}"},
-                ],
-            }
-            self._pending_alert = alert_dict
-            return alert_dict
-        return None
+
+            if self.consecutive_failures >= self.failure_threshold and not self.alert_triggered:
+                self.alert_triggered = True
+                msg = (
+                    f"⚠️ *RailRadar Watchdog Fail-Safe Triggered*\n"
+                    f"Both Indian Railways CRIS NTES and ConfirmTkt were unresponsive after {self.consecutive_failures} consecutive queries.\n\n"
+                    f"Falling back to *Empirical P50 Timetables*. Click below for 1-tap manual inspection:\n"
+                    f"• [Direct CRIS NTES Portal](https://enquiry.indianrail.gov.in/crisns/)\n"
+                    f"• [ConfirmTkt Live Status](https://www.confirmtkt.com/train-running-status/{train_no})\n"
+                    f"• [Where Is My Train Live](https://www.whereismytrain.in/)"
+                )
+                alert_dict = {
+                    "triggered": True,
+                    "consecutive_failures": self.consecutive_failures,
+                    "train_no": train_no,
+                    "message": msg,
+                    "links": [
+                        {"label": "CRIS NTES", "url": "https://enquiry.indianrail.gov.in"},
+                        {"label": "ConfirmTkt", "url": f"https://www.confirmtkt.com/train-running-status/{train_no}"},
+                    ],
+                }
+                self._pending_alert = alert_dict
+                return alert_dict
+            return None
 
 
 # Global watchdog instance
@@ -924,6 +931,8 @@ def inspect_rake_turnaround(
     date_str: Optional[str] = None,
     reference_time: Optional[str] = None,
     allow_network: bool = True,
+    rake_status: Optional[dict] = None,
+    memu_status: Optional[dict] = None,
 ) -> dict:
     """
     Rake Turnaround Inspector:
@@ -937,12 +946,10 @@ def inspect_rake_turnaround(
     if not reference_time:
         reference_time = get_ist_now().strftime("%H:%M")
 
-    if allow_network:
-        rake_status = get_live_train_status(rake_train, date_str)
-        memu_status = get_live_train_status(morning_train, date_str)
-    else:
-        rake_status = fetch_static_fallback_status(rake_train)
-        memu_status = fetch_static_fallback_status(morning_train)
+    if rake_status is None:
+        rake_status = get_live_train_status(rake_train, date_str) if allow_network else fetch_static_fallback_status(rake_train)
+    if memu_status is None:
+        memu_status = get_live_train_status(morning_train, date_str) if allow_network else fetch_static_fallback_status(morning_train)
 
     # Find Hosur station info for both trains
     rake_hsra = next((s for s in rake_status.get("stations", []) if s["code"] == STN_HOSUR), None)
@@ -1091,14 +1098,36 @@ def scan_morning_commute_options(
     if not reference_time:
         reference_time = get_ist_now().strftime("%H:%M")
 
+    # Query candidate morning corridor trains in parallel to minimize latency (< 1.0s)
+    morning_trains = [INCOMING_RAKE_MEMU, MORNING_TRAIN_MEMU, MORNING_TRAIN_EARLIER_MEMU, MORNING_TRAIN_EXP]
+    statuses: dict[str, dict] = {}
+    if allow_network:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(morning_trains))) as executor:
+            future_to_tno = {executor.submit(get_live_train_status, t_no, date_str): t_no for t_no in morning_trains}
+            for fut in concurrent.futures.as_completed(future_to_tno):
+                t_no = future_to_tno[fut]
+                try:
+                    statuses[t_no] = fut.result()
+                except Exception as exc:
+                    logger.warning("Parallel morning status fetch failed for %s: %s", t_no, exc)
+                    statuses[t_no] = fetch_static_fallback_status(t_no)
+    else:
+        for t_no in morning_trains:
+            statuses[t_no] = fetch_static_fallback_status(t_no)
+
     # 1. Inspect Rake Turnaround for Train 66596
-    memu_rake = inspect_rake_turnaround(MORNING_TRAIN_MEMU, INCOMING_RAKE_MEMU, date_str, reference_time=reference_time, allow_network=allow_network)
+    memu_rake = inspect_rake_turnaround(
+        MORNING_TRAIN_MEMU,
+        INCOMING_RAKE_MEMU,
+        date_str,
+        reference_time=reference_time,
+        allow_network=allow_network,
+        rake_status=statuses.get(INCOMING_RAKE_MEMU),
+        memu_status=statuses.get(MORNING_TRAIN_MEMU),
+    )
     
     # 2. Inspect Train 06278 (Dharmapuri - KSR Bengaluru MEMU)
-    if allow_network:
-        memu2_status = get_live_train_status(MORNING_TRAIN_EARLIER_MEMU, date_str)
-    else:
-        memu2_status = fetch_static_fallback_status(MORNING_TRAIN_EARLIER_MEMU)
+    memu2_status = statuses.get(MORNING_TRAIN_EARLIER_MEMU) or fetch_static_fallback_status(MORNING_TRAIN_EARLIER_MEMU)
     memu2_hsra = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_HOSUR), None)
     memu2_blrr = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
     memu2_crlm = next((s for s in memu2_status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
@@ -1132,10 +1161,7 @@ def scan_morning_commute_options(
     memu2_minutes_until_dep = minutes_difference(reference_time, memu2_projected_dep)
 
     # 3. Inspect Train 16212 (Salem - Yesvantpur Express)
-    if allow_network:
-        exp_status = get_live_train_status(MORNING_TRAIN_EXP, date_str)
-    else:
-        exp_status = fetch_static_fallback_status(MORNING_TRAIN_EXP)
+    exp_status = statuses.get(MORNING_TRAIN_EXP) or fetch_static_fallback_status(MORNING_TRAIN_EXP)
     exp_hsra = next((s for s in exp_status.get("stations", []) if s["code"] == STN_HOSUR), None)
     exp_blrr = next((s for s in exp_status.get("stations", []) if s["code"] == STN_BELLANDUR), None)
     exp_crlm = next((s for s in exp_status.get("stations", []) if s["code"] == STN_CARMELARAM), None)
@@ -1384,8 +1410,24 @@ def scan_evening_commute_options(
     evening_trains = ["66585", "16211", "66583", "16232", "16527", "16236"]
     results = []
 
+    # Query evening corridor trains in parallel to minimize latency (< 1.0s)
+    statuses: dict[str, dict] = {}
+    if allow_network:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(evening_trains))) as executor:
+            future_to_tno = {executor.submit(get_live_train_status, t_no, date_str): t_no for t_no in evening_trains}
+            for fut in concurrent.futures.as_completed(future_to_tno):
+                t_no = future_to_tno[fut]
+                try:
+                    statuses[t_no] = fut.result()
+                except Exception as exc:
+                    logger.warning("Parallel evening status fetch failed for %s: %s", t_no, exc)
+                    statuses[t_no] = fetch_static_fallback_status(t_no)
+    else:
+        for t_no in evening_trains:
+            statuses[t_no] = fetch_static_fallback_status(t_no)
+
     for t_no in evening_trains:
-        status = get_live_train_status(t_no, date_str) if allow_network else fetch_static_fallback_status(t_no)
+        status = statuses.get(t_no) or fetch_static_fallback_status(t_no)
         sched = CORRIDOR_SCHEDULES.get(t_no, {})
         
         # Check if train stops at BLRR (+11m advantage) or CRLM
@@ -1454,8 +1496,10 @@ def get_static_evening_commute_options(
 def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:
     """
     Evaluate if an evening train has cleared its milestone station.
-    For Train 16232 (CRLM 19:35): Originates SBC / departs Bangalore Cant (BNC) ~19:08.
-    When BNC has departed, fires milestone trigger: 'LEAVE DESK NOW'.
+    Dynamically determines boarding station:
+    - If BLRR is in the schedule, use BLRR (lead time 20m, LEAD_TIME_DESK_BLRR)
+    - If CRLM is in the schedule, use CRLM (lead time 25m, LEAD_TIME_DESK_CRLM)
+    Computes boarding ETA dynamically from scheduled arrival (sta) + delay.
     """
     t_no = str(train_no).strip()
     sched = CORRIDOR_SCHEDULES.get(t_no)
@@ -1469,13 +1513,48 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
     if not milestone_code:
         return None
 
+    sched_stations = sched.get("stations", [])
+    sched_codes = [s.get("code") for s in sched_stations]
     stations = status_dict.get("stations", [])
+    status_codes = [s.get("code") for s in stations]
+
+    # Dynamically determine boarding station: BLRR (preferred/closer to desk) or CRLM
+    target_code = None
+    target_name = None
+    lead_time = None
+    sched_target_stn = None
+
+    if STN_BELLANDUR in sched_codes or STN_BELLANDUR in status_codes:
+        target_code = STN_BELLANDUR
+        target_name = "Bellandur Road (BLRR)"
+        lead_time = LEAD_TIME_DESK_BLRR
+        sched_target_stn = next((s for s in sched_stations if s.get("code") == STN_BELLANDUR), None)
+    elif STN_CARMELARAM in sched_codes or STN_CARMELARAM in status_codes:
+        target_code = STN_CARMELARAM
+        target_name = "Carmelaram (CRLM)"
+        lead_time = LEAD_TIME_DESK_CRLM
+        sched_target_stn = next((s for s in sched_stations if s.get("code") == STN_CARMELARAM), None)
+    else:
+        return None
+
     m_stn = next((s for s in stations if s.get("code") == milestone_code), None)
-    crlm_stn = next((s for s in stations if s.get("code") == STN_CARMELARAM), None)
+    target_stn = next((s for s in stations if s.get("code") == target_code), None)
 
     if m_stn and (m_stn.get("has_departed") or m_stn.get("effective_delay") is not None):
         if m_stn.get("has_departed"):
-            crlm_eta = (crlm_stn.get("eta") if crlm_stn else None) or "19:38"
+            target_eta = target_stn.get("eta") if target_stn else None
+            if not target_eta or str(target_eta).strip() in ("", "Source", "Destination"):
+                sch_sta = (target_stn.get("sta") if target_stn else None) or (sched_target_stn.get("sta") if sched_target_stn else "")
+                delay = (
+                    status_dict.get("delay_minutes", 0)
+                    or (m_stn.get("delay_dep", 0) if m_stn else 0)
+                    or (m_stn.get("effective_delay", 0) if m_stn else 0)
+                )
+                if sch_sta and sch_sta not in ("Source", "Destination", ""):
+                    target_eta = add_minutes_to_time(sch_sta, delay)
+                else:
+                    target_eta = m_stn.get("etd") or m_stn.get("std", "")
+
             dep_time = m_stn.get("etd") or m_stn.get("std", "")
             return {
                 "triggered": True,
@@ -1483,13 +1562,16 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
                 "train_name": sched.get("train_name", f"Train {t_no}"),
                 "milestone_station": milestone_code,
                 "departure_time": dep_time,
-                "crlm_eta": crlm_eta,
+                "boarding_station": target_code,
+                "boarding_eta": target_eta,
+                "crlm_eta": target_eta,  # Retained for backward-compat with callers expecting crlm_eta
+                "lead_time_mins": lead_time,
                 "action": "LEAVE_DESK_NOW",
                 "message": (
                     f"🚨 *MILESTONE TRIGGER: Train {t_no}*\n"
                     f"Train {t_no} has officially departed {milestone_code} at {dep_time}!\n"
-                    f"Expected Carmelaram (CRLM) arrival: ~{crlm_eta}.\n\n"
-                    f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 -> CRLM: ~25 mins lead time)."
+                    f"Expected {target_name} arrival: ~{target_eta}.\n\n"
+                    f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 -> {target_code}: ~{lead_time} mins lead time)."
                 ),
             }
     return None

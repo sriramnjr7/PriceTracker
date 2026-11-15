@@ -355,8 +355,39 @@ class CommuteStateStore:
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=5) as _:
-                logger.info("Successfully synced commute state to Supabase.")
+            try:
+                with urllib.request.urlopen(req, timeout=5) as _:
+                    logger.info("Successfully synced commute state to Supabase.")
+                    return
+            except urllib.error.HTTPError as http_err:
+                err_body = ""
+                try:
+                    err_body = http_err.read().decode("utf-8")
+                except Exception:
+                    pass
+                if http_err.code == 400 and ("PGRST204" in err_body or "alerts_enabled" in err_body):
+                    logger.warning(
+                        "Supabase commute_daily_state schema cache missing alerts_enabled column (PGRST204: %s). "
+                        "Retrying upsert without alerts_enabled to preserve core telemetry.",
+                        err_body.strip(),
+                    )
+                    fallback_payload = dict(payload)
+                    fallback_payload.pop("alerts_enabled", None)
+                    fallback_req = urllib.request.Request(
+                        url,
+                        data=json.dumps(fallback_payload).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "apikey": SUPABASE_KEY,
+                            "Authorization": f"Bearer {SUPABASE_KEY}",
+                            "Prefer": "resolution=merge-duplicates",
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(fallback_req, timeout=5) as _:
+                        logger.info("Successfully synced commute state to Supabase (resilient fallback without alerts_enabled).")
+                        return
+                raise
         except Exception as exc:
             logger.warning("Supabase sync skipped/failed: %s", exc)
 

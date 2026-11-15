@@ -125,9 +125,13 @@ CREATE TABLE IF NOT EXISTS commute_daily_state (
     evening_train           TEXT DEFAULT '16232',
     evening_milestone_fired BOOLEAN DEFAULT FALSE,
     evening_status          TEXT DEFAULT 'ACTIVE',
+    alerts_enabled          BOOLEAN DEFAULT TRUE,
     notes                   TEXT,
     last_updated            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent column additions for existing schema upgrades
+ALTER TABLE commute_daily_state ADD COLUMN IF NOT EXISTS alerts_enabled BOOLEAN DEFAULT TRUE;
 
 -- Historic Commute Rides & Performance
 CREATE TABLE IF NOT EXISTS commute_history (
