@@ -116,13 +116,24 @@ MIN_TRANSIT_TO_HSRA_06278: Dict[str, int] = {
     "PCV": 75,
     "MZU": 65,
     "RYC": 50,
+    "PRNT": 25,
     "KMLM": 13,
     "HSRA": 0,
 }
 
 MIN_TRANSIT_TO_HSRA_16212: Dict[str, int] = {
     "SA": 150,
+    "OML": 130,
+    "SMDT": 120,
+    "KVLR": 110,
+    "TPP": 95,
+    "MPC": 85,
+    "SZV": 75,
     "DPJ": 50,
+    "PCV": 40,
+    "MZU": 35,
+    "RYC": 25,
+    "PRNT": 20,
     "KMLM": 13,
     "HSRA": 0,
 }
@@ -786,6 +797,89 @@ class RailWatchdog:
 watchdog = RailWatchdog(failure_threshold=2)
 
 
+_MAX_STATION_PROGRESS: Dict[str, dict] = {}  # train_no -> {"date": str, "idx": int, "station": str, "delay": int}
+
+
+def _get_train_corridor_sequence(train_no: str) -> List[str]:
+    """Return the ordered list of station codes for a train, including intermediate stops."""
+    sched = CORRIDOR_SCHEDULES.get(train_no)
+    if not sched:
+        return []
+    sched_codes = [s.get("code") for s in sched.get("stations", [])]
+    if train_no == MORNING_TRAIN_EXP:  # 16212
+        intermediate = list(MIN_TRANSIT_TO_HSRA_16212.keys())  # SA through HSRA
+        post_hsra = [c for c in sched_codes if c not in intermediate]
+        return intermediate + post_hsra
+    elif train_no == MORNING_TRAIN_EARLIER_MEMU:  # 06278
+        intermediate = list(MIN_TRANSIT_TO_HSRA_06278.keys())  # DPJ through HSRA
+        post_hsra = [c for c in sched_codes if c not in intermediate]
+        return intermediate + post_hsra
+    return sched_codes
+
+
+def _enforce_station_monotonicity(train_no: str, status: dict) -> dict:
+    """
+    Prevents scraper jitter where a train that has already passed advanced stations
+    (e.g. PRNT or KMLM) suddenly jumps back to its origin station (e.g. SA with 0 delay).
+    Station progress along the scheduled corridor can only monotonically advance.
+    """
+    if not status or not status.get("stations"):
+        return status
+
+    corridor_codes = _get_train_corridor_sequence(train_no)
+    if not corridor_codes:
+        return status
+
+    curr_stn = status.get("current_station", "")
+    if curr_stn not in corridor_codes:
+        return status
+
+    curr_idx = corridor_codes.index(curr_stn)
+    today_str = get_ist_now().strftime("%Y-%m-%d")
+
+    rec = _MAX_STATION_PROGRESS.get(train_no)
+    if not rec or rec.get("date") != today_str:
+        _MAX_STATION_PROGRESS[train_no] = {
+            "date": today_str,
+            "idx": curr_idx,
+            "station": curr_stn,
+            "delay": status.get("delay_minutes", 0),
+        }
+        return status
+
+    max_idx = rec["idx"]
+    if curr_idx < max_idx:
+        logger.warning(
+            "Detected backward station jump for train %s: reported %s (idx %d) < max %s (idx %d). Discarding jitter.",
+            train_no,
+            curr_stn,
+            curr_idx,
+            corridor_codes[max_idx],
+            max_idx,
+        )
+        highest_code = corridor_codes[max_idx]
+        status["current_station"] = highest_code
+        status["current_station_name"] = highest_code
+        if "delay" in rec:
+            status["delay_minutes"] = max(status.get("delay_minutes", 0), rec["delay"])
+        status["status"] = "In Transit"
+
+        for s in status.get("stations", []):
+            s_code = s.get("code")
+            if s_code in corridor_codes and corridor_codes.index(s_code) < max_idx:
+                s["has_departed"] = True
+                s["has_arrived"] = True
+    else:
+        _MAX_STATION_PROGRESS[train_no] = {
+            "date": today_str,
+            "idx": curr_idx,
+            "station": curr_stn,
+            "delay": status.get("delay_minutes", 0),
+        }
+
+    return status
+
+
 def get_live_train_status(train_no: str, date_str: Optional[str] = None) -> dict:
     """Multi-tier resolver: CRIS -> ConfirmTkt -> Static Schedule with Watchdog supervision."""
     train_no_str = str(train_no).strip()
@@ -799,7 +893,7 @@ def get_live_train_status(train_no: str, date_str: Optional[str] = None) -> dict
                 status = fetch_cris_status(train_no_str, date_str)
                 if status.get("stations") and len(status["stations"]) > 0:
                     watchdog.record_success()
-                    return status
+                    return _enforce_station_monotonicity(train_no_str, status)
             except Exception as exc_cris:
                 logger.warning("CRIS query failed for train %s: %s. Falling back to ConfirmTkt...", train_no_str, exc_cris)
 
@@ -808,7 +902,7 @@ def get_live_train_status(train_no: str, date_str: Optional[str] = None) -> dict
                 status = fetch_confirmtkt_status(train_no_str)
                 if status.get("stations") and len(status["stations"]) > 0:
                     watchdog.record_success()
-                    return status
+                    return _enforce_station_monotonicity(train_no_str, status)
             except Exception as exc_ctkt:
                 logger.warning("ConfirmTkt scrape failed for train %s: %s. Falling back to Static...", train_no_str, exc_ctkt)
                 watchdog.record_failure(train_no_str, f"ConfirmTkt: {exc_ctkt}")
@@ -819,7 +913,7 @@ def get_live_train_status(train_no: str, date_str: Optional[str] = None) -> dict
     static_status = fetch_static_fallback_status(train_no_str, empirical_delay=p50_delay)
     if watchdog.alert_triggered:
         static_status["watchdog_alert"] = True
-    return static_status
+    return _enforce_station_monotonicity(train_no_str, static_status)
 
 
 # =============================================================================
@@ -1391,6 +1485,7 @@ def scan_morning_commute_options(
         "recommendation_reason": rec_reason,
         "options": options,
         "rake_turnaround": memu_rake,
+        "statuses": statuses,
     }
 
 
@@ -1491,6 +1586,101 @@ def get_static_evening_commute_options(
 ) -> list[dict]:
     """Fast, offline static evaluation of evening commute options with zero network calls."""
     return scan_evening_commute_options(reference_time=reference_time, date_str=date_str, allow_network=False)
+
+
+def check_morning_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:
+    """
+    Evaluate if an inbound morning train has reached/cleared its physical milestone station.
+    - For Train 16212 (Salem Exp) and Train 06278 (Dharmapuri MEMU):
+      Physical milestone is KELAMANGALAM (KMLM) - 13.5 km / ~14 mins before Hosur PF1.
+      When train reaches or departs KMLM, triggers immediate STEP OUT NOW notification.
+    - For Train 66596 (Hosur MEMU):
+      Originates at Hosur from incoming rake 66595.
+      If rake arrives at Hosur (or departs Anekal Road AEK ~15m away), triggers step-out notification.
+    """
+    t_no = str(train_no).strip()
+    sched = CORRIDOR_SCHEDULES.get(t_no, {})
+    t_name = sched.get("train_name", f"Train {t_no}")
+    stations = status_dict.get("stations", [])
+    curr_stn = status_dict.get("current_station", "").upper()
+    delay = status_dict.get("delay_minutes", 0)
+
+    # If train has already departed from Hosur, milestone has expired
+    hsra_stn = next((s for s in stations if s.get("code") == STN_HOSUR), None)
+    if hsra_stn and hsra_stn.get("has_departed"):
+        return None
+
+    if t_no in (MORNING_TRAIN_EXP, MORNING_TRAIN_EARLIER_MEMU):  # 16212, 06278
+        # Milestone station: KELAMANGALAM (KMLM)
+        kmlm_stn = next((s for s in stations if s.get("code") == "KMLM"), None)
+        kmlm_reached = False
+        if kmlm_stn and (kmlm_stn.get("has_departed") or kmlm_stn.get("has_arrived")):
+            kmlm_reached = True
+        elif curr_stn == "KMLM":
+            kmlm_reached = True
+        # If train is already at Hosur PF1 (arrived but not departed)
+        elif curr_stn == STN_HOSUR or (hsra_stn and hsra_stn.get("has_arrived")):
+            return {
+                "triggered": True,
+                "action": "STEP_OUT_NOW",
+                "train_no": t_no,
+                "train_name": t_name,
+                "milestone_station": "HSRA",
+                "milestone_station_name": "HOSUR",
+                "target_station": STN_HOSUR,
+                "lead_time_mins": 10,
+                "message": (
+                    f"🚨 *STEP OUT NOW! (Door-to-PF1: 10m)*\n\n"
+                    f"Train *{t_name} ({t_no})* is currently arriving / at *HOSUR (HSRA) PF1*!\n"
+                    f"• Walk Time to PF1: 10 mins\n"
+                    f"• Live Delay: *+{delay} mins*\n\n"
+                    f"👟 Walk immediately to Platform 1 to board!"
+                ),
+            }
+
+        if kmlm_reached:
+            return {
+                "triggered": True,
+                "action": "STEP_OUT_NOW",
+                "train_no": t_no,
+                "train_name": t_name,
+                "milestone_station": "KMLM",
+                "milestone_station_name": "KELAMANGALAM",
+                "target_station": STN_HOSUR,
+                "lead_time_mins": 10,
+                "message": (
+                    f"🚨 *STEP OUT NOW! (Door-to-PF1: 10m)*\n\n"
+                    f"Train *{t_name} ({t_no})* has reached / cleared *KELAMANGALAM (KMLM)*!\n"
+                    f"• Proximity: ~13.5 km to Hosur (~14 mins running time)\n"
+                    f"• Walk Time to PF1: 10 mins (5m walk + 5m platform cushion)\n"
+                    f"• Live Delay: *+{delay} mins*\n\n"
+                    f"👟 Time to step out from home NOW to catch Platform 1!"
+                ),
+            }
+
+    elif t_no == MORNING_TRAIN_MEMU:  # 66596
+        # When 66596 is on time (dep 08:25), scheduled step out is 08:15 AM
+        # If incoming rake 66595 is delayed, check if rake reached Hosur
+        if hsra_stn and (hsra_stn.get("has_arrived") or curr_stn == STN_HOSUR):
+            return {
+                "triggered": True,
+                "action": "STEP_OUT_NOW",
+                "train_no": t_no,
+                "train_name": t_name,
+                "milestone_station": "HSRA",
+                "milestone_station_name": "HOSUR",
+                "target_station": STN_HOSUR,
+                "lead_time_mins": 10,
+                "message": (
+                    f"🚨 *STEP OUT NOW! (Door-to-PF1: 10m)*\n\n"
+                    f"Incoming rake for *{t_name} (66596)* is at *HOSUR (HSRA)*!\n"
+                    f"• Rake turnaround: ~15 mins\n"
+                    f"• Walk Time to PF1: 10 mins\n\n"
+                    f"👟 Time to step out from home NOW to board at Platform 1!"
+                ),
+            }
+
+    return None
 
 
 def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:

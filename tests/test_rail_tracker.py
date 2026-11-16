@@ -2678,6 +2678,11 @@ def test_resilient_supabase_sync_pgrst204_fallback_api():
     import asyncio
     asyncio.run(_test())
 
+    assert len(call_payloads) == 2
+    assert "alerts_enabled" in call_payloads[0]
+    assert "alerts_enabled" not in call_payloads[1]
+    assert call_payloads[1]["state"] == "EVENING_TRACKING"
+
 
 def test_telegram_client_master_gatekeeper_blocks_proactive_alerts(tmp_path):
     """Verify TelegramClient master gatekeeper strictly drops unsolicited alerts when muted, on weekends, or off-hours."""
@@ -2723,11 +2728,6 @@ def test_telegram_client_master_gatekeeper_blocks_proactive_alerts(tmp_path):
             res_direct = client.send_message("📊 Status Response", is_direct_reply=True)
             assert res_direct is not None
             assert res_direct["message_id"] == 100
-
-    assert len(call_payloads) == 2
-    assert "alerts_enabled" in call_payloads[0]
-    assert "alerts_enabled" not in call_payloads[1]
-    assert call_payloads[1]["state"] == "EVENING_TRACKING"
 
 
 def test_evening_milestone_trigger_suppressed_if_target_already_departed():
@@ -2803,50 +2803,177 @@ def test_fetch_supabase_commute_state_parses_completion_and_milestones():
     asyncio.run(_test())
 
 
-def test_telegram_client_master_gatekeeper_blocks_proactive_alerts(tmp_path):
-    """Verify TelegramClient master gatekeeper strictly drops unsolicited alerts when muted, on weekends, or off-hours."""
-    state_file = str(tmp_path / "test_gatekeeper.json")
-    store = rail_daemon.CommuteStateStore(file_path=state_file)
-    client = rail_daemon.TelegramClient("test_token", "123456", store=store)
+def test_check_morning_milestone_trigger_kelamangalam():
+    """Verify physical milestone trigger for 16212 / 06278 at Kelamangalam (KMLM)."""
+    # 1. 16212 reaching KMLM triggers STEP OUT NOW
+    status_kmlm = {
+        "current_station": "KMLM",
+        "delay_minutes": 44,
+        "stations": [
+            {"code": "PRNT", "has_departed": True},
+            {"code": "KMLM", "has_arrived": True, "has_departed": False},
+            {"code": "HSRA", "has_arrived": False, "has_departed": False},
+        ],
+    }
+    res = rail_tracker.check_morning_milestone_trigger("16212", status_kmlm)
+    assert res is not None
+    assert res["triggered"] is True
+    assert res["action"] == "STEP_OUT_NOW"
+    assert res["milestone_station"] == "KMLM"
+    assert "KELAMANGALAM" in res["message"]
 
-    with patch.object(rail_daemon.TelegramClient, "send_message", rail_daemon.TelegramClient._real_send_message):
-        # 1. Blocked when store alerts_enabled is False
-        store.state_data["alerts_enabled"] = False
-        res_muted = client.send_message("🚨 Test Alert: Muted State", is_direct_reply=False)
-        assert res_muted is None
+    # 2. 06278 at KMLM triggers STEP OUT NOW
+    res_memu = rail_tracker.check_morning_milestone_trigger("06278", status_kmlm)
+    assert res_memu is not None
+    assert res_memu["triggered"] is True
+    assert res_memu["milestone_station"] == "KMLM"
 
-        # 2. Blocked on Sunday even if alerts_enabled is True
-        store.state_data["alerts_enabled"] = True
-        sunday_dt = datetime(2026, 11, 15, 8, 30, 0, tzinfo=rail_daemon.IST_TZ)
-        with patch("rail_daemon.get_ist_now", return_value=sunday_dt):
-            res_sunday = client.send_message("🚨 Test Alert: Sunday Alert", is_direct_reply=False)
-            assert res_sunday is None
+    # 3. If train already departed Hosur, milestone must return None
+    status_departed = {
+        "current_station": "AEK",
+        "delay_minutes": 10,
+        "stations": [
+            {"code": "KMLM", "has_departed": True},
+            {"code": "HSRA", "has_arrived": True, "has_departed": True},
+        ],
+    }
+    assert rail_tracker.check_morning_milestone_trigger("16212", status_departed) is None
 
-        # 3. Blocked at Midnight (00:15 AM) on Weekday
-        monday_midnight = datetime(2026, 11, 16, 0, 15, 0, tzinfo=rail_daemon.IST_TZ)
-        with patch("rail_daemon.get_ist_now", return_value=monday_midnight):
-            res_midnight = client.send_message("🚨 Test Alert: Midnight Spurt", is_direct_reply=False)
-            assert res_midnight is None
 
-        # 4. Allowed during Authorized Commute Window (Monday 07:15 AM)
-        monday_morning = datetime(2026, 11, 16, 7, 15, 0, tzinfo=rail_daemon.IST_TZ)
-        mock_resp = MagicMock()
-        mock_resp.read.return_value = json.dumps({"ok": True, "result": {"message_id": 100}}).encode("utf-8")
-        mock_resp.__enter__.return_value = mock_resp
+def test_station_monotonicity_filter_rejects_backward_jump():
+    """Verify scraper jitter (e.g. backward jump from PRNT index 11 to Salem index 0) is rejected."""
+    rail_tracker._MAX_STATION_PROGRESS.clear()
 
-        with patch("rail_daemon.get_ist_now", return_value=monday_morning), \
-             patch("urllib.request.urlopen", return_value=mock_resp):
-            res_ok = client.send_message("☀️ Authorized Morning Alert", is_direct_reply=False)
-            assert res_ok is not None
-            assert res_ok["message_id"] == 100
+    # Step 1: Train 16212 reaches PRNT (index 11)
+    status_prnt = {
+        "current_station": "PRNT",
+        "delay_minutes": 45,
+        "status": "In Transit",
+        "stations": [{"code": "SA"}, {"code": "PRNT"}, {"code": "HSRA"}],
+    }
+    filtered_prnt = rail_tracker._enforce_station_monotonicity("16212", status_prnt)
+    assert filtered_prnt["current_station"] == "PRNT"
+    assert filtered_prnt["delay_minutes"] == 45
 
-        # 5. Direct replies ALWAYS permitted regardless of time/mute status
-        with patch("rail_daemon.get_ist_now", return_value=monday_midnight), \
-             patch("urllib.request.urlopen", return_value=mock_resp):
-            store.state_data["alerts_enabled"] = False
-            res_direct = client.send_message("📊 Status Response", is_direct_reply=True)
-            assert res_direct is not None
-            assert res_direct["message_id"] == 100
+    # Step 2: Transient scraper glitch reports origin station SA with 0 delay
+    status_glitch_sa = {
+        "current_station": "SA",
+        "delay_minutes": 0,
+        "status": "Not Started",
+        "stations": [{"code": "SA"}, {"code": "PRNT"}, {"code": "HSRA"}],
+    }
+    filtered_glitch = rail_tracker._enforce_station_monotonicity("16212", status_glitch_sa)
+    # Must preserve PRNT and delay 45, rejecting the backward jump
+    assert filtered_glitch["current_station"] == "PRNT"
+    assert filtered_glitch["delay_minutes"] == 45
+
+
+def test_morning_recommendation_flip_locked_after_stepped_out():
+    """Verify recommendation does not flip after commuter stepped out or within 15m of departure."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_TRACKING
+    daemon.store.state_data["morning_train"] = "66596"
+    daemon.store.state_data["last_recommended_train"] = "66596"
+    daemon.store.state_data["morning_stepped_out"] = True  # Already stepped out!
+
+    with patch("rail_tracker.scan_morning_commute_options") as mock_scan:
+        # Scan suggests switching to 16212
+        mock_scan.return_value = {
+            "options": [
+                {
+                    "train_no": "66596",
+                    "train_name": "Hosur MEMU",
+                    "projected_departure": "08:25",
+                    "step_out_time": "08:15",
+                    "dest_eta": "09:03",
+                    "desk_eta": "09:33",
+                    "delay_mins": 0,
+                    "status": "VIABLE",
+                },
+                {
+                    "train_no": "16212",
+                    "train_name": "Salem Express",
+                    "projected_departure": "08:33",
+                    "step_out_time": "08:23",
+                    "dest_eta": "09:01",
+                    "desk_eta": "09:31",
+                    "delay_mins": 41,
+                    "status": "VIABLE",
+                },
+            ],
+            "recommended_train": {
+                "train_no": "16212",
+                "train_name": "Salem Express",
+                "projected_departure": "08:33",
+                "step_out_time": "08:23",
+                "dest_eta": "09:01",
+                "desk_eta": "09:31",
+                "delay_mins": 41,
+                "status": "VIABLE",
+            },
+            "rake_turnaround": {},
+            "statuses": {},
+        }
+
+        # At 08:19 (stepped out already)
+        daemon.handle_morning_tracking("08:19")
+        # Flip alert must be suppressed because user already stepped out!
+        for call in daemon.bot.send_message.call_args_list:
+            msg = call[0][0]
+            assert "Train Order Flipped" not in msg, "Must NOT flip recommendation after step-out"
+        assert daemon.store.state_data["morning_train"] == "66596"
+
+
+def test_past_time_step_out_sanitization():
+    """Verify past step-out times are sanitized so user is never told to relax or step out in the past."""
+    daemon = rail_daemon.RailDaemon()
+    daemon.bot.send_message = MagicMock()
+    daemon.store.state_data["state"] = rail_daemon.STATE_MORNING_TRACKING
+    daemon.store.state_data["morning_train"] = "16212"
+    daemon.store.state_data["last_recommended_train"] = "16212"
+    daemon.store.state_data["last_delay_reported"] = 44
+    daemon.store.state_data["last_step_out_reported"] = "09:03"
+    daemon.store.state_data["morning_projected_dep"] = "09:30"
+
+    with patch("rail_tracker.scan_morning_commute_options") as mock_scan:
+        mock_scan.return_value = {
+            "options": [
+                {
+                    "train_no": "16212",
+                    "train_name": "Salem Express",
+                    "projected_departure": "09:30",
+                    "step_out_time": "09:10",  # In the past relative to current_time 09:29!
+                    "dest_eta": "10:10",
+                    "desk_eta": "10:40",
+                    "delay_mins": 60,
+                    "status": "VIABLE",
+                    "current_location": "HOSUR (HSRA)",
+                }
+            ],
+            "recommended_train": {
+                "train_no": "16212",
+                "train_name": "Salem Express",
+                "projected_departure": "09:30",
+                "step_out_time": "09:10",
+                "dest_eta": "10:10",
+                "desk_eta": "10:40",
+                "delay_mins": 60,
+                "status": "VIABLE",
+            },
+            "rake_turnaround": {},
+            "statuses": {},
+        }
+
+        # Current time 09:29, delay increased to 60 (+16m shift)
+        daemon.handle_morning_tracking("09:29")
+        assert daemon.bot.send_message.called
+        msg = daemon.bot.send_message.call_args[0][0]
+        # Must NOT show "New Step-Out Time: ~09:10 AM (was 09:03)" or tell them to relax
+        assert "New Step-Out Time: ~09:10 AM" not in msg
+        assert "extra" not in msg and "Relax" not in msg
+        assert "approaching Hosur (step out immediately!)" in msg
+
 
 
 

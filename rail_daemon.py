@@ -686,68 +686,98 @@ class RailDaemon:
         self.store.state_data["morning_step_out_time"] = step_out_time
         self.store.state_data["morning_delay_mins"] = current_delay
 
+        # 1. Physical Milestone Step-Out Check
+        # Sriram's physical milestone rule: When Train 16212 or 06278 reaches / clears Kelamangalam (KMLM),
+        # or incoming rake 66595 reaches Hosur, trigger immediate STEP OUT NOW notification!
+        if not self.store.state_data.get("morning_stepped_out"):
+            active_status = scan.get("statuses", {}).get(active_train) or rail_tracker.get_live_train_status(active_train)
+            milestone = rail_tracker.check_morning_milestone_trigger(active_train, active_status)
+            if milestone and milestone.get("triggered"):
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(milestone["message"], reply_markup=self.get_stepped_out_keyboard())
+                else:
+                    logger.info("Suppressed morning milestone alert: Alerts muted")
+                self.store.state_data["morning_stepped_out"] = True
+                self.store.state_data["morning_milestone_fired"] = True
+                self.store.save(sync_supabase=True)
+
         last_rec = self.store.state_data.get("last_recommended_train")
         curr_rec = rec_opt["train_no"]
 
-        # 1. Recommendation Flip Detection
-        # Detects if relative train arrival/departure order changes (e.g. Salem Exp on time while Hosur MEMU delayed)
-        if not last_rec:
-            self.store.state_data["last_recommended_train"] = curr_rec
-        elif curr_rec != last_rec and rec_opt.get("status") in ("VIABLE", "BOARDING"):
-            prev_opt = next((o for o in scan["options"] if o["train_no"] == last_rec), None)
-            prev_name = prev_opt["train_name"] if prev_opt else f"Train {last_rec}"
-            prev_dep = prev_opt["projected_departure"] if prev_opt else "earlier"
+        # 2. Recommendation Flip Detection
+        # Sriram's Core Anchor Rule: DO NOT flip recommendations if:
+        # 1. The commuter has already stepped out (morning_stepped_out is True)
+        # 2. Or current_time is within 15 minutes of active train's projected departure
+        is_too_close_to_flip = (
+            self.store.state_data.get("morning_stepped_out")
+            or rail_tracker.minutes_difference(current_time, projected_dep) <= 15
+        )
+        if not is_too_close_to_flip:
+            if not last_rec:
+                self.store.state_data["last_recommended_train"] = curr_rec
+            elif curr_rec != last_rec and rec_opt.get("status") in ("VIABLE", "BOARDING"):
+                prev_opt = next((o for o in scan["options"] if o["train_no"] == last_rec), None)
+                prev_name = prev_opt["train_name"] if prev_opt else f"Train {last_rec}"
+                prev_dep = prev_opt["projected_departure"] if prev_opt else "earlier"
 
-            flip_msg = (
-                f"🔄 *Commute Recommendation Shift: Train Order Flipped!*\n\n"
-                f"Dynamic schedule update in Hosur morning corridor:\n"
-                f"• *{rec_opt['train_name']} ({curr_rec})* is now departing latest at ~*{rec_opt['projected_departure']} AM* (Desk ETA: *{rec_opt['desk_eta']} AM*).\n"
-                f"• *{prev_name} ({last_rec})* departs at ~*{prev_dep} AM*.\n\n"
-                f"💡 *New Optimal Train*: *{rec_opt['train_name']}*!\n"
-                f"{scan.get('recommendation_reason', '')}\n\n"
-                f"Revised step-out time from home: ~*{rec_opt['step_out_time']} AM*."
-            )
-            kb = {
-                "inline_keyboard": [
-                    [{"text": f"🚆 Switch to {curr_rec} (~{rec_opt['projected_departure']})", "callback_data": f"train:{curr_rec}"}],
-                    [{"text": f"Stay with {active_train}", "callback_data": "action:ack"}],
-                ]
-            }
-            if self.store.state_data.get("alerts_enabled", True):
-                self.bot.send_message(flip_msg, reply_markup=kb)
-            else:
-                logger.info("Suppressed morning flip alert push: Alerts muted")
+                flip_msg = (
+                    f"🔄 *Commute Recommendation Shift: Train Order Flipped!*\n\n"
+                    f"Dynamic schedule update in Hosur morning corridor:\n"
+                    f"• *{rec_opt['train_name']} ({curr_rec})* is now departing latest at ~*{rec_opt['projected_departure']} AM* (Desk ETA: *{rec_opt['desk_eta']} AM*).\n"
+                    f"• *{prev_name} ({last_rec})* departs at ~*{prev_dep} AM*.\n\n"
+                    f"💡 *New Optimal Train*: *{rec_opt['train_name']}*!\n"
+                    f"{scan.get('recommendation_reason', '')}\n\n"
+                    f"Revised step-out time from home: ~*{rec_opt['step_out_time']} AM*."
+                )
+                kb = {
+                    "inline_keyboard": [
+                        [{"text": f"🚆 Switch to {curr_rec} (~{rec_opt['projected_departure']})", "callback_data": f"train:{curr_rec}"}],
+                        [{"text": f"Stay with {active_train}", "callback_data": "action:ack"}],
+                    ]
+                }
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(flip_msg, reply_markup=kb)
+                else:
+                    logger.info("Suppressed morning flip alert push: Alerts muted")
 
-            # Auto-update active tracking if user hasn't pinned a specific train manually
-            if not self.store.state_data.get("user_manually_selected_train"):
-                self.store.state_data["morning_train"] = curr_rec
-                active_train = curr_rec
-                active_opt = rec_opt
-                projected_dep = active_opt["projected_departure"]
-                step_out_time = active_opt["step_out_time"]
-                current_delay = active_opt["delay_mins"]
-                self.store.state_data["morning_projected_dep"] = projected_dep
-                self.store.state_data["morning_step_out_time"] = step_out_time
-                self.store.state_data["morning_delay_mins"] = current_delay
+                # Auto-update active tracking if user hasn't pinned a specific train manually
+                if not self.store.state_data.get("user_manually_selected_train"):
+                    self.store.state_data["morning_train"] = curr_rec
+                    active_train = curr_rec
+                    active_opt = rec_opt
+                    projected_dep = active_opt["projected_departure"]
+                    step_out_time = active_opt["step_out_time"]
+                    current_delay = active_opt["delay_mins"]
+                    self.store.state_data["morning_projected_dep"] = projected_dep
+                    self.store.state_data["morning_step_out_time"] = step_out_time
+                    self.store.state_data["morning_delay_mins"] = current_delay
 
-            self.store.state_data["last_recommended_train"] = curr_rec
-            self.store.state_data["last_delay_reported"] = current_delay
-            self.store.state_data["last_step_out_reported"] = step_out_time
-            self.store.save(sync_supabase=True)
+                self.store.state_data["last_recommended_train"] = curr_rec
+                self.store.state_data["last_delay_reported"] = current_delay
+                self.store.state_data["last_step_out_reported"] = step_out_time
+                self.store.save(sync_supabase=True)
 
         last_reported_delay = self.store.state_data.get("last_delay_reported", 0)
         last_reported_step_out = self.store.state_data.get("last_step_out_reported", "08:15")
 
-        # 2. Check if delay changed noticeably (>= 3 minutes shift)
-        if abs(current_delay - last_reported_delay) >= 3 or (current_delay > 0 and last_reported_delay == 0):
+        # 3. Check if delay changed noticeably (>= 3 minutes shift)
+        # Suppress delay alerts if train has already departed or if current_time >= projected_dep
+        train_has_departed = rail_tracker.minutes_difference(projected_dep, current_time) > 0
+        if not train_has_departed and (abs(current_delay - last_reported_delay) >= 3 or (current_delay > 0 and last_reported_delay == 0)):
+            last_dep = self.store.state_data.get("morning_projected_dep", projected_dep)
+            dep_diff = rail_tracker.minutes_difference(last_dep, projected_dep)
+
             if current_delay > last_reported_delay:
                 extra_mins = current_delay - last_reported_delay
-                time_note = f"⏳ Departure delayed by an additional *{extra_mins} mins*. You have an extra *{extra_mins} mins* at home! Relax."
-            elif current_delay < last_reported_delay:
+                if rail_tracker.minutes_difference(current_time, step_out_time) >= 5:
+                    time_note = f"⏳ Departure delayed by an additional *{extra_mins} mins*. You have an extra *{extra_mins} mins* at home! Relax."
+                else:
+                    time_note = f"⏳ Departure delayed by an additional *{extra_mins} mins*. Revised Hosur departure: ~*{projected_dep} AM*."
+            elif current_delay < last_reported_delay:  # Train made up time
                 made_up = last_reported_delay - current_delay
-                time_note = f"⚡ Train made up *{made_up} mins*! Departure moved EARLIER to ~*{projected_dep} AM*. New step-out: ~*{step_out_time} AM*. Prepare to leave sooner!"
+                time_note = f"⚡ Train made up *{made_up} mins*! Departure moved EARLIER to ~*{projected_dep} AM*. Prepare to leave sooner!"
             else:
-                time_note = f"ℹ️ Revised departure from Hosur is ~*{projected_dep} AM* (Step-out: ~*{step_out_time} AM*)."
+                time_note = f"ℹ️ Revised departure from Hosur is ~*{projected_dep} AM*."
 
             if active_train == rail_tracker.MORNING_TRAIN_MEMU:
                 rake_loc_str = f"*{rake.get('rake_current_station_name', 'En route')}* ({rake.get('rake_current_station', '')})"
@@ -756,12 +786,18 @@ class RailDaemon:
                 loc_str = active_opt.get("current_location", "En route")
                 delay_reason_str = f"Train {active_train} is currently near *{loc_str}* with +{current_delay}m delay."
 
+            # Sanitize past-time step-out calculation
+            if rail_tracker.minutes_difference(current_time, step_out_time) < 0:
+                step_out_line = f"• *Step-Out Status*: Train is approaching Hosur (step out immediately!)"
+            else:
+                step_out_line = f"• *New Step-Out Time*: ~*{step_out_time} AM* (was {last_reported_step_out})"
+
             delay_msg = (
                 f"⚠️ *Commute Delay Alert: Train {active_train} ({active_opt['train_name']})*\n\n"
                 f"Hey Sriram, there is a delay! {delay_reason_str}\n"
                 f"• *Current Delay*: *{current_delay} mins*\n"
                 f"• *Revised Hosur Departure*: ~*{projected_dep} AM*\n"
-                f"• *New Step-Out Time*: ~*{step_out_time} AM* (was {last_reported_step_out})\n\n"
+                f"{step_out_line}\n\n"
                 f"{time_note}"
             )
             
