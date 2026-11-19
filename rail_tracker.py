@@ -172,6 +172,7 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "direction": "MORNING",
         "origin": "DPJ",
         "destination": "SBC",
+        "milestone_station": "KMLM",
         "stations": [
             {"code": "DPJ", "name": "DHARMAPURI", "sta": "Source", "std": "05:00", "halt": 0, "day": 1},
             {"code": "PCV", "name": "PALAKKODU", "sta": "05:21", "std": "05:22", "halt": 1, "day": 1},
@@ -232,9 +233,11 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "direction": "MORNING",
         "origin": "SA",
         "destination": "YPR",
+        "milestone_station": "KMLM",
         "stations": [
             {"code": "SA", "name": "SALEM JN", "sta": "Source", "std": "05:20", "halt": 0, "day": 1},
             {"code": "DPJ", "name": "DHARMAPURI", "sta": "06:38", "std": "06:40", "halt": 2, "day": 1},
+            {"code": "KMLM", "name": "KELAMANGALAM", "sta": "08:04", "std": "08:05", "halt": 1, "day": 1},
             {"code": "HSRA", "name": "HOSUR", "sta": "08:18", "std": "08:20", "halt": 2, "day": 1},
             {"code": "CRLM", "name": "CARMELARAM", "sta": "08:52", "std": "08:53", "halt": 1, "day": 1},
             {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "08:59", "std": "09:00", "halt": 1, "day": 1},
@@ -1813,7 +1816,7 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict, reference_
                 f"Train *{sched.get('train_name', f'Train {t_no}')}* has departed / cleared *{milestone_code}*!\n"
                 f"• Expected *{target_name}* arrival: ~*{target_eta}*\n"
                 f"• Live Delay: *+{delay} mins*\n\n"
-                f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 &rarr; {target_code}: ~{lead_time} mins lead time)."
+                f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 &rarr; {target_code}: ~{lead_time} mins transit cushion)."
             ),
         }
 
