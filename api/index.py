@@ -1778,9 +1778,11 @@ async def api_rail_action(request: Request):
             )
             if is_evening:
                 store.state_data["evening_train"] = train_no
+                store.state_data["user_manually_selected_train"] = True
                 store.transition_state(rail_daemon.STATE_EVENING_TRACKING, f"Tracking evening train {train_no}")
             else:
                 store.state_data["morning_train"] = train_no
+                store.state_data["user_manually_selected_train"] = True
                 store.transition_state(rail_daemon.STATE_MORNING_TRACKING, f"Tracking morning train {train_no}")
             msg = f"Now tracking Train {train_no}."
         elif action == "reached":

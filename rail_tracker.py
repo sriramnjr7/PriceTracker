@@ -267,8 +267,12 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "direction": "EVENING",
         "origin": "YPR",
         "destination": "SA",
+        "milestone_station": "BAND",
         "stations": [
             {"code": "YPR", "name": "YESVANTPUR JN", "sta": "Source", "std": "15:55", "halt": 0, "day": 1},
+            {"code": "LOGH", "name": "LOTTEGOLLAHALLI", "sta": "16:04", "std": "16:05", "halt": 1, "day": 1},
+            {"code": "HEB", "name": "HEBBAL", "sta": "16:10", "std": "16:11", "halt": 1, "day": 1},
+            {"code": "BAND", "name": "BANASWADI", "sta": "16:21", "std": "16:22", "halt": 1, "day": 1},
             {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "16:32", "std": "16:33", "halt": 1, "day": 1},
             {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "16:42", "std": "16:43", "halt": 1, "day": 1},
             {"code": "CRLM", "name": "CARMELARAM", "sta": "16:50", "std": "16:51", "halt": 1, "day": 1},
@@ -313,6 +317,7 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "direction": "EVENING",
         "origin": "YPR",
         "destination": "CAN",
+        "milestone_station": "BAND",
         "stations": [
             {"code": "YPR", "name": "YESVANTPUR JN", "sta": "Source", "std": "20:00", "halt": 0, "day": 1},
             {"code": "BAND", "name": "BANASWADI", "sta": "20:20", "std": "20:21", "halt": 1, "day": 1},
@@ -326,6 +331,7 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "direction": "EVENING",
         "origin": "SBC",
         "destination": "TN",
+        "milestone_station": "BNC",
         "stations": [
             {"code": "SBC", "name": "KSR BENGALURU", "sta": "Source", "std": "21:15", "halt": 0, "day": 1},
             {"code": "BNC", "name": "BANGALORE CANT", "sta": "21:26", "std": "21:28", "halt": 2, "day": 1},
@@ -1588,15 +1594,16 @@ def get_static_evening_commute_options(
     return scan_evening_commute_options(reference_time=reference_time, date_str=date_str, allow_network=False)
 
 
-def check_morning_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:
+def check_morning_milestone_trigger(train_no: str, status_dict: dict, reference_time: Optional[str] = None) -> Optional[dict]:
     """
     Evaluate if an inbound morning train has reached/cleared its physical milestone station.
     - For Train 16212 (Salem Exp) and Train 06278 (Dharmapuri MEMU):
       Physical milestone is KELAMANGALAM (KMLM) - 13.5 km / ~14 mins before Hosur PF1.
       When train reaches or departs KMLM, triggers immediate STEP OUT NOW notification.
     - For Train 66596 (Hosur MEMU):
-      Originates at Hosur from incoming rake 66595.
-      If rake arrives at Hosur (or departs Anekal Road AEK ~15m away), triggers step-out notification.
+      Originates at Hosur from incoming rake 66595 (scheduled dep 08:25 AM).
+      Step-out time is strictly 08:15 AM (10m walk). Early rake arrival before 08:10 AM
+      must NEVER trigger early step out.
     """
     t_no = str(train_no).strip()
     sched = CORRIDOR_SCHEDULES.get(t_no, {})
@@ -1660,7 +1667,10 @@ def check_morning_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
 
     elif t_no == MORNING_TRAIN_MEMU:  # 66596
         # When 66596 is on time (dep 08:25), scheduled step out is 08:15 AM
-        # If incoming rake 66595 is delayed, check if rake reached Hosur
+        # Early rake arrival at Hosur (e.g. 07:35 AM) must NOT trigger premature step out
+        if reference_time and reference_time < "08:10":
+            return None
+
         if hsra_stn and (hsra_stn.get("has_arrived") or curr_stn == STN_HOSUR):
             return {
                 "triggered": True,
@@ -1683,7 +1693,7 @@ def check_morning_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
     return None
 
 
-def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optional[dict]:
+def check_evening_milestone_trigger(train_no: str, status_dict: dict, reference_time: Optional[str] = None) -> Optional[dict]:
     """
     Evaluate if an evening train has cleared its milestone station.
     Dynamically determines boarding station:
@@ -1697,8 +1707,15 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
         return None
 
     milestone_code = sched.get("milestone_station")
-    if not milestone_code and t_no == "16232":
-        milestone_code = "BNC"
+    if not milestone_code:
+        if t_no == "16232":
+            milestone_code = "BNC"
+        elif t_no in ("16211", "16527"):
+            milestone_code = "BAND"
+        elif t_no == "16236":
+            milestone_code = "BNC"
+        elif t_no in ("66585", "66583"):
+            milestone_code = "BYPL"
 
     if not milestone_code:
         return None
@@ -1729,43 +1746,76 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict) -> Optiona
 
     m_stn = next((s for s in stations if s.get("code") == milestone_code), None)
     target_stn = next((s for s in stations if s.get("code") == target_code), None)
+    curr_stn = status_dict.get("current_station", "").upper()
+    delay = status_dict.get("delay_minutes", 0)
 
     # If the train has already departed the target boarding station, milestone trigger is expired
     if target_stn and target_stn.get("has_departed"):
         return None
 
-    if m_stn and (m_stn.get("has_departed") or m_stn.get("effective_delay") is not None):
-        if m_stn.get("has_departed"):
-            target_eta = target_stn.get("eta") if target_stn else None
-            if not target_eta or str(target_eta).strip() in ("", "Source", "Destination"):
-                sch_sta = (target_stn.get("sta") if target_stn else None) or (sched_target_stn.get("sta") if sched_target_stn else "")
-                delay = (
-                    status_dict.get("delay_minutes", 0)
-                    or (m_stn.get("delay_dep", 0) if m_stn else 0)
-                    or (m_stn.get("effective_delay", 0) if m_stn else 0)
-                )
-                if sch_sta and sch_sta not in ("Source", "Destination", ""):
-                    target_eta = add_minutes_to_time(sch_sta, delay)
-                else:
-                    target_eta = m_stn.get("etd") or m_stn.get("std", "")
+    # Compute target boarding ETA
+    target_eta = target_stn.get("eta") if target_stn else None
+    if not target_eta or str(target_eta).strip() in ("", "Source", "Destination"):
+        sch_sta = (target_stn.get("sta") if target_stn else None) or (sched_target_stn.get("sta") if sched_target_stn else "")
+        if sch_sta and sch_sta not in ("Source", "Destination", ""):
+            target_eta = add_minutes_to_time(sch_sta, delay)
+        else:
+            target_eta = (m_stn.get("etd") if m_stn else None) or ""
 
-            dep_time = m_stn.get("etd") or m_stn.get("std", "")
-            return {
-                "triggered": True,
-                "train_no": t_no,
-                "train_name": sched.get("train_name", f"Train {t_no}"),
-                "milestone_station": milestone_code,
-                "departure_time": dep_time,
-                "boarding_station": target_code,
-                "boarding_eta": target_eta,
-                "crlm_eta": target_eta,  # Retained for backward-compat with callers expecting crlm_eta
-                "lead_time_mins": lead_time,
-                "action": "LEAVE_DESK_NOW",
-                "message": (
-                    f"🚨 *MILESTONE TRIGGER: Train {t_no}*\n"
-                    f"Train {t_no} has officially departed {milestone_code} at {dep_time}!\n"
-                    f"Expected {target_name} arrival: ~{target_eta}.\n\n"
-                    f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 -> {target_code}: ~{lead_time} mins lead time)."
-                ),
-            }
+    dep_time = (m_stn.get("etd") if m_stn else None) or (m_stn.get("std") if m_stn else "") or ""
+
+    # 1. Urgent Check: Train has already reached or is arriving at target station (BLRR / CRLM)
+    if (target_stn and target_stn.get("has_arrived")) or (curr_stn == target_code):
+        return {
+            "triggered": True,
+            "train_no": t_no,
+            "train_name": sched.get("train_name", f"Train {t_no}"),
+            "milestone_station": target_code,
+            "departure_time": target_eta,
+            "boarding_station": target_code,
+            "boarding_eta": target_eta,
+            "crlm_eta": target_eta,
+            "lead_time_mins": lead_time,
+            "action": "LEAVE_DESK_NOW",
+            "message": (
+                f"🚨 *URGENT: Train {t_no} Arriving at {target_name} NOW!*\n\n"
+                f"Train *{sched.get('train_name', f'Train {t_no}')}* is arriving / at *{target_name}*!\n"
+                f"• Current Delay: *+{delay} mins*\n\n"
+                f"🏃 *LEAVE DESK IMMEDIATELY* to catch Platform at {target_name}!"
+            ),
+        }
+
+    # 2. Milestone Reached Check: Milestone departed OR current station is at/past milestone
+    m_reached = False
+    if m_stn and (m_stn.get("has_departed") or m_stn.get("has_arrived")):
+        m_reached = True
+    elif curr_stn:
+        m_idx = sched_codes.index(milestone_code) if milestone_code in sched_codes else -1
+        t_idx = sched_codes.index(target_code) if target_code in sched_codes else 999
+        c_idx = sched_codes.index(curr_stn) if curr_stn in sched_codes else -1
+        if m_idx != -1 and c_idx >= m_idx and c_idx <= t_idx:
+            m_reached = True
+
+    if m_reached:
+        return {
+            "triggered": True,
+            "train_no": t_no,
+            "train_name": sched.get("train_name", f"Train {t_no}"),
+            "milestone_station": milestone_code,
+            "departure_time": dep_time,
+            "boarding_station": target_code,
+            "boarding_eta": target_eta,
+            "crlm_eta": target_eta,
+            "lead_time_mins": lead_time,
+            "action": "LEAVE_DESK_NOW",
+            "message": (
+                f"🚨 *MILESTONE TRIGGER: Train {t_no}*\n\n"
+                f"Train *{sched.get('train_name', f'Train {t_no}')}* has departed / cleared *{milestone_code}*!\n"
+                f"• Expected *{target_name}* arrival: ~*{target_eta}*\n"
+                f"• Live Delay: *+{delay} mins*\n\n"
+                f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 &rarr; {target_code}: ~{lead_time} mins lead time)."
+            ),
+        }
+
+    return None
     return None

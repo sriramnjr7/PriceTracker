@@ -2975,6 +2975,148 @@ def test_past_time_step_out_sanitization():
         assert "approaching Hosur (step out immediately!)" in msg
 
 
+def test_morning_rake_early_arrival_guard():
+    """Verify incoming rake 66595 arrival at Hosur before 08:10 does NOT trigger premature step out."""
+    status_66596 = {
+        "train_no": "66596",
+        "stations": [
+            {"code": "HSRA", "name": "HOSUR", "has_arrived": True, "has_departed": False}
+        ],
+        "current_station": "HSRA",
+    }
+    # At 07:35 AM, early rake arrival must NOT trigger step out
+    early_trigger = rail_tracker.check_morning_milestone_trigger("66596", status_66596, reference_time="07:35")
+    assert early_trigger is None
+
+    # At 08:15 AM, rake arrival triggers step out
+    ontime_trigger = rail_tracker.check_morning_milestone_trigger("66596", status_66596, reference_time="08:15")
+    assert ontime_trigger is not None
+    assert ontime_trigger["triggered"] is True
+    assert ontime_trigger["action"] == "STEP_OUT_NOW"
+
+
+def test_evening_milestone_16211_and_16527():
+    """Verify 16211 and 16527 have milestone BAND and trigger boarding alerts for BLRR and CRLM."""
+    # Train 16211 departing Banaswadi (BAND) -> boarding BLRR
+    status_16211 = {
+        "train_no": "16211",
+        "delay_minutes": 13,
+        "stations": [
+            {"code": "BAND", "name": "BANASWADI", "has_departed": True, "etd": "16:35", "std": "16:22"},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "16:35", "std": "16:36"},
+        ],
+    }
+    trig_16211 = rail_tracker.check_evening_milestone_trigger("16211", status_16211)
+    assert trig_16211 is not None
+    assert trig_16211["triggered"] is True
+    assert trig_16211["milestone_station"] == "BAND"
+    assert trig_16211["boarding_station"] == "BLRR"
+    assert trig_16211["lead_time_mins"] == 20
+    assert trig_16211["action"] == "LEAVE_DESK_NOW"
+
+    # Train 16527 departing Banaswadi (BAND) -> boarding CRLM
+    status_16527 = {
+        "train_no": "16527",
+        "delay_minutes": 10,
+        "stations": [
+            {"code": "BAND", "name": "BANASWADI", "has_departed": True, "etd": "20:31", "std": "20:21"},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "20:45", "std": "20:46"},
+        ],
+    }
+    trig_16527 = rail_tracker.check_evening_milestone_trigger("16527", status_16527)
+    assert trig_16527 is not None
+    assert trig_16527["triggered"] is True
+    assert trig_16527["milestone_station"] == "BAND"
+    assert trig_16527["boarding_station"] == "CRLM"
+    assert trig_16527["lead_time_mins"] == 25
+
+    # Urgent trigger when train arrives at boarding station
+    status_16211_urgent = {
+        "train_no": "16211",
+        "delay_minutes": 13,
+        "stations": [
+            {"code": "BLRR", "name": "BELANDUR ROAD", "has_arrived": True, "has_departed": False, "sta": "16:35"},
+        ],
+        "current_station": "BLRR",
+    }
+    trig_urgent = rail_tracker.check_evening_milestone_trigger("16211", status_16211_urgent)
+    assert trig_urgent is not None
+    assert trig_urgent["triggered"] is True
+    assert "URGENT" in trig_urgent["message"]
+
+
+def test_telegram_client_timeout_no_retry_duplicate():
+    """Verify TelegramClient does not retry on socket / read timeout to prevent dual duplicate messages."""
+    import socket
+    bot = rail_daemon.TelegramClient(token="mock:token", default_chat_id="12345")
+    bot.is_proactive_alert_allowed = lambda: True
+
+    call_count = 0
+    def mock_urlopen(req, timeout=12):
+        nonlocal call_count
+        call_count += 1
+        raise socket.timeout("The read operation timed out")
+
+    with patch.object(rail_daemon.TelegramClient, "send_message", rail_daemon.TelegramClient._real_send_message):
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+            res = bot.send_message("Hello test message", parse_mode="Markdown")
+            assert res is None
+            # MUST only call urlopen once (no plain-text retry on socket timeout!)
+            assert call_count == 1
+
+
+def test_telegram_client_deduplication():
+    """Verify TelegramClient deduplicates identical proactive alerts sent within 45s."""
+    bot = rail_daemon.TelegramClient(token="mock:token", default_chat_id="12345")
+    bot.is_proactive_alert_allowed = lambda: True
+
+    with patch.object(rail_daemon.TelegramClient, "send_message", rail_daemon.TelegramClient._real_send_message):
+        with patch("urllib.request.urlopen") as mock_url:
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = json.dumps({"result": {"message_id": 999}}).encode("utf-8")
+            mock_resp.__enter__.return_value = mock_resp
+            mock_url.return_value = mock_resp
+
+            # First dispatch succeeds
+            res1 = bot.send_message("Identical commute alert", is_direct_reply=False)
+            assert res1 is not None
+
+            # Immediate identical dispatch is suppressed by deduplication cache
+            res2 = bot.send_message("Identical commute alert", is_direct_reply=False)
+            assert res2 is None
+
+
+def test_supabase_hydration_train_selection(tmp_path, monkeypatch):
+    """Verify sync_from_supabase hydrates evening_train, morning_train, and tracking states."""
+    state_file = str(tmp_path / "commute_test_hydration.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    store.state_data["evening_train"] = "16232"
+    store.state_data["state"] = rail_daemon.STATE_MIDDAY_STANDBY
+
+    mock_row = [{
+        "date": store.state_data["date"],
+        "alerts_enabled": True,
+        "state": rail_daemon.STATE_WFH,
+        "evening_train": "16211",
+        "morning_train": "16212",
+    }]
+
+    def mock_urlopen(req, timeout=5):
+        import io
+        return io.BytesIO(json.dumps(mock_row).encode("utf-8"))
+
+    monkeypatch.setattr(rail_daemon, "SUPABASE_URL", "https://mock.supabase.co")
+    monkeypatch.setattr(rail_daemon, "SUPABASE_KEY", "mock-key")
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        hydrated = store.sync_from_supabase()
+        assert hydrated is True
+        assert store.state_data["evening_train"] == "16211"
+        assert store.state_data["morning_train"] == "16212"
+        assert store.state_data["state"] == rail_daemon.STATE_WFH
+        assert store.state_data["user_manually_selected_train"] is True
+
+
+
 
 
 

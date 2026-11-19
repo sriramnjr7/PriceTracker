@@ -5436,7 +5436,7 @@
                 
                 <!-- Countdown Pill -->
                 <div style="text-align: right; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 14px 20px; border-radius: 10px;">
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 4px;">Dynamic Step-Out Time</div>
+                  <div id="rail-step-out-label" style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 4px;">Dynamic Step-Out Time</div>
                   <div id="rail-step-out-display" style="font-size: 26px; font-weight: 800; color: #38bdf8; font-variant-numeric: tabular-nums;">08:15 AM</div>
                   <div id="rail-countdown-text" style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Step out in 14 mins (10m lead time)</div>
                 </div>
@@ -9593,16 +9593,29 @@
 
     function renderRailHero(data) {
       if (!data) return;
+      const currTime = data.current_time || "";
+      const isEvening = (data.state && data.state.includes("EVENING")) || ("13:00" <= currTime && currTime < "23:30");
+
       const scan = data.morning_scan || {};
-      const rec = scan.recommended_train || {};
+      const morningRec = scan.recommended_train || {};
       const rake = data.rake_turnaround || {};
+      const eveningOpts = data.evening_options || [];
+
+      // Determine active train and option
+      let activeOpt = null;
+      if (isEvening && eveningOpts.length > 0) {
+        const targetTrain = data.active_train || (data.evening_train || "");
+        activeOpt = eveningOpts.find(o => o.train_no === targetTrain)
+                 || eveningOpts.find(o => o.status === "VIABLE")
+                 || eveningOpts[0];
+      }
 
       // Badges
       const stateBadge = document.getElementById("rail-state-badge");
-      if (stateBadge) stateBadge.textContent = data.state || "ACTIVE";
+      if (stateBadge) stateBadge.textContent = data.state || (isEvening ? "EVENING_TRACKING" : "ACTIVE");
 
       const delayBadge = document.getElementById("rail-delay-badge");
-      const delay = rec.delay_mins || 0;
+      const delay = (isEvening && activeOpt) ? (activeOpt.delay_mins || 0) : (morningRec.delay_mins || 0);
       if (delayBadge) {
         if (delay > 0) {
           delayBadge.textContent = `+${delay}m Delayed`;
@@ -9659,52 +9672,92 @@
         }
       }
 
-      // Title & Subtitle
+      // Title & Subtitle & Labels
       const title = document.getElementById("rail-hero-title");
-      if (title) title.textContent = `Train ${rec.train_no || "66596"}: ${rec.train_name || "Hosur MEMU"}`;
-
       const subtitle = document.getElementById("rail-hero-subtitle");
-      if (subtitle) {
-        subtitle.textContent = `Hosur (${rec.projected_departure || "08:25"}) → Bellandur Road (${rec.dest_eta || "09:03"}) → ETV Desk (~${rec.desk_eta || "09:35"})`;
-      }
-
-      // Countdown
+      const stepOutLabel = document.getElementById("rail-step-out-label");
       const stepOutDisplay = document.getElementById("rail-step-out-display");
-      if (stepOutDisplay) stepOutDisplay.textContent = `${rec.step_out_time || data.step_out_time || "08:15"} AM`;
-
       const countdownText = document.getElementById("rail-countdown-text");
+      const rakeText = document.getElementById("rail-rake-text");
+
       const cd = data.step_out_countdown_mins;
-      if (countdownText) {
-        if (data.state === "WEEKEND_REST") {
-          countdownText.textContent = "🏖️ Weekend Rest Mode — Next Commute Monday 06:45 AM";
-          countdownText.style.color = "#38bdf8";
-        } else if (data.state === "WFH") {
-          countdownText.textContent = "🏠 Work From Home Active — Proactive tracking paused";
-          countdownText.style.color = "#a78bfa";
-        } else if (data.state === "BIKE") {
-          countdownText.textContent = "🏍️ Bike / Road Mode Active — Rail alerts paused";
-          countdownText.style.color = "#fbbf24";
-        } else if (cd !== undefined && cd !== null) {
-          if (cd > 0) {
-            countdownText.textContent = `Step out in ${cd} mins (10m walk buffer)`;
-            countdownText.style.color = "#94a3b8";
-          } else if (cd >= -10) {
-            countdownText.textContent = `🚨 STEP OUT NOW! Train departs in ${10 + cd}m`;
-            countdownText.style.color = "#ef4444";
-          } else {
-            countdownText.textContent = `Train departed Hosur Platform 1`;
-            countdownText.style.color = "#64748b";
+
+      if (isEvening && activeOpt) {
+        if (title) title.textContent = `Train ${activeOpt.train_no}: ${activeOpt.train_name}`;
+        if (subtitle) {
+          subtitle.textContent = `ETV Desk (~${activeOpt.leave_desk_time || '16:16'}) → ${activeOpt.boarding_station} (${activeOpt.boarding_sta || activeOpt.projected_departure}) → Hosur (~${activeOpt.dest_eta || activeOpt.hosur_eta || '17:35'})`;
+        }
+        if (stepOutLabel) stepOutLabel.textContent = "Dynamic Leave-Desk Time";
+        if (stepOutDisplay) stepOutDisplay.textContent = `${activeOpt.leave_desk_time || data.step_out_time || "16:16"}`;
+
+        if (countdownText) {
+          if (data.state === "WEEKEND_REST") {
+            countdownText.textContent = "🏖️ Weekend Rest Mode — Next Commute Monday 06:45 AM";
+            countdownText.style.color = "#38bdf8";
+          } else if (data.state === "WFH") {
+            countdownText.textContent = "🏠 Work From Home Active — Proactive tracking paused";
+            countdownText.style.color = "#a78bfa";
+          } else if (data.state === "BIKE") {
+            countdownText.textContent = "🏍️ Bike / Road Mode Active — Rail alerts paused";
+            countdownText.style.color = "#fbbf24";
+          } else if (cd !== undefined && cd !== null) {
+            const lead = activeOpt.lead_time_mins || 20;
+            if (cd > 0) {
+              countdownText.textContent = `Leave desk in ${cd} mins (${lead}m transit cushion)`;
+              countdownText.style.color = "#94a3b8";
+            } else if (cd >= -15) {
+              countdownText.textContent = `🚨 LEAVE DESK NOW! Train boarding at ${activeOpt.boarding_station}`;
+              countdownText.style.color = "#ef4444";
+            } else {
+              countdownText.textContent = `Train en route to Hosur`;
+              countdownText.style.color = "#64748b";
+            }
           }
         }
-      }
 
-      // Rake Banner
-      const rakeText = document.getElementById("rail-rake-text");
-      if (rakeText) {
-        if (rake.is_delayed) {
-          rakeText.textContent = `⚠️ Turnaround Alert: Incoming rake (${rake.incoming_rake_train}) is at ${rake.rake_current_station_name} delayed by ${rake.rake_delay_mins}m. Projected Hosur departure shifted to ${rake.projected_hsra_departure} AM.`;
-        } else {
-          rakeText.textContent = `Incoming rake (${rake.incoming_rake_train || "66595"}) is on schedule near ${rake.rake_current_station_name || "Heelalige"}. Normal 08:25 AM turnaround departure.`;
+        if (rakeText) {
+          const lead = activeOpt.lead_time_mins || 20;
+          rakeText.textContent = `Boarding station: ${activeOpt.boarding_station} (~${lead}m transit cushion from ETV Parcel 5). Milestone station: ${activeOpt.milestone_station || 'BAND/BNC'}.`;
+        }
+      } else {
+        // Morning mode
+        if (title) title.textContent = `Train ${morningRec.train_no || "66596"}: ${morningRec.train_name || "Hosur MEMU"}`;
+        if (subtitle) {
+          subtitle.textContent = `Hosur (${morningRec.projected_departure || "08:25"}) → Bellandur Road (${morningRec.dest_eta || "09:03"}) → ETV Desk (~${morningRec.desk_eta || "09:35"})`;
+        }
+        if (stepOutLabel) stepOutLabel.textContent = "Dynamic Step-Out Time";
+        if (stepOutDisplay) stepOutDisplay.textContent = `${morningRec.step_out_time || data.step_out_time || "08:15"} AM`;
+
+        if (countdownText) {
+          if (data.state === "WEEKEND_REST") {
+            countdownText.textContent = "🏖️ Weekend Rest Mode — Next Commute Monday 06:45 AM";
+            countdownText.style.color = "#38bdf8";
+          } else if (data.state === "WFH") {
+            countdownText.textContent = "🏠 Work From Home Active — Proactive tracking paused";
+            countdownText.style.color = "#a78bfa";
+          } else if (data.state === "BIKE") {
+            countdownText.textContent = "🏍️ Bike / Road Mode Active — Rail alerts paused";
+            countdownText.style.color = "#fbbf24";
+          } else if (cd !== undefined && cd !== null) {
+            if (cd > 0) {
+              countdownText.textContent = `Step out in ${cd} mins (10m walk buffer)`;
+              countdownText.style.color = "#94a3b8";
+            } else if (cd >= -10) {
+              countdownText.textContent = `🚨 STEP OUT NOW! Train departs in ${10 + cd}m`;
+              countdownText.style.color = "#ef4444";
+            } else {
+              countdownText.textContent = `Train departed Hosur Platform 1`;
+              countdownText.style.color = "#64748b";
+            }
+          }
+        }
+
+        if (rakeText) {
+          if (rake.is_delayed) {
+            rakeText.textContent = `⚠️ Turnaround Alert: Incoming rake (${rake.incoming_rake_train}) is at ${rake.rake_current_station_name} delayed by ${rake.rake_delay_mins}m. Projected Hosur departure shifted to ${rake.projected_hsra_departure} AM.`;
+          } else {
+            rakeText.textContent = `Incoming rake (${rake.incoming_rake_train || "66595"}) is on schedule near ${rake.rake_current_station_name || "Heelalige"}. Normal 08:25 AM turnaround departure.`;
+          }
         }
       }
     }
@@ -9860,6 +9913,11 @@
       try {
         const payload = { action: actionName };
         if (trainNo) payload.train_no = trainNo;
+        // Optimistic UI update for immediate response
+        if (actionName === "select_train" && trainNo && railRadarState.status) {
+          railRadarState.status.active_train = trainNo;
+          renderRailHero(railRadarState.status);
+        }
         const res = await fetch("/api/rail/action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

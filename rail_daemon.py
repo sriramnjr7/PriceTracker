@@ -117,6 +117,7 @@ class TelegramClient:
         self.default_chat_id = default_chat_id.strip() if default_chat_id else ""
         self.base_url = f"https://api.telegram.org/bot{self.token}" if self.token else ""
         self.store = store
+        self._recent_dispatches: Dict[str, float] = {}
 
     def is_proactive_alert_allowed(self) -> bool:
         """
@@ -172,6 +173,19 @@ class TelegramClient:
         # Truncate text if exceeding Telegram message limit
         safe_text = text if len(text) <= 4000 else (text[:3985] + "\n...[truncated]")
 
+        # Autonomous / Proactive message de-duplication:
+        # Never send identical message text to same chat within 45 seconds
+        if not is_direct_reply:
+            import hashlib
+            msg_hash = hashlib.md5(f"{target_chat}:{safe_text}".encode("utf-8")).hexdigest()
+            now_ts = time.time()
+            if hasattr(self, "_recent_dispatches"):
+                self._recent_dispatches = {k: v for k, v in self._recent_dispatches.items() if (now_ts - v) < 300}
+                if msg_hash in self._recent_dispatches and (now_ts - self._recent_dispatches[msg_hash]) < 45:
+                    logger.warning("Suppressed duplicate proactive Telegram alert within 45s (chat=%s)", target_chat)
+                    return None
+                self._recent_dispatches[msg_hash] = now_ts
+
         url = f"{self.base_url}/sendMessage"
         payload: Dict[str, Any] = {
             "chat_id": target_chat,
@@ -192,10 +206,10 @@ class TelegramClient:
             with urllib.request.urlopen(req, timeout=12) as resp:
                 res = json.loads(resp.read().decode("utf-8"))
                 return res.get("result")
-        except Exception as exc:
-            # Fallback: If Markdown parse error or entity error, retry as plain text
-            if payload.get("parse_mode"):
-                logger.warning("Telegram send_message failed with parse_mode=%s (%s). Retrying as plain text...", payload["parse_mode"], exc)
+        except urllib.error.HTTPError as http_err:
+            # Fallback ONLY for HTTP 400 Bad Request entity parse error (e.g. unescaped Markdown)
+            if http_err.code == 400 and payload.get("parse_mode"):
+                logger.warning("Telegram send_message failed with parse_mode=%s (HTTP 400). Retrying as plain text...", payload["parse_mode"])
                 plain_payload = dict(payload)
                 plain_payload.pop("parse_mode", None)
                 try:
@@ -210,7 +224,12 @@ class TelegramClient:
                 except Exception as retry_exc:
                     logger.error("Retry sending plain Telegram message also failed: %s", retry_exc)
             else:
-                logger.error("Failed to send Telegram message: %s", exc)
+                logger.error("HTTP error sending Telegram message: %s", http_err)
+            return None
+        except Exception as exc:
+            # Socket timeouts, connection resets, etc. must NOT be retried as plain text,
+            # because Telegram server may have already processed and dispatched the message.
+            logger.error("Network or timeout sending Telegram message (%s). Skipped retry to prevent duplicate dispatch.", exc)
             return None
 
     # Reference to original send_message for resilience unit tests
@@ -251,9 +270,9 @@ class TelegramClient:
             with urllib.request.urlopen(req, timeout=12) as resp:
                 res = json.loads(resp.read().decode("utf-8"))
                 return res.get("result")
-        except Exception as exc:
-            if payload.get("parse_mode"):
-                logger.warning("Telegram edit_message failed with parse_mode=%s (%s). Retrying as plain text...", payload["parse_mode"], exc)
+        except urllib.error.HTTPError as http_err:
+            if http_err.code == 400 and payload.get("parse_mode"):
+                logger.warning("Telegram edit_message failed with parse_mode=%s (HTTP 400). Retrying as plain text...", payload["parse_mode"])
                 plain_payload = dict(payload)
                 plain_payload.pop("parse_mode", None)
                 try:
@@ -268,7 +287,10 @@ class TelegramClient:
                 except Exception as retry_exc:
                     logger.error("Retry editing plain Telegram message also failed: %s", retry_exc)
             else:
-                logger.error("Failed to edit Telegram message: %s", exc)
+                logger.error("Failed to edit Telegram message: %s", http_err)
+            return None
+        except Exception as exc:
+            logger.error("Network or timeout editing Telegram message: %s", exc)
             return None
 
     def answer_callback(self, callback_query_id: str, text: Optional[str] = None) -> bool:
@@ -459,9 +481,23 @@ class CommuteStateStore:
                         if row["state"] in (STATE_WFH, STATE_BIKE, STATE_WEEKEND_REST):
                             self.state_data["state"] = row["state"]
                             changed = True
+                    if row.get("evening_train") and row["evening_train"] != self.state_data.get("evening_train"):
+                        self.state_data["evening_train"] = row["evening_train"]
+                        self.state_data["user_manually_selected_train"] = True
+                        changed = True
+                    if row.get("morning_train") and row["morning_train"] != self.state_data.get("morning_train"):
+                        self.state_data["morning_train"] = row["morning_train"]
+                        self.state_data["user_manually_selected_train"] = True
+                        changed = True
                     if changed:
                         self.save(sync_supabase=False)
-                        logger.info("Hydrated state from Supabase: alerts_enabled=%s, state=%s", self.state_data.get("alerts_enabled"), self.state_data.get("state"))
+                        logger.info(
+                            "Hydrated state from Supabase: alerts_enabled=%s, state=%s, evening_train=%s, morning_train=%s",
+                            self.state_data.get("alerts_enabled"),
+                            self.state_data.get("state"),
+                            self.state_data.get("evening_train"),
+                            self.state_data.get("morning_train"),
+                        )
                     return True
         except Exception as exc:
             logger.debug("Supabase hydration skipped/failed: %s", exc)
@@ -691,7 +727,7 @@ class RailDaemon:
         # or incoming rake 66595 reaches Hosur, trigger immediate STEP OUT NOW notification!
         if not self.store.state_data.get("morning_stepped_out"):
             active_status = scan.get("statuses", {}).get(active_train) or rail_tracker.get_live_train_status(active_train)
-            milestone = rail_tracker.check_morning_milestone_trigger(active_train, active_status)
+            milestone = rail_tracker.check_morning_milestone_trigger(active_train, active_status, reference_time=current_time)
             if milestone and milestone.get("triggered"):
                 if self.store.state_data.get("alerts_enabled", True):
                     self.bot.send_message(milestone["message"], reply_markup=self.get_stepped_out_keyboard())
@@ -909,8 +945,9 @@ class RailDaemon:
 
     def handle_evening_tracking(self, current_time: Optional[str] = None, now: Optional[datetime] = None) -> None:
         """
-        Monitors evening train (e.g. 16232) and checks milestone triggers
-        (e.g. Train 16232 clearing BNC -> 'LEAVE DESK NOW').
+        Continuously tracks active evening train (16211, 16232, 66583, 66585, 16527, 16236).
+        Monitors dynamic boarding station (BLRR vs CRLM), physical milestones (BAND, BNC, BYPL),
+        leave-desk countdowns, and delay shifts.
         """
         if now is None:
             now = get_ist_now()
@@ -925,28 +962,96 @@ class RailDaemon:
         if not current_time:
             current_time = (now or get_ist_now()).strftime("%H:%M")
 
-        if current_time < "15:30" or current_time >= "23:30":
+        if current_time < "14:00" or current_time >= "23:30":
             logger.warning("Evening tracking invoked outside evening hours (%s)", current_time)
             return
 
+        # Query evening options with live status
+        scan_evening = rail_tracker.scan_evening_commute_options(reference_time=current_time)
+        options = scan_evening if isinstance(scan_evening, list) else scan_evening.get("options", [])
+
+        # Default active train to first viable if unset
+        if not self.store.state_data.get("evening_train"):
+            viable = next((o for o in options if o.get("status") == "VIABLE"), options[0] if options else None)
+            if viable:
+                self.store.state_data["evening_train"] = viable["train_no"]
+
         active_train = self.store.state_data.get("evening_train", "16232")
+        active_opt = next((o for o in options if o.get("train_no") == active_train), None)
+
         status = rail_tracker.get_live_train_status(active_train)
 
-        # Milestone Check
+        target_station = (active_opt.get("boarding_station") if active_opt else None) or ("BLRR" if active_train in ("66585", "16211", "66583") else "CRLM")
+        target_name = "Bellandur Road (BLRR)" if target_station == "BLRR" else "Carmelaram (CRLM)"
+        lead_time = (active_opt.get("lead_time_mins") if active_opt else None) or (LEAD_TIME_BLRR if target_station == "BLRR" else LEAD_TIME_CRLM)
+        leave_desk_time = (active_opt.get("leave_desk_time") if active_opt else None) or ""
+        boarding_eta = (active_opt.get("boarding_sta") if active_opt else None) or ""
+        current_delay = (active_opt.get("delay_mins") if active_opt else None) or status.get("delay_minutes", 0)
+
+        # 1. Physical Milestone Check
         if not self.store.state_data.get("evening_milestone_fired"):
-            milestone = rail_tracker.check_evening_milestone_trigger(active_train, status)
+            milestone = rail_tracker.check_evening_milestone_trigger(active_train, status, reference_time=current_time)
             if milestone and milestone.get("triggered"):
                 if self.store.state_data.get("alerts_enabled", True):
-                    self.bot.send_message(milestone["message"])
+                    self.bot.send_message(milestone["message"], reply_markup=self.get_stepped_out_keyboard())
                 else:
                     logger.info("Suppressed evening milestone alert push: Alerts muted")
                 self.store.state_data["evening_milestone_fired"] = True
+                self.store.state_data["evening_stepped_out"] = True
                 self.store.save(sync_supabase=True)
 
-        # Check if train has departed CRLM/BLRR or passed 22:30
+        # 2. Time-Based Leave-Desk Check (Fallback when physical milestone not reported or train delayed)
+        if not self.store.state_data.get("evening_milestone_fired") and leave_desk_time:
+            diff_to_leave = rail_tracker.minutes_difference(current_time, leave_desk_time)
+            if -1 <= diff_to_leave <= 1:
+                leave_msg = (
+                    f"🚨 *LEAVE DESK NOW! (ETV Desk &rarr; {target_name})*\n\n"
+                    f"Time to head to *{target_name}* for your commute home!\n"
+                    f"• Train: *{active_opt.get('train_name', f'Train {active_train}') if active_opt else f'Train {active_train}'} ({active_train})*\n"
+                    f"• Expected {target_station} Arrival: ~*{boarding_eta}*\n"
+                    f"• Current Delay: *+{current_delay} mins*\n\n"
+                    f"🏃 ~{lead_time} mins transit cushion from ETV Parcel 5. Tap below when you reach station:"
+                )
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(leave_msg, reply_markup=self.get_stepped_out_keyboard())
+                else:
+                    logger.info("Suppressed evening leave-desk alert push: Alerts muted")
+                self.store.state_data["evening_milestone_fired"] = True
+                self.store.state_data["evening_stepped_out"] = True
+                self.store.save(sync_supabase=True)
+
+        # 3. Live Delay Shift Monitoring (>= 3 minutes change)
+        last_evening_delay = self.store.state_data.get("last_evening_delay_reported", 0)
         crlm_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_CARMELARAM), None)
         blrr_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_BELLANDUR), None)
         has_departed_boarding = (crlm_stn and crlm_stn.get("has_departed")) or (not crlm_stn and blrr_stn and blrr_stn.get("has_departed"))
+
+        if not has_departed_boarding and not self.store.state_data.get("evening_completed"):
+            if abs(current_delay - last_evening_delay) >= 3 or (current_delay > 0 and last_evening_delay == 0):
+                if current_delay > last_evening_delay:
+                    extra = current_delay - last_evening_delay
+                    delay_note = f"⏳ Train delayed by an additional *{extra} mins*. You have extra time at desk!"
+                elif current_delay < last_evening_delay:
+                    made_up = last_evening_delay - current_delay
+                    delay_note = f"⚡ Train made up *{made_up} mins*! Arriving earlier at {target_station}."
+                else:
+                    delay_note = f"ℹ️ Revised {target_station} arrival: ~*{boarding_eta}*."
+
+                delay_alert = (
+                    f"⚠️ *Commute Delay Alert: Train {active_train} ({active_opt.get('train_name', '') if active_opt else ''})*\n\n"
+                    f"• *Current Delay*: *+{current_delay} mins*\n"
+                    f"• *Revised {target_station} Arrival*: ~*{boarding_eta}*\n"
+                    f"• *New Leave-Desk Time*: ~*{leave_desk_time}*\n\n"
+                    f"{delay_note}"
+                )
+                if self.store.state_data.get("alerts_enabled", True):
+                    self.bot.send_message(delay_alert)
+                else:
+                    logger.info("Suppressed evening delay shift push: Alerts muted")
+                self.store.state_data["last_evening_delay_reported"] = current_delay
+                self.store.save(sync_supabase=True)
+
+        # 4. Check if train has departed CRLM/BLRR or passed 23:30
         if has_departed_boarding:
             if not self.store.state_data.get("evening_completed"):
                 if self.store.state_data.get("alerts_enabled", True):
