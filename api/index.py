@@ -1413,7 +1413,7 @@ def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dic
     return {
         "status": "ok",
         "state": resolved_state,
-        "active_train": state_data.get("morning_train" if "MORNING" in resolved_state else "evening_train", "66596"),
+        "active_train": state_data.get("morning_train", "66596") if "MORNING" in resolved_state else state_data.get("evening_train", "16211"),
         "current_time": now_time,
         "step_out_time": step_out,
         "step_out_countdown_mins": countdown_mins,
@@ -1475,18 +1475,95 @@ def _build_offline_rail_status(now_time: str, state_data: dict[str, Any]) -> dic
         },
         "evening_options": [
             {
-                "train_no": "16232",
-                "train_name": "MYS MV RANI EXP",
-                "boarding_station": "CRLM",
-                "scheduled_departure": "19:40",
-                "estimated_departure": "19:40",
-                "leave_desk_time": "19:15",
-                "lead_time_mins": 25,
-                "hosur_eta": "20:20",
+                "train_no": "66585",
+                "train_name": "Yesvantpur - Hosur MEMU",
+                "boarding_station": "BLRR",
+                "scheduled_departure": "15:43",
+                "estimated_departure": "15:43",
+                "leave_desk_time": "15:23",
+                "lead_time_mins": 20,
+                "hosur_eta": "16:34",
                 "delay_mins": 0,
-                "current_location": "BNC (BNC)",
+                "milestone_station": "BAND",
+                "status": "VIABLE",
+                "current_location": "YPR (YPR)",
                 "status_text": "Scheduled",
-            }
+            },
+            {
+                "train_no": "16211",
+                "train_name": "Yesvantpur - Salem Express",
+                "boarding_station": "BLRR",
+                "scheduled_departure": "16:36",
+                "estimated_departure": "16:36",
+                "leave_desk_time": "16:16",
+                "lead_time_mins": 20,
+                "hosur_eta": "17:19",
+                "delay_mins": 0,
+                "milestone_station": "BAND",
+                "status": "VIABLE",
+                "current_location": "YPR (YPR)",
+                "status_text": "Scheduled",
+            },
+            {
+                "train_no": "66583",
+                "train_name": "KSR Bengaluru - Dharmapuri MEMU",
+                "boarding_station": "BLRR",
+                "scheduled_departure": "18:55",
+                "estimated_departure": "18:55",
+                "leave_desk_time": "18:35",
+                "lead_time_mins": 20,
+                "hosur_eta": "19:34",
+                "delay_mins": 0,
+                "milestone_station": "BNC",
+                "status": "VIABLE",
+                "current_location": "SBC (SBC)",
+                "status_text": "Scheduled",
+            },
+            {
+                "train_no": "16232",
+                "train_name": "Mailaduturai Express",
+                "boarding_station": "CRLM",
+                "scheduled_departure": "19:35",
+                "estimated_departure": "19:35",
+                "leave_desk_time": "19:10",
+                "lead_time_mins": 25,
+                "hosur_eta": "20:08",
+                "delay_mins": 0,
+                "milestone_station": "BNC",
+                "status": "VIABLE",
+                "current_location": "SBC (SBC)",
+                "status_text": "Scheduled",
+            },
+            {
+                "train_no": "16527",
+                "train_name": "Yesvantpur - Kannur Express",
+                "boarding_station": "CRLM",
+                "scheduled_departure": "20:45",
+                "estimated_departure": "20:45",
+                "leave_desk_time": "20:20",
+                "lead_time_mins": 25,
+                "hosur_eta": "21:35",
+                "delay_mins": 0,
+                "milestone_station": "BAND",
+                "status": "VIABLE",
+                "current_location": "YPR (YPR)",
+                "status_text": "Scheduled",
+            },
+            {
+                "train_no": "16236",
+                "train_name": "Tuticorin Express",
+                "boarding_station": "CRLM",
+                "scheduled_departure": "21:50",
+                "estimated_departure": "21:50",
+                "leave_desk_time": "21:25",
+                "lead_time_mins": 25,
+                "hosur_eta": "22:50",
+                "delay_mins": 0,
+                "milestone_station": "BNC",
+                "status": "VIABLE",
+                "current_location": "SBC (SBC)",
+                "status_text": "Scheduled",
+            },
         ],
         "lead_times": {
             "home_to_pf1": 10,
@@ -1666,7 +1743,7 @@ async def api_rail_status():
             content={
                 "status": "ok",
                 "state": state_data.get("state", "STANDBY"),
-                "active_train": state_data.get("morning_train" if "MORNING" in state_data.get("state", "") else "evening_train", scan.get("recommended_train", {}).get("train_no", "66596")),
+                "active_train": state_data.get("morning_train", "66596") if "MORNING" in state_data.get("state", "") else state_data.get("evening_train", "16211"),
                 "current_time": now_time,
                 "step_out_time": step_out,
                 "step_out_countdown_mins": countdown_mins,
@@ -1777,10 +1854,20 @@ async def api_rail_action(request: Request):
                 or ("13:00" <= now_time < "23:30" and not ("06:00" <= now_time < "12:00"))
             )
             if is_evening:
+                if store.state_data.get("evening_train") != train_no:
+                    store.state_data["evening_milestone_fired"] = False
+                    store.state_data["evening_stepped_out"] = False
+                    store.state_data["evening_completed"] = False
+                    store.state_data["last_evening_delay_reported"] = 0
                 store.state_data["evening_train"] = train_no
                 store.state_data["user_manually_selected_train"] = True
                 store.transition_state(rail_daemon.STATE_EVENING_TRACKING, f"Tracking evening train {train_no}")
             else:
+                if store.state_data.get("morning_train") != train_no:
+                    store.state_data["morning_stepped_out"] = False
+                    store.state_data["morning_milestone_fired"] = False
+                    store.state_data["morning_completed"] = False
+                    store.state_data["last_delay_reported"] = 0
                 store.state_data["morning_train"] = train_no
                 store.state_data["user_manually_selected_train"] = True
                 store.transition_state(rail_daemon.STATE_MORNING_TRACKING, f"Tracking morning train {train_no}")

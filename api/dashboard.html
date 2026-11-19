@@ -9603,11 +9603,30 @@
 
       // Determine active train and option
       let activeOpt = null;
-      if (isEvening && eveningOpts.length > 0) {
-        const targetTrain = data.active_train || (data.evening_train || "");
-        activeOpt = eveningOpts.find(o => o.train_no === targetTrain)
-                 || eveningOpts.find(o => o.status === "VIABLE")
-                 || eveningOpts[0];
+      if (isEvening) {
+        let targetTrain = data.evening_train || data.active_train || "";
+        if (targetTrain === "66596" || targetTrain === "06278" || targetTrain === "16212") {
+          targetTrain = data.evening_train || "";
+        }
+        if (eveningOpts && eveningOpts.length > 0) {
+          activeOpt = (targetTrain ? eveningOpts.find(o => o.train_no === targetTrain) : null)
+                   || eveningOpts.find(o => o.status === "VIABLE")
+                   || eveningOpts.find(o => o.status === "BOARDING")
+                   || eveningOpts[0];
+        }
+        if (!activeOpt) {
+          activeOpt = {
+            train_no: targetTrain || "16211",
+            train_name: targetTrain === "16232" ? "Mailaduturai Express" : "Yesvantpur - Salem Express",
+            boarding_station: targetTrain === "16232" ? "CRLM" : "BLRR",
+            scheduled_departure: targetTrain === "16232" ? "19:35" : "16:36",
+            leave_desk_time: targetTrain === "16232" ? "19:10" : "16:16",
+            lead_time_mins: targetTrain === "16232" ? 25 : 20,
+            dest_eta: targetTrain === "16232" ? "20:08" : "17:19",
+            delay_mins: 0,
+            milestone_station: targetTrain === "16232" ? "BNC" : "BAND",
+          };
+        }
       }
 
       // Badges
@@ -9916,6 +9935,7 @@
         // Optimistic UI update for immediate response
         if (actionName === "select_train" && trainNo && railRadarState.status) {
           railRadarState.status.active_train = trainNo;
+          railRadarState.status.evening_train = trainNo;
           renderRailHero(railRadarState.status);
         }
         const res = await fetch("/api/rail/action", {

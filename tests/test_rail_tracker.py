@@ -2079,8 +2079,8 @@ def test_patch6_api_overnight_default_and_reached_action():
 def test_patch7_telegram_action_stay_handler_and_milestones():
     """Verify action:stay transitions daemon to STATE_HIBERNATION and milestone_station is set."""
     # 1. Timetable milestones
-    assert rail_tracker.CORRIDOR_SCHEDULES["66585"]["milestone_station"] == "BYPL"
-    assert rail_tracker.CORRIDOR_SCHEDULES["66583"]["milestone_station"] == "BYPL"
+    assert rail_tracker.CORRIDOR_SCHEDULES["66585"]["milestone_station"] == "BAND"
+    assert rail_tracker.CORRIDOR_SCHEDULES["66583"]["milestone_station"] == "BNC"
 
     # 2. Daemon telegram action:stay
     import tempfile
@@ -2254,7 +2254,7 @@ def test_check_evening_milestone_trigger_safe_dict_access():
     trig2 = rail_tracker.check_evening_milestone_trigger("16232", status_departed)
     assert trig2 is not None
     assert trig2["triggered"] is True
-    assert trig2["crlm_eta"] == "19:35"
+    assert trig2["crlm_eta"] == "19:34"
     assert trig2["boarding_station"] == "CRLM"
     assert trig2["lead_time_mins"] == 25
 
@@ -2569,7 +2569,7 @@ def test_dynamic_evening_milestone_blrr():
         "train_no": "66585",
         "delay_minutes": 7,
         "stations": [
-            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "has_departed": True, "etd": "15:48", "std": "15:41"},
+            {"code": "BAND", "name": "BANASWADI", "has_departed": True, "etd": "15:34", "std": "15:27"},
             {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "15:58", "std": "15:59"},  # eta missing, sta=15:58 + 7m delay = 16:05
         ],
     }
@@ -2749,7 +2749,7 @@ def test_evening_milestone_trigger_suppressed_if_target_already_departed():
         "train_no": "66585",
         "delay_minutes": 2,
         "stations": [
-            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "has_departed": True, "etd": "15:43"},
+            {"code": "BAND", "name": "BANASWADI", "has_departed": True, "etd": "15:30"},
             {"code": "BLRR", "name": "BELANDUR ROAD", "has_departed": True, "sta": "15:58", "etd": "16:00"},
         ],
     }
@@ -3114,6 +3114,137 @@ def test_supabase_hydration_train_selection(tmp_path, monkeypatch):
         assert store.state_data["morning_train"] == "16212"
         assert store.state_data["state"] == rail_daemon.STATE_WFH
         assert store.state_data["user_manually_selected_train"] is True
+
+
+def test_all_six_evening_trains_milestone_and_boarding():
+    """Comprehensive test validating physical milestone, boarding station, and lead time for all 6 evening trains."""
+    # 1. 66585 (Yesvantpur - Hosur MEMU): Milestone BAND, Boards BLRR, Lead 20m
+    st_66585 = {
+        "train_no": "66585",
+        "delay_minutes": 0,
+        "stations": [
+            {"code": "BAND", "name": "BANASWADI", "has_departed": True, "etd": "15:27", "std": "15:27"},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "15:42", "std": "15:43"},
+        ],
+    }
+    trig_66585 = rail_tracker.check_evening_milestone_trigger("66585", st_66585)
+    assert trig_66585 is not None
+    assert trig_66585["triggered"] is True
+    assert trig_66585["milestone_station"] == "BAND"
+    assert trig_66585["boarding_station"] == "BLRR"
+    assert trig_66585["lead_time_mins"] == 20
+    assert trig_66585["boarding_eta"] == "15:42"
+
+    # 2. 16211 (Yesvantpur - Salem Express): Milestone BAND, Boards BLRR, Lead 20m
+    st_16211 = {
+        "train_no": "16211",
+        "delay_minutes": 10,
+        "stations": [
+            {"code": "BAND", "name": "BANASWADI", "has_departed": True, "etd": "16:32", "std": "16:22"},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "16:35", "std": "16:36"},
+        ],
+    }
+    trig_16211 = rail_tracker.check_evening_milestone_trigger("16211", st_16211)
+    assert trig_16211 is not None
+    assert trig_16211["triggered"] is True
+    assert trig_16211["milestone_station"] == "BAND"
+    assert trig_16211["boarding_station"] == "BLRR"
+    assert trig_16211["lead_time_mins"] == 20
+    assert trig_16211["boarding_eta"] == "16:45"  # 16:35 + 10m delay
+
+    # 3. 66583 (KSR Bengaluru - Dharmapuri MEMU): Milestone BNC, Boards BLRR, Lead 20m
+    st_66583 = {
+        "train_no": "66583",
+        "delay_minutes": 5,
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "has_departed": True, "etd": "18:40", "std": "18:35"},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "18:49", "std": "18:50"},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "18:54", "std": "18:55"},
+        ],
+    }
+    trig_66583 = rail_tracker.check_evening_milestone_trigger("66583", st_66583)
+    assert trig_66583 is not None
+    assert trig_66583["triggered"] is True
+    assert trig_66583["milestone_station"] == "BNC"
+    assert trig_66583["boarding_station"] == "BLRR"
+    assert trig_66583["lead_time_mins"] == 20
+    assert trig_66583["boarding_eta"] == "18:59"  # 18:54 + 5m delay
+
+    # 4. 16232 (Mailaduturai Express): Milestone BNC, Boards CRLM, Lead 25m
+    st_16232 = {
+        "train_no": "16232",
+        "delay_minutes": 4,
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "has_departed": True, "etd": "19:14", "std": "19:10"},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "19:34", "std": "19:35"},
+        ],
+    }
+    trig_16232 = rail_tracker.check_evening_milestone_trigger("16232", st_16232)
+    assert trig_16232 is not None
+    assert trig_16232["triggered"] is True
+    assert trig_16232["milestone_station"] == "BNC"
+    assert trig_16232["boarding_station"] == "CRLM"
+    assert trig_16232["lead_time_mins"] == 25
+    assert trig_16232["boarding_eta"] == "19:38"  # 19:34 + 4m delay
+
+    # 5. 16527 (Yesvantpur - Kannur Express): Milestone BAND, Boards CRLM, Lead 25m
+    st_16527 = {
+        "train_no": "16527",
+        "delay_minutes": 2,
+        "stations": [
+            {"code": "BAND", "name": "BANASWADI", "has_departed": True, "etd": "20:23", "std": "20:21"},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "20:45", "std": "20:46"},
+        ],
+    }
+    trig_16527 = rail_tracker.check_evening_milestone_trigger("16527", st_16527)
+    assert trig_16527 is not None
+    assert trig_16527["triggered"] is True
+    assert trig_16527["milestone_station"] == "BAND"
+    assert trig_16527["boarding_station"] == "CRLM"
+    assert trig_16527["lead_time_mins"] == 25
+    assert trig_16527["boarding_eta"] == "20:47"  # 20:45 + 2m delay
+
+    # 6. 16236 (Tuticorin Express): Milestone BNC, Boards CRLM, Lead 25m
+    st_16236 = {
+        "train_no": "16236",
+        "delay_minutes": 6,
+        "stations": [
+            {"code": "BNC", "name": "BANGALORE CANT", "has_departed": True, "etd": "21:34", "std": "21:28"},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "21:50", "std": "21:51"},
+        ],
+    }
+    trig_16236 = rail_tracker.check_evening_milestone_trigger("16236", st_16236)
+    assert trig_16236 is not None
+    assert trig_16236["triggered"] is True
+    assert trig_16236["milestone_station"] == "BNC"
+    assert trig_16236["boarding_station"] == "CRLM"
+    assert trig_16236["lead_time_mins"] == 25
+    assert trig_16236["boarding_eta"] == "21:56"  # 21:50 + 6m delay
+
+
+def test_evening_train_switch_resets_milestone_fired_flags(tmp_path):
+    """Verify switching evening_train in cmd_track or sync_from_supabase resets evening_milestone_fired and completed."""
+    state_file = str(tmp_path / "commute_test_switch.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    bot = rail_daemon.TelegramClient("test_token", "12345", store=store)
+    daemon = rail_daemon.RailDaemon(store=store, bot=bot)
+
+    # Initial state: 16211 milestone already fired and completed
+    store.state_data["evening_train"] = "16211"
+    store.state_data["evening_milestone_fired"] = True
+    store.state_data["evening_stepped_out"] = True
+    store.state_data["evening_completed"] = True
+    store.state_data["last_evening_delay_reported"] = 15
+
+    # Switch to 16232 via cmd_track
+    with patch.object(bot, "send_message"):
+        daemon.cmd_track("16232")
+
+    assert store.state_data["evening_train"] == "16232"
+    assert store.state_data["evening_milestone_fired"] is False
+    assert store.state_data["evening_stepped_out"] is False
+    assert store.state_data["evening_completed"] is False
+    assert store.state_data["last_evening_delay_reported"] == 0
 
 
 

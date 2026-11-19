@@ -249,19 +249,21 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
     },
     "66585": {
         "train_no": "66585",
-        "train_name": "Bangalore Cant - Hosur MEMU",
+        "train_name": "Yesvantpur - Hosur MEMU",
         "direction": "EVENING",
-        "origin": "BNC",
+        "origin": "YPR",
         "destination": "HSRA",
-        "milestone_station": "BYPL",
+        "milestone_station": "BAND",
         "stations": [
-            {"code": "BNC", "name": "BANGALORE CANT", "sta": "Source", "std": "15:30", "halt": 0, "day": 1},
-            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "15:40", "std": "15:41", "halt": 1, "day": 1},
-            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "15:48", "std": "15:49", "halt": 1, "day": 1},
-            {"code": "CRLM", "name": "CARMELARAM", "sta": "15:53", "std": "15:54", "halt": 1, "day": 1},
-            {"code": "HLE", "name": "HEELALIGE", "sta": "16:03", "std": "16:04", "halt": 1, "day": 1},
-            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "16:14", "std": "16:15", "halt": 1, "day": 1},
-            {"code": "HSRA", "name": "HOSUR", "sta": "16:40", "std": "Destination", "halt": 0, "day": 1},
+            {"code": "YPR", "name": "YESVANTPUR JN", "sta": "Source", "std": "15:00", "halt": 0, "day": 1},
+            {"code": "LOGH", "name": "LOTTEGOLLAHALLI", "sta": "15:09", "std": "15:10", "halt": 1, "day": 1},
+            {"code": "HEB", "name": "HEBBAL", "sta": "15:15", "std": "15:16", "halt": 1, "day": 1},
+            {"code": "BAND", "name": "BANASWADI", "sta": "15:26", "std": "15:27", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "15:42", "std": "15:43", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "15:47", "std": "15:48", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "15:58", "std": "15:59", "halt": 1, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "16:08", "std": "16:09", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "16:34", "std": "Destination", "halt": 0, "day": 1},
         ],
     },
     "16211": {
@@ -276,27 +278,29 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
             {"code": "LOGH", "name": "LOTTEGOLLAHALLI", "sta": "16:04", "std": "16:05", "halt": 1, "day": 1},
             {"code": "HEB", "name": "HEBBAL", "sta": "16:10", "std": "16:11", "halt": 1, "day": 1},
             {"code": "BAND", "name": "BANASWADI", "sta": "16:21", "std": "16:22", "halt": 1, "day": 1},
-            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "16:32", "std": "16:33", "halt": 1, "day": 1},
-            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "16:42", "std": "16:43", "halt": 1, "day": 1},
-            {"code": "CRLM", "name": "CARMELARAM", "sta": "16:50", "std": "16:51", "halt": 1, "day": 1},
-            {"code": "HSRA", "name": "HOSUR", "sta": "17:35", "std": "17:37", "halt": 2, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "16:35", "std": "16:36", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "16:41", "std": "16:42", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "16:52", "std": "16:53", "halt": 1, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "17:02", "std": "17:03", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "17:19", "std": "17:35", "halt": 2, "day": 1},
         ],
     },
     "66583": {
         "train_no": "66583",
-        "train_name": "Bangalore Cant - Hosur MEMU",
+        "train_name": "KSR Bengaluru - Dharmapuri MEMU",
         "direction": "EVENING",
-        "origin": "BNC",
-        "destination": "HSRA",
-        "milestone_station": "BYPL",
+        "origin": "SBC",
+        "destination": "DPJ",
+        "milestone_station": "BNC",
         "stations": [
-            {"code": "BNC", "name": "BANGALORE CANT", "sta": "Source", "std": "18:40", "halt": 0, "day": 1},
-            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "18:50", "std": "18:51", "halt": 1, "day": 1},
-            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "19:00", "std": "19:01", "halt": 1, "day": 1},
-            {"code": "CRLM", "name": "CARMELARAM", "sta": "19:07", "std": "19:08", "halt": 1, "day": 1},
-            {"code": "HLE", "name": "HEELALIGE", "sta": "19:17", "std": "19:18", "halt": 1, "day": 1},
-            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "19:28", "std": "19:29", "halt": 1, "day": 1},
-            {"code": "HSRA", "name": "HOSUR", "sta": "19:55", "std": "Destination", "halt": 0, "day": 1},
+            {"code": "SBC", "name": "KSR BENGALURU", "sta": "Source", "std": "18:25", "halt": 0, "day": 1},
+            {"code": "BNC", "name": "BANGALORE CANT", "sta": "18:34", "std": "18:35", "halt": 1, "day": 1},
+            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "18:44", "std": "18:45", "halt": 1, "day": 1},
+            {"code": "BLRR", "name": "BELANDUR ROAD", "sta": "18:54", "std": "18:55", "halt": 1, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "18:59", "std": "19:00", "halt": 1, "day": 1},
+            {"code": "HLE", "name": "HEELALIGE", "sta": "19:10", "std": "19:11", "halt": 1, "day": 1},
+            {"code": "AEK", "name": "ANEKAL ROAD", "sta": "19:20", "std": "19:21", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "19:34", "std": "19:35", "halt": 1, "day": 1},
         ],
     },
     "16232": {
@@ -309,9 +313,8 @@ CORRIDOR_SCHEDULES: Dict[str, Dict[str, Any]] = {
         "stations": [
             {"code": "SBC", "name": "KSR BENGALURU", "sta": "Source", "std": "19:00", "halt": 0, "day": 1},
             {"code": "BNC", "name": "BANGALORE CANT", "sta": "19:08", "std": "19:10", "halt": 2, "day": 1},
-            {"code": "BYPL", "name": "BAIYAPPANAHALLI", "sta": "19:18", "std": "19:20", "halt": 2, "day": 1},
-            {"code": "CRLM", "name": "CARMELARAM", "sta": "19:35", "std": "19:36", "halt": 1, "day": 1},
-            {"code": "HSRA", "name": "HOSUR", "sta": "20:30", "std": "20:32", "halt": 2, "day": 1},
+            {"code": "CRLM", "name": "CARMELARAM", "sta": "19:34", "std": "19:35", "halt": 1, "day": 1},
+            {"code": "HSRA", "name": "HOSUR", "sta": "20:08", "std": "20:30", "halt": 2, "day": 1},
         ],
     },
     "16527": {
@@ -1564,6 +1567,18 @@ def scan_evening_commute_options(
         leave_desk_time = add_minutes_to_time(est_dep, -lead_time) if est_dep else ""
         hsra_eta = hsra_stn.get("eta", "") if hsra_stn else ""
 
+        # Determine viability status
+        diff_to_leave = minutes_difference(reference_time, leave_desk_time) if leave_desk_time else -999
+        diff_to_board = minutes_difference(reference_time, est_dep) if est_dep else -999
+        if diff_to_board < 0:
+            opt_status = "DEPARTED"
+        elif diff_to_leave <= 0:
+            opt_status = "BOARDING"
+        else:
+            opt_status = "VIABLE"
+
+        milestone_stn = sched.get("milestone_station") or ("BAND" if t_no in ("66585", "16211", "16527") else "BNC")
+
         results.append({
             "train_no": t_no,
             "train_name": sched.get("train_name", f"Train {t_no}"),
@@ -1574,6 +1589,8 @@ def scan_evening_commute_options(
             "lead_time_mins": lead_time,
             "hosur_eta": hsra_eta,
             "delay_mins": delay,
+            "milestone_station": milestone_stn,
+            "status": opt_status,
             "current_location": f"{status.get('current_station_name', '')} ({status.get('current_station', '')})",
             "status_text": status.get("current_status", ""),
         })
@@ -1711,14 +1728,10 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict, reference_
 
     milestone_code = sched.get("milestone_station")
     if not milestone_code:
-        if t_no == "16232":
+        if t_no in ("16232", "16236", "66583"):
             milestone_code = "BNC"
-        elif t_no in ("16211", "16527"):
+        elif t_no in ("66585", "16211", "16527"):
             milestone_code = "BAND"
-        elif t_no == "16236":
-            milestone_code = "BNC"
-        elif t_no in ("66585", "66583"):
-            milestone_code = "BYPL"
 
     if not milestone_code:
         return None
@@ -1790,14 +1803,24 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict, reference_
 
     # 2. Milestone Reached Check: Milestone departed OR current station is at/past milestone
     m_reached = False
+    m_idx = sched_codes.index(milestone_code) if milestone_code in sched_codes else -1
+    t_idx = sched_codes.index(target_code) if target_code in sched_codes else 999
+
     if m_stn and (m_stn.get("has_departed") or m_stn.get("has_arrived")):
         m_reached = True
-    elif curr_stn:
-        m_idx = sched_codes.index(milestone_code) if milestone_code in sched_codes else -1
-        t_idx = sched_codes.index(target_code) if target_code in sched_codes else 999
-        c_idx = sched_codes.index(curr_stn) if curr_stn in sched_codes else -1
-        if m_idx != -1 and c_idx >= m_idx and c_idx <= t_idx:
-            m_reached = True
+    elif m_idx != -1:
+        # Check if any station between milestone and target has arrived or departed
+        for s in stations:
+            sc = s.get("code")
+            if sc in sched_codes:
+                s_idx = sched_codes.index(sc)
+                if m_idx <= s_idx <= t_idx and (s.get("has_arrived") or s.get("has_departed")):
+                    m_reached = True
+                    break
+        if not m_reached and curr_stn:
+            c_idx = sched_codes.index(curr_stn) if curr_stn in sched_codes else -1
+            if m_idx <= c_idx <= t_idx:
+                m_reached = True
 
     if m_reached:
         return {
@@ -1820,5 +1843,4 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict, reference_
             ),
         }
 
-    return None
     return None

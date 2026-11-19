@@ -483,10 +483,18 @@ class CommuteStateStore:
                             changed = True
                     if row.get("evening_train") and row["evening_train"] != self.state_data.get("evening_train"):
                         self.state_data["evening_train"] = row["evening_train"]
+                        self.state_data["evening_milestone_fired"] = False
+                        self.state_data["evening_stepped_out"] = False
+                        self.state_data["evening_completed"] = False
+                        self.state_data["last_evening_delay_reported"] = 0
                         self.state_data["user_manually_selected_train"] = True
                         changed = True
                     if row.get("morning_train") and row["morning_train"] != self.state_data.get("morning_train"):
                         self.state_data["morning_train"] = row["morning_train"]
+                        self.state_data["morning_stepped_out"] = False
+                        self.state_data["morning_milestone_fired"] = False
+                        self.state_data["morning_completed"] = False
+                        self.state_data["last_delay_reported"] = 0
                         self.state_data["user_manually_selected_train"] = True
                         changed = True
                     if changed:
@@ -1022,9 +1030,14 @@ class RailDaemon:
 
         # 3. Live Delay Shift Monitoring (>= 3 minutes change)
         last_evening_delay = self.store.state_data.get("last_evening_delay_reported", 0)
-        crlm_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_CARMELARAM), None)
-        blrr_stn = next((s for s in status.get("stations", []) if s.get("code") == rail_tracker.STN_BELLANDUR), None)
-        has_departed_boarding = (crlm_stn and crlm_stn.get("has_departed")) or (not crlm_stn and blrr_stn and blrr_stn.get("has_departed"))
+        target_stn = next((s for s in status.get("stations", []) if s.get("code") == target_station), None)
+        curr_stn = status.get("current_station", "").upper()
+        has_departed_boarding = bool(target_stn and target_stn.get("has_departed"))
+        if not has_departed_boarding and curr_stn:
+            corridor_codes = rail_tracker._get_train_corridor_sequence(active_train)
+            if target_station in corridor_codes and curr_stn in corridor_codes:
+                if corridor_codes.index(curr_stn) > corridor_codes.index(target_station):
+                    has_departed_boarding = True
 
         if not has_departed_boarding and not self.store.state_data.get("evening_completed"):
             if abs(current_delay - last_evening_delay) >= 3 or (current_delay > 0 and last_evening_delay == 0):
@@ -1051,11 +1064,11 @@ class RailDaemon:
                 self.store.state_data["last_evening_delay_reported"] = current_delay
                 self.store.save(sync_supabase=True)
 
-        # 4. Check if train has departed CRLM/BLRR or passed 23:30
+        # 4. Check if train has departed boarding station
         if has_departed_boarding:
             if not self.store.state_data.get("evening_completed"):
                 if self.store.state_data.get("alerts_enabled", True):
-                    self.bot.send_message(f"🚆 Train {active_train} is en route to Hosur. Enjoy the ride home!")
+                    self.bot.send_message(f"🚆 Train {active_train} has departed {target_name} and is en route to Hosur. Enjoy the ride home!")
                 else:
                     logger.info("Suppressed evening en-route alert push: Alerts muted")
                 self.store.state_data["evening_completed"] = True
@@ -1311,10 +1324,20 @@ class RailDaemon:
         )
 
         if is_evening:
+            if self.store.state_data.get("evening_train") != t_no:
+                self.store.state_data["evening_milestone_fired"] = False
+                self.store.state_data["evening_stepped_out"] = False
+                self.store.state_data["evening_completed"] = False
+                self.store.state_data["last_evening_delay_reported"] = 0
             self.store.state_data["evening_train"] = t_no
             self.store.state_data["user_manually_selected_train"] = True
             self.store.transition_state(STATE_EVENING_TRACKING, f"User tracking evening train {t_no}")
         else:
+            if self.store.state_data.get("morning_train") != t_no:
+                self.store.state_data["morning_stepped_out"] = False
+                self.store.state_data["morning_milestone_fired"] = False
+                self.store.state_data["morning_completed"] = False
+                self.store.state_data["last_delay_reported"] = 0
             self.store.state_data["morning_train"] = t_no
             self.store.state_data["user_manually_selected_train"] = True
             if "06:45" <= now_time < "09:40":
