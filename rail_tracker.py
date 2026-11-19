@@ -1816,7 +1816,7 @@ def check_evening_milestone_trigger(train_no: str, status_dict: dict, reference_
                 f"Train *{sched.get('train_name', f'Train {t_no}')}* has departed / cleared *{milestone_code}*!\n"
                 f"• Expected *{target_name}* arrival: ~*{target_eta}*\n"
                 f"• Live Delay: *+{delay} mins*\n\n"
-                f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 &rarr; {target_code}: ~{lead_time} mins transit cushion)."
+                f"🏃 *LEAVE DESK NOW* (ETV JPMC Parcel 5 &rarr; {target_code}: ~{lead_time} mins lead time)."
             ),
         }
 
