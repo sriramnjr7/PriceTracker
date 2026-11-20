@@ -9719,6 +9719,9 @@
           } else if (data.state === "BIKE") {
             countdownText.textContent = "🏍️ Bike / Road Mode Active — Rail alerts paused";
             countdownText.style.color = "#fbbf24";
+          } else if (data.state === "MIDDAY_STANDBY") {
+            countdownText.textContent = "🏢 Work Hours at ETV — Evening return window opens at 02:00 PM";
+            countdownText.style.color = "#38bdf8";
           } else if (cd !== undefined && cd !== null) {
             const lead = activeOpt.lead_time_mins || 20;
             if (cd > 0) {
@@ -9757,6 +9760,9 @@
           } else if (data.state === "BIKE") {
             countdownText.textContent = "🏍️ Bike / Road Mode Active — Rail alerts paused";
             countdownText.style.color = "#fbbf24";
+          } else if (data.state === "MIDDAY_STANDBY") {
+            countdownText.textContent = "🏢 Work Hours at ETV — Evening return window opens at 02:00 PM";
+            countdownText.style.color = "#38bdf8";
           } else if (cd !== undefined && cd !== null) {
             if (cd > 0) {
               countdownText.textContent = `Step out in ${cd} mins (10m walk buffer)`;
@@ -9772,7 +9778,9 @@
         }
 
         if (rakeText) {
-          if (rake.is_delayed) {
+          if (data.state === "MIDDAY_STANDBY") {
+            rakeText.textContent = "🏢 Midday Standby — Morning commute completed. RailRadar will prompt for your return train at 02:00 PM (or tap 'Set Track' on any evening train below).";
+          } else if (rake.is_delayed) {
             rakeText.textContent = `⚠️ Turnaround Alert: Incoming rake (${rake.incoming_rake_train}) is at ${rake.rake_current_station_name} delayed by ${rake.rake_delay_mins}m. Projected Hosur departure shifted to ${rake.projected_hsra_departure} AM.`;
           } else {
             rakeText.textContent = `Incoming rake (${rake.incoming_rake_train || "66595"}) is on schedule near ${rake.rake_current_station_name || "Heelalige"}. Normal 08:25 AM turnaround departure.`;
