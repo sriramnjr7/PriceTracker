@@ -1718,6 +1718,102 @@ async def api_rail_status():
                 if "recommended_train" in scan:
                     scan["recommended_train"]["step_out_time"] = state_data["morning_step_out_time"]
 
+        # Resolve commute direction based on state first, then fallback to time of day
+        curr_commute_state = state_data.get("state", "")
+        if "MORNING" in curr_commute_state:
+            is_evening_commute = False
+        elif "EVENING" in curr_commute_state or curr_commute_state == "HIBERNATION":
+            is_evening_commute = True
+        else:
+            is_evening_commute = ("13:00" <= now_time < "23:59")
+
+        active_tno = state_data.get("evening_train", "16211") if is_evening_commute else state_data.get("morning_train", "66596")
+
+        # Live query for the active train's station-by-station telemetry & waypoints
+        active_status = None
+        active_stations = []
+        try:
+            active_status = await asyncio.wait_for(
+                loop.run_in_executor(None, rail_tracker.get_live_train_status, active_tno),
+                timeout=2.2
+            )
+            if active_status:
+                active_stations = active_status.get("stations", [])
+        except Exception as err:
+            logger.warning("Could not fetch active train live status for %s: %s", active_tno, err)
+            active_status = rail_tracker.fetch_static_fallback_status(active_tno)
+            active_stations = active_status.get("stations", [])
+
+        # Enrich evening options with live wire station timings and recorded Supabase data
+        if evening_opts:
+            for opt in evening_opts:
+                tno = opt.get("train_no")
+                if active_status and tno == active_status.get("train_no"):
+                    stns = active_status.get("stations", [])
+                    board_stn = next((s for s in stns if s.get("code") == opt.get("boarding_station")), None)
+                    hsra_stn = next((s for s in stns if s.get("code") == "HSRA"), None)
+                    curr_loc = f"{active_status.get('current_station_name', '')} ({active_status.get('current_station', '')})"
+                    delay = active_status.get("delay_minutes", opt.get("delay_mins", 0))
+
+                    if board_stn:
+                        act_board_dep = board_stn.get("etd") or board_stn.get("eta")
+                        if act_board_dep and str(act_board_dep).strip() not in ("Destination", ""):
+                            opt["estimated_departure"] = act_board_dep
+                            opt["boarding_sta"] = act_board_dep
+                            opt["projected_departure"] = act_board_dep
+                        if board_stn.get("sta"):
+                            opt["scheduled_departure"] = board_stn.get("sta")
+                    if hsra_stn:
+                        act_hsra_arr = hsra_stn.get("eta") or hsra_stn.get("sta")
+                        if act_hsra_arr:
+                            opt["hosur_eta"] = act_hsra_arr
+                    opt["delay_mins"] = delay
+                    if curr_loc.strip() and curr_loc != " ()":
+                        opt["current_location"] = curr_loc
+                    if active_status.get("current_status"):
+                        opt["status_text"] = active_status.get("current_status")
+                    if active_status.get("has_arrived") or state_data.get("evening_completed"):
+                        opt["status"] = "COMPLETED"
+                elif tno == state_data.get("evening_train"):
+                    rec_delay = state_data.get("last_evening_delay_reported")
+                    if rec_delay is not None:
+                        opt["delay_mins"] = int(rec_delay)
+                        opt["estimated_departure"] = rail_tracker.add_minutes_to_time(opt["scheduled_departure"], int(rec_delay))
+                        opt["boarding_sta"] = opt["estimated_departure"]
+                        opt["projected_departure"] = opt["estimated_departure"]
+                    if state_data.get("evening_completed"):
+                        opt["status"] = "COMPLETED"
+
+        # Enrich morning options with live wire station timings and recorded Supabase data
+        if scan and "options" in scan:
+            for opt in scan["options"]:
+                tno = opt.get("train_no")
+                rec_morning_delay = state_data.get("morning_delay_mins") if tno == state_data.get("morning_train") else None
+                if rec_morning_delay is not None:
+                    opt["delay_mins"] = int(rec_morning_delay)
+                    if state_data.get("morning_projected_dep"):
+                        opt["projected_departure"] = state_data["morning_projected_dep"]
+                    if state_data.get("morning_step_out_time"):
+                        opt["step_out_time"] = state_data["morning_step_out_time"]
+                    if state_data.get("morning_completed"):
+                        opt["status"] = "COMPLETED"
+                elif active_status and tno == active_status.get("train_no"):
+                    curr_loc = f"{active_status.get('current_station_name', '')} ({active_status.get('current_station', '')})"
+                    delay = active_status.get("delay_minutes", opt.get("delay_mins", 0))
+                    opt["delay_mins"] = delay
+                    if curr_loc.strip() and curr_loc != " ()":
+                        opt["current_location"] = curr_loc
+                    if active_status.get("has_arrived") or state_data.get("morning_completed"):
+                        opt["status"] = "COMPLETED"
+
+                # Keep recommended_train in sync
+                if scan.get("recommended_train") and scan["recommended_train"].get("train_no") == tno:
+                    scan["recommended_train"]["delay_mins"] = opt["delay_mins"]
+                    if opt.get("projected_departure"):
+                        scan["recommended_train"]["projected_departure"] = opt["projected_departure"]
+                    if opt.get("step_out_time"):
+                        scan["recommended_train"]["step_out_time"] = opt["step_out_time"]
+
         # Weekend enforcement guard: Automated weekday tracking states must never leak into weekends
         if is_weekend and state_data.get("state") not in ("WEEKEND_REST", "WFH", "BIKE"):
             state_data["state"] = "WEEKEND_REST"
@@ -1730,10 +1826,9 @@ async def api_rail_status():
             state_data.setdefault("morning_projected_dep", rec.get("projected_departure", "08:25"))
             state_data.setdefault("morning_delay_mins", rec.get("delay_mins", 0))
 
-        if "EVENING" in state_data.get("state", "") and evening_opts:
-            active_tno = state_data.get("evening_train", "16232")
+        if is_evening_commute and evening_opts:
             matching_opt = next((o for o in evening_opts if o.get("train_no") == active_tno), evening_opts[0])
-            step_out = matching_opt.get("leave_desk_time", "19:15")
+            step_out = matching_opt.get("leave_desk_time", "16:16")
         else:
             step_out = state_data.get("morning_step_out_time", "08:15")
 
@@ -1743,7 +1838,7 @@ async def api_rail_status():
             content={
                 "status": "ok",
                 "state": state_data.get("state", "STANDBY"),
-                "active_train": state_data.get("morning_train", "66596") if "MORNING" in state_data.get("state", "") else state_data.get("evening_train", "16211"),
+                "active_train": active_tno,
                 "current_time": now_time,
                 "step_out_time": step_out,
                 "step_out_countdown_mins": countdown_mins,
@@ -1751,6 +1846,8 @@ async def api_rail_status():
                 "morning_scan": scan,
                 "rake_turnaround": rake,
                 "evening_options": evening_opts,
+                "active_train_status": active_status,
+                "active_train_stations": active_stations,
                 "lead_times": {
                     "home_to_pf1": rail_tracker.LEAD_TIME_HOME_HOSUR,
                     "desk_to_crlm": rail_tracker.LEAD_TIME_DESK_CRLM,

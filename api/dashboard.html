@@ -5476,6 +5476,22 @@
                   <span>🔄 Reset State</span>
                 </button>
               </div>
+
+              <!-- LIVE STATION PROGRESSION & ACTUAL TIMINGS (Where Is My Train style) -->
+              <div id="rail-station-timeline-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <h3 style="font-size: 15px; font-weight: 700; color: #f8fafc; margin: 0; display: flex; align-items: center; gap: 6px;">
+                      <span>🚆 Live Route Stations &amp; Actual Timings</span>
+                    </h3>
+                    <span id="rail-timeline-status-pill" style="font-size: 10px; padding: 2px 8px; border-radius: 12px; background: rgba(56,189,248,0.15); color: #38bdf8; font-weight: 700; letter-spacing: 0.5px;">NTES WIRE SYNC</span>
+                  </div>
+                  <div id="rail-timeline-update-text" style="font-size: 11px; color: #94a3b8;">Station-by-station telemetry &amp; live waypoints</div>
+                </div>
+                <div id="rail-station-timeline-container" style="overflow-x: auto;">
+                  <div style="color: #94a3b8; font-size: 13px; padding: 12px 0;">Loading station waypoints &amp; actual timings...</div>
+                </div>
+              </div>
             </div>
 
             <!-- CORRIDOR OPTIONS & EMPIRICAL CHARTS GRID -->
@@ -9571,6 +9587,7 @@
         if (statusRes.ok) {
           railRadarState.status = await statusRes.json();
           renderRailHero(railRadarState.status);
+          renderRailStationTimeline(railRadarState.status);
           renderRailMorningOptions(railRadarState.status.morning_scan);
           renderRailEveningOptions(railRadarState.status.evening_options);
         }
@@ -9704,11 +9721,13 @@
       if (isEvening && activeOpt) {
         if (title) title.textContent = `Train ${activeOpt.train_no}: ${activeOpt.train_name}`;
         const loc = activeOpt.current_location || activeOpt.status_text || "En route";
+        const isRunCompleted = data.state === "HIBERNATION" || activeOpt.status === "COMPLETED";
+
         if (subtitle) {
-          subtitle.innerHTML = `<span>ETV Desk (~${activeOpt.leave_desk_time || '16:16'}) → ${activeOpt.boarding_station} (${activeOpt.boarding_sta || activeOpt.projected_departure}) → Hosur (~${activeOpt.dest_eta || activeOpt.hosur_eta || '17:35'})</span>`
-            + `<span style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:600; font-size:11px;">📍 ${loc}</span>`;
+          subtitle.innerHTML = `<span style="color:#e2e8f0; font-size:13px; font-weight:500;">ETV Desk (~${activeOpt.leave_desk_time || '16:16'}) → ${activeOpt.boarding_station} (<strong style="color:#38bdf8;">${activeOpt.boarding_sta || activeOpt.estimated_departure || activeOpt.scheduled_departure}</strong>) → Hosur (<strong style="color:#38bdf8;">~${activeOpt.hosur_eta || activeOpt.dest_eta || '17:34'}</strong>)</span>`
+            + `<span style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:700; font-size:11px;">📍 ${loc}</span>`;
         }
-        if (stepOutLabel) stepOutLabel.textContent = "Dynamic Leave-Desk Time";
+        if (stepOutLabel) stepOutLabel.textContent = isRunCompleted ? "Completed Commute" : "Dynamic Leave-Desk Time";
         if (stepOutDisplay) stepOutDisplay.textContent = `${activeOpt.leave_desk_time || data.step_out_time || "16:16"}`;
 
         if (countdownText) {
@@ -9724,6 +9743,9 @@
           } else if (data.state === "MIDDAY_STANDBY") {
             countdownText.textContent = "🏢 Work Hours at ETV — Evening return window opens at 02:00 PM";
             countdownText.style.color = "#38bdf8";
+          } else if (isRunCompleted) {
+            countdownText.textContent = "🏁 Commute completed — Arrived at Hosur";
+            countdownText.style.color = "#10b981";
           } else if (cd !== undefined && cd !== null) {
             const lead = activeOpt.lead_time_mins || 20;
             if (cd > 0) {
@@ -9741,7 +9763,11 @@
 
         if (rakeText) {
           const lead = activeOpt.lead_time_mins || 20;
-          rakeText.innerHTML = `<strong>📍 Live Location:</strong> <span style="color:#fff; font-weight:600;">${loc}</span> &nbsp;•&nbsp; <strong>Boarding:</strong> ${activeOpt.boarding_station} (~${lead}m cushion from ETV) &nbsp;•&nbsp; <strong>Milestone:</strong> ${activeOpt.milestone_station || 'BAND/BNC'}`;
+          if (isRunCompleted) {
+            rakeText.innerHTML = `🏁 <strong>Commute Completed:</strong> Train ${activeOpt.train_no} boarded at ${activeOpt.boarding_station} (Actual: <strong>${activeOpt.estimated_departure || activeOpt.boarding_sta}</strong>) &amp; arrived at Hosur (~<strong>${activeOpt.hosur_eta || '17:34'}</strong>). Delay: <strong>+${activeOpt.delay_mins || 0}m</strong>.`;
+          } else {
+            rakeText.innerHTML = `<strong>📍 Live Location:</strong> <span style="color:#fff; font-weight:600;">${loc}</span> &nbsp;•&nbsp; <strong>Boarding:</strong> ${activeOpt.boarding_station} (~${lead}m cushion from ETV) &nbsp;•&nbsp; <strong>Milestone:</strong> ${activeOpt.milestone_station || 'BAND/BNC'}`;
+          }
         }
       } else {
         // Morning mode
@@ -9749,11 +9775,13 @@
         const activeMorningTno = morningRec.train_no || "66596";
         const morningActiveOpt = scan.options ? scan.options.find(o => o.train_no === activeMorningTno) : null;
         const loc = (morningActiveOpt && morningActiveOpt.current_location) ? morningActiveOpt.current_location : (rake.rake_current_station_name ? `Rake: ${rake.rake_current_station_name} (${rake.rake_current_station || ''})` : "En route");
+        const isRunCompleted = data.state === "MIDDAY_STANDBY" || (morningActiveOpt && morningActiveOpt.status === "COMPLETED");
+
         if (subtitle) {
-          subtitle.innerHTML = `<span>Hosur (${morningRec.projected_departure || "08:25"}) → Bellandur Road (${morningRec.dest_eta || "09:03"}) → ETV Desk (~${morningRec.desk_eta || "09:35"})</span>`
-            + `<span style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:600; font-size:11px;">📍 ${loc}</span>`;
+          subtitle.innerHTML = `<span style="color:#e2e8f0; font-size:13px; font-weight:500;">Hosur (<strong style="color:#38bdf8;">${morningRec.projected_departure || "08:25"}</strong>) → Bellandur Road (<strong style="color:#38bdf8;">${morningRec.dest_eta || "09:03"}</strong>) → ETV Desk (<strong style="color:#10b981;">~${morningRec.desk_eta || "09:35"}</strong>)</span>`
+            + `<span style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:700; font-size:11px;">📍 ${loc}</span>`;
         }
-        if (stepOutLabel) stepOutLabel.textContent = "Dynamic Step-Out Time";
+        if (stepOutLabel) stepOutLabel.textContent = isRunCompleted ? "Recorded Step-Out" : "Dynamic Step-Out Time";
         if (stepOutDisplay) stepOutDisplay.textContent = `${morningRec.step_out_time || data.step_out_time || "08:15"} AM`;
 
         if (countdownText) {
@@ -9766,9 +9794,9 @@
           } else if (data.state === "BIKE") {
             countdownText.textContent = "🏍️ Bike / Road Mode Active — Rail alerts paused";
             countdownText.style.color = "#fbbf24";
-          } else if (data.state === "MIDDAY_STANDBY") {
-            countdownText.textContent = "🏢 Work Hours at ETV — Evening return window opens at 02:00 PM";
-            countdownText.style.color = "#38bdf8";
+          } else if (isRunCompleted) {
+            countdownText.textContent = "🏢 Morning commute completed — Arrived at ETV Desk";
+            countdownText.style.color = "#10b981";
           } else if (cd !== undefined && cd !== null) {
             if (cd > 0) {
               countdownText.textContent = `Step out in ${cd} mins (10m walk buffer)`;
@@ -9784,7 +9812,7 @@
         }
 
         if (rakeText) {
-          if (data.state === "MIDDAY_STANDBY") {
+          if (data.state === "MIDDAY_STANDBY" || isRunCompleted) {
             rakeText.innerHTML = "🏢 <strong>Midday Standby:</strong> Morning commute completed. RailRadar will prompt for your return train at 02:00 PM (or tap <strong>'Set Track'</strong> on any evening train below).";
           } else if (activeMorningTno === "66596") {
             if (rake.is_delayed) {
@@ -9799,6 +9827,167 @@
       }
     }
 
+    function renderRailStationTimeline(data) {
+      const container = document.getElementById("rail-station-timeline-container");
+      if (!container || !data) return;
+
+      const currTime = data.current_time || "";
+      const isEvening = (data.state && data.state.includes("EVENING")) || ("13:00" <= currTime && currTime < "23:59") || data.state === "HIBERNATION";
+      const targetTrain = data.active_train || (isEvening ? "16211" : "66596");
+      const activeOpt = isEvening
+        ? ((data.evening_options || []).find(o => o.train_no === targetTrain) || (data.evening_options || [])[0] || {})
+        : ((data.morning_scan && data.morning_scan.options ? data.morning_scan.options.find(o => o.train_no === targetTrain) : null) || (data.morning_scan ? data.morning_scan.recommended_train : {}) || {});
+
+      const boardingStn = activeOpt.boarding_station || (isEvening ? "BLRR" : "HSRA");
+      const milestoneStn = activeOpt.milestone_station || (isEvening ? (boardingStn === "CRLM" ? "BNC" : "BAND") : "KMLM");
+      const destStn = isEvening ? "HSRA" : (activeOpt.dest_station || "BLRR");
+
+      // Retrieve stations list
+      let stations = (data.active_train_stations && data.active_train_stations.length > 0)
+        ? data.active_train_stations
+        : [];
+
+      // If stations list is empty, build standard corridor stations fallback
+      if (stations.length === 0) {
+        if (targetTrain === "16211" || targetTrain === "66585") {
+          stations = [
+            { code: "YPR", name: "YESVANTPUR JN", platform: "1", sta: "Source", std: "15:55", eta: "Source", etd: "15:55", has_departed: true, effective_delay: 0 },
+            { code: "LOGH", name: "LOTTEGOLLAHALLI", platform: "1", sta: "16:04", std: "16:05", eta: "16:04", etd: "16:05", has_departed: true, effective_delay: 0 },
+            { code: "HEB", name: "HEBBAL", platform: "1", sta: "16:10", std: "16:11", eta: "16:10", etd: "16:11", has_departed: true, effective_delay: 0 },
+            { code: "BAND", name: "BANASWADI", platform: "2", sta: "16:21", std: "16:22", eta: "16:21", etd: "16:22", has_departed: true, effective_delay: 0 },
+            { code: "BLRR", name: "BELANDUR ROAD", platform: "1", sta: "16:35", std: "16:36", eta: "16:35", etd: "16:36", has_departed: false, effective_delay: 0 },
+            { code: "CRLM", name: "KARMELARAM", platform: "2", sta: "16:41", std: "16:42", eta: "16:41", etd: "16:42", has_departed: false, effective_delay: 0 },
+            { code: "HLE", name: "HEELALIGE", platform: "1", sta: "16:52", std: "16:53", eta: "16:52", etd: "16:53", has_departed: false, effective_delay: 0 },
+            { code: "AEK", name: "ANEKAL ROAD", platform: "2", sta: "17:02", std: "17:03", eta: "17:02", etd: "17:03", has_departed: false, effective_delay: 0 },
+            { code: "HSRA", name: "HOSUR", platform: "1", sta: "17:19", std: "17:21", eta: "17:19", etd: "17:21", has_departed: false, effective_delay: 0 },
+          ];
+        } else if (targetTrain === "66596") {
+          stations = [
+            { code: "HSRA", name: "HOSUR", platform: "1", sta: "Source", std: "08:25", eta: "Source", etd: "08:25", has_departed: false, effective_delay: 0 },
+            { code: "AEK", name: "ANEKAL ROAD", platform: "2", sta: "08:39", std: "08:40", eta: "08:39", etd: "08:40", has_departed: false, effective_delay: 0 },
+            { code: "HLE", name: "HEELALIGE", platform: "1", sta: "08:50", std: "08:51", eta: "08:50", etd: "08:51", has_departed: false, effective_delay: 0 },
+            { code: "CRLM", name: "KARMELARAM", platform: "1", sta: "08:57", std: "08:58", eta: "08:57", etd: "08:58", has_departed: false, effective_delay: 0 },
+            { code: "BLRR", name: "BELANDUR ROAD", platform: "1", sta: "09:03", std: "09:04", eta: "09:03", etd: "09:04", has_departed: false, effective_delay: 0 },
+          ];
+        } else if (targetTrain === "16212") {
+          stations = [
+            { code: "DPJ", name: "DHARMAPURI", platform: "2", sta: "07:18", std: "07:20", eta: "07:18", etd: "07:20", has_departed: true, effective_delay: 0 },
+            { code: "KMLM", name: "KELAMANGALAM", platform: "1", sta: "08:04", std: "08:05", eta: "08:04", etd: "08:05", has_departed: true, effective_delay: 0 },
+            { code: "HSRA", name: "HOSUR", platform: "1", sta: "08:19", std: "08:20", eta: "08:19", etd: "08:20", has_departed: false, effective_delay: 0 },
+            { code: "CRLM", name: "KARMELARAM", platform: "1", sta: "08:54", std: "08:55", eta: "08:54", etd: "08:55", has_departed: false, effective_delay: 0 },
+            { code: "BLRR", name: "BELANDUR ROAD", platform: "1", sta: "08:59", std: "09:00", eta: "08:59", etd: "09:00", has_departed: false, effective_delay: 0 },
+          ];
+        }
+      }
+
+      // Filter stations to the user's journey corridor (up to destination)
+      const corridorCodes = new Set(['YPR', 'LOGH', 'HEB', 'BAND', 'BLRR', 'CRLM', 'HLE', 'AEK', 'HSRA', 'KMLM', 'DPJ', 'SBC', 'BNC', 'BYPL']);
+      let relevantStations = stations.filter(s => corridorCodes.has(s.code));
+      if (relevantStations.length === 0) relevantStations = stations.slice(0, 8);
+
+      const statusPill = document.getElementById("rail-timeline-status-pill");
+      const updateText = document.getElementById("rail-timeline-update-text");
+      const isCompleted = data.state === "HIBERNATION" || activeOpt.status === "COMPLETED";
+
+      if (statusPill) {
+        if (isCompleted) {
+          statusPill.textContent = "RUN COMPLETED";
+          statusPill.style.background = "rgba(16,185,129,0.2)";
+          statusPill.style.color = "#10b981";
+        } else {
+          statusPill.textContent = "LIVE WIRE SYNC";
+          statusPill.style.background = "rgba(56,189,248,0.2)";
+          statusPill.style.color = "#38bdf8";
+        }
+      }
+
+      if (updateText) {
+        updateText.textContent = data.active_train_status && data.active_train_status.current_status
+          ? data.active_train_status.current_status
+          : `Tracking Train ${targetTrain} · CRIS / NTES feed`;
+      }
+
+      let html = `
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; overflow-x: auto;">
+          <table style="width: 100%; min-width: 620px; border-collapse: collapse; font-size: 12px; text-align: left;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.08); color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                <th style="padding: 10px 14px;">Station</th>
+                <th style="padding: 10px 12px;">Scheduled</th>
+                <th style="padding: 10px 12px;">Actual / Live</th>
+                <th style="padding: 10px 12px;">Delay</th>
+                <th style="padding: 10px 14px; text-align: right;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      relevantStations.forEach((s) => {
+        const isBoarding = s.code === boardingStn;
+        const isDestination = s.code === destStn;
+        const isMilestone = s.code === milestoneStn;
+        const delay = s.effective_delay !== undefined ? s.effective_delay : (s.delay_dep || s.delay_arr || 0);
+        const isDelayed = delay > 0;
+
+        let roleBadge = '';
+        if (isBoarding) {
+          roleBadge = '<span style="margin-left:6px; font-size:10px; background:rgba(56,189,248,0.25); color:#38bdf8; font-weight:700; padding:1px 6px; border-radius:4px; border:1px solid rgba(56,189,248,0.4);">🎯 BOARDING</span>';
+        } else if (isDestination) {
+          roleBadge = '<span style="margin-left:6px; font-size:10px; background:rgba(16,185,129,0.25); color:#10b981; font-weight:700; padding:1px 6px; border-radius:4px; border:1px solid rgba(16,185,129,0.4);">🏠 DESTINATION</span>';
+        } else if (isMilestone) {
+          roleBadge = '<span style="margin-left:6px; font-size:10px; background:rgba(245,158,11,0.25); color:#f59e0b; font-weight:700; padding:1px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.4);">🔔 MILESTONE</span>';
+        }
+
+        let statusDisplay = '';
+        if (s.has_departed) {
+          statusDisplay = '<span style="color:#10b981; font-weight:600; font-size:11px;">✓ Departed</span>';
+        } else if (s.has_arrived) {
+          statusDisplay = '<span style="background:#10b981; color:#0b0f19; font-weight:800; font-size:11px; padding:2px 8px; border-radius:10px;">🚆 At Station</span>';
+        } else {
+          statusDisplay = '<span style="color:#64748b; font-size:11px;">Upcoming</span>';
+        }
+
+        const rowHighlight = isBoarding ? 'background: rgba(56,189,248,0.06);' : (isDestination ? 'background: rgba(16,185,129,0.05);' : '');
+
+        html += `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); ${rowHighlight}">
+            <td style="padding: 10px 14px;">
+              <div style="font-weight: 700; color: #f8fafc; font-size: 13px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+                <span>${s.name}</span>
+                <span style="color: #38bdf8; font-weight: 600; font-size: 11px;">(${s.code})</span>
+                <span style="font-size: 10px; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px;">PF ${s.platform || '1'}</span>
+                ${roleBadge}
+              </div>
+            </td>
+            <td style="padding: 10px 12px; color: #94a3b8;">
+              <div>Arr: <strong style="color: #cbd5e1;">${s.sta || '--'}</strong></div>
+              <div>Dep: <strong style="color: #cbd5e1;">${s.std || '--'}</strong></div>
+            </td>
+            <td style="padding: 10px 12px;">
+              <div>Arr: <strong style="color: ${isDelayed ? '#f59e0b' : '#38bdf8'}; font-size: 13px;">${s.eta || s.sta || '--'}</strong></div>
+              <div>Dep: <strong style="color: ${isDelayed ? '#f59e0b' : '#38bdf8'}; font-size: 13px;">${s.etd || s.std || '--'}</strong></div>
+            </td>
+            <td style="padding: 10px 12px;">
+              <span style="font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 700; background: ${isDelayed ? 'rgba(245,158,11,0.18)' : 'rgba(16,185,129,0.18)'}; color: ${isDelayed ? '#f59e0b' : '#10b981'};">
+                ${isDelayed ? `+${delay}m` : 'On Time'}
+              </span>
+            </td>
+            <td style="padding: 10px 14px; text-align: right;">
+              ${statusDisplay}
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
     function renderRailMorningOptions(scan) {
       const container = document.getElementById("rail-morning-options-container");
       if (!container || !scan || !scan.options) return;
@@ -9806,20 +9995,67 @@
       let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
       scan.options.forEach((opt) => {
         const isRec = scan.recommended_train && scan.recommended_train.train_no === opt.train_no;
+        const isCompleted = opt.status === "COMPLETED" || opt.status === "DEPARTED";
+        const delayBadge = opt.delay_mins > 0 
+          ? `<span style="background:rgba(245,158,11,0.18); color:#f59e0b; border:1px solid rgba(245,158,11,0.35); font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">+${opt.delay_mins}m LATE</span>`
+          : `<span style="background:rgba(16,185,129,0.18); color:#10b981; border:1px solid rgba(16,185,129,0.35); font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">ON TIME</span>`;
+
         html += `
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid ${isRec ? 'rgba(56,189,248,0.4)' : 'var(--border-subtle)'}; border-radius: 8px; padding: 14px; position:relative;">
-            ${isRec ? '<span style="position:absolute; top:10px; right:12px; font-size:10px; background:#38bdf8; color:#0b0f19; font-weight:700; padding:2px 8px; border-radius:12px;">RECOMMENDED</span>' : ''}
-            <div style="font-weight:600; color:#fff; font-size:14px; margin-bottom:4px;">${opt.train_name} (${opt.train_no})</div>
-            <div style="font-size:12px; color:var(--text-muted); display:flex; gap:14px; flex-wrap:wrap; margin-bottom:8px;">
-              <span>Hosur Dep: <strong style="color:#e2e8f0;">${opt.projected_departure}</strong></span>
-              <span>BLRR Arr: <strong style="color:#e2e8f0;">${opt.dest_eta}</strong></span>
-              <span>Desk Arr: <strong style="color:#38bdf8;">${opt.desk_eta}</strong></span>
-              <span>Delay: <strong style="color:${opt.delay_mins > 0 ? '#f59e0b' : '#10b981'};">${opt.delay_mins}m</strong></span>
-              <span>📍 Live: <strong style="color:#38bdf8;">${opt.current_location || 'En route'}</strong></span>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid ${isRec ? 'rgba(56,189,248,0.5)' : 'var(--border-subtle)'}; border-radius: 10px; padding: 14px; position:relative;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <div>
+                <span style="font-weight:700; color:#f8fafc; font-size:14px;">${opt.train_name}</span>
+                <span style="font-size:12px; color:#38bdf8; font-weight:600; margin-left:6px;">(${opt.train_no})</span>
+                ${isRec ? '<span style="margin-left:8px; font-size:10px; background:#38bdf8; color:#0b0f19; font-weight:800; padding:2px 8px; border-radius:12px;">RECOMMENDED</span>' : ''}
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                ${isCompleted ? '<span style="font-size:10px; padding:2px 8px; border-radius:12px; background:rgba(100,116,139,0.25); color:#94a3b8; font-weight:700;">DEPARTED</span>' : ''}
+                ${delayBadge}
+              </div>
             </div>
-            <div style="font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
-              <span>Step-out at: <strong style="color:#38bdf8;">${opt.step_out_time} AM</strong></span>
-              <button class="btn-ui btn-ui-secondary btn-sm" onclick="sendRailAction('select_train', '${opt.train_no}')" style="font-size:11px; padding:3px 10px;">Track This</button>
+
+            <!-- High-Contrast 4-Cell Timetable Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 8px; margin: 10px 0; background: rgba(0,0,0,0.35); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">Hosur Departure</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-top: 2px;">
+                  ${opt.scheduled_departure && opt.scheduled_departure !== opt.projected_departure ? `<span style="color:#64748b; font-weight:500; font-size:11px; text-decoration:line-through; margin-right:4px;">${opt.scheduled_departure}</span>` : ''}
+                  <strong style="color: ${opt.delay_mins > 0 ? '#f59e0b' : '#38bdf8'};">${opt.projected_departure}</strong>
+                </div>
+                <div style="font-size: 10px; color: ${opt.delay_mins > 0 ? '#f59e0b' : '#10b981'}; font-weight: 600;">${opt.delay_mins > 0 ? `+${opt.delay_mins}m late` : 'Platform 1'}</div>
+              </div>
+
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">BLRR Arrival</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-top: 2px;">
+                  <strong style="color: #38bdf8;">${opt.dest_eta}</strong>
+                </div>
+                <div style="font-size: 10px; color: #94a3b8;">Bellandur Road</div>
+              </div>
+
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">ETV Desk ETA</div>
+                <div style="font-size: 14px; font-weight: 800; color: #10b981; margin-top: 2px;">
+                  ${opt.desk_eta}
+                </div>
+                <div style="font-size: 10px; color: #10b981; font-weight:600;">Ahead of shift</div>
+              </div>
+
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">Step-Out Home</div>
+                <div style="font-size: 14px; font-weight: 800; color: #fbbf24; margin-top: 2px;">
+                  ${opt.step_out_time} AM
+                </div>
+                <div style="font-size: 10px; color: #94a3b8;">10m walk buffer</div>
+              </div>
+            </div>
+
+            <div style="font-size:11px; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:6px;">
+              <span style="display:inline-flex; align-items:center; gap:6px;">
+                <span>📍 Live Position:</span>
+                <strong style="color:#38bdf8; font-weight:600;">${opt.current_location || 'En route'}</strong>
+              </span>
+              <button class="btn-ui btn-ui-secondary btn-sm" onclick="sendRailAction('select_train', '${opt.train_no}')" style="font-size:11px; padding:3px 12px; font-weight:600; border-color:rgba(56,189,248,0.4); color:#38bdf8;">Track This</button>
             </div>
           </div>
         `;
@@ -9832,22 +10068,68 @@
       const container = document.getElementById("rail-evening-options-container");
       if (!container || !options) return;
 
-      let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
-      options.slice(0, 5).forEach((opt) => {
+      let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
+      options.slice(0, 6).forEach((opt) => {
+        const isCompleted = opt.status === "COMPLETED" || opt.status === "DEPARTED";
+        const delayBadge = opt.delay_mins > 0 
+          ? `<span style="background:rgba(245,158,11,0.18); color:#f59e0b; border:1px solid rgba(245,158,11,0.35); font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">+${opt.delay_mins}m LATE</span>`
+          : `<span style="background:rgba(16,185,129,0.18); color:#10b981; border:1px solid rgba(16,185,129,0.35); font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">ON TIME</span>`;
+
         html += `
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div>
-              <div style="font-weight:600; color:#fff; font-size:13px;">${opt.train_no} - ${opt.train_name}</div>
-              <div style="font-size:11px; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap; margin-top:2px;">
-                <span>Board at <strong>${opt.boarding_station}</strong></span>
-                <span>• Sch: ${opt.scheduled_departure}</span>
-                <span>• Delay: <strong style="color:${opt.delay_mins > 0 ? '#f59e0b' : '#10b981'};">${opt.delay_mins}m</strong></span>
-                <span>• 📍 <strong style="color:#38bdf8;">${opt.current_location || 'En route'}</strong></span>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <div>
+                <span style="font-weight:700; color:#f8fafc; font-size:14px;">${opt.train_name}</span>
+                <span style="font-size:12px; color:#38bdf8; font-weight:600; margin-left:6px;">(${opt.train_no})</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                ${isCompleted ? '<span style="font-size:10px; padding:2px 8px; border-radius:12px; background:rgba(100,116,139,0.25); color:#94a3b8; font-weight:700;">DEPARTED</span>' : ''}
+                ${delayBadge}
               </div>
             </div>
-            <div style="text-align:right;">
-              <div style="font-size:11px; color:#f59e0b; font-weight:600;">Leave desk: ~${opt.leave_desk_time}</div>
-              <button class="btn-ui btn-ui-secondary btn-sm" onclick="sendRailAction('select_train', '${opt.train_no}')" style="font-size:10px; padding:2px 8px; margin-top:4px;">Set Track</button>
+
+            <!-- High-Contrast 4-Cell Timetable Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 8px; margin: 10px 0; background: rgba(0,0,0,0.35); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">Boarding (${opt.boarding_station})</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-top: 2px;">
+                  <span style="color:#64748b; font-weight:500; font-size:11px; text-decoration:${opt.delay_mins > 0 ? 'line-through' : 'none'}; margin-right:4px;">${opt.scheduled_departure}</span>
+                  <strong style="color: ${opt.delay_mins > 0 ? '#f59e0b' : '#38bdf8'};">${opt.estimated_departure || opt.boarding_sta || opt.scheduled_departure}</strong>
+                </div>
+                <div style="font-size: 10px; color: #94a3b8;">${opt.boarding_station === 'BLRR' ? 'Platform 1' : 'Platform 2'}</div>
+              </div>
+
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">Hosur ETA</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-top: 2px;">
+                  <strong style="color: #38bdf8;">${opt.hosur_eta ? `~${opt.hosur_eta}` : (opt.dest_eta ? `~${opt.dest_eta}` : 'On route')}</strong>
+                </div>
+                <div style="font-size: 10px; color: #94a3b8;">Hosur Platform 1</div>
+              </div>
+
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">Leave Desk</div>
+                <div style="font-size: 14px; font-weight: 800; color: #fbbf24; margin-top: 2px;">
+                  ~${opt.leave_desk_time || '16:16'}
+                </div>
+                <div style="font-size: 10px; color: #94a3b8;">${opt.lead_time_mins || 20}m transit cushion</div>
+              </div>
+
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600;">Desk Milestone</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-top: 2px;">
+                  <strong style="color: #cbd5e1;">${opt.milestone_station || (opt.boarding_station === 'BLRR' ? 'BAND' : 'BNC')}</strong>
+                </div>
+                <div style="font-size: 10px; color: #38bdf8;">Trigger checkpoint</div>
+              </div>
+            </div>
+
+            <div style="font-size:11px; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:6px;">
+              <span style="display:inline-flex; align-items:center; gap:6px;">
+                <span>📍 Live Position:</span>
+                <strong style="color:#38bdf8; font-weight:600;">${opt.current_location || 'En route'}</strong>
+              </span>
+              <button class="btn-ui btn-ui-secondary btn-sm" onclick="sendRailAction('select_train', '${opt.train_no}')" style="font-size:11px; padding:3px 12px; font-weight:600; border-color:rgba(56,189,248,0.4); color:#38bdf8;">Set Track</button>
             </div>
           </div>
         `;
