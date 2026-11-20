@@ -1585,6 +1585,8 @@ def scan_evening_commute_options(
             "boarding_station": board_stn,
             "scheduled_departure": sch_dep,
             "estimated_departure": est_dep,
+            "boarding_sta": est_dep,
+            "projected_departure": est_dep,
             "leave_desk_time": leave_desk_time,
             "lead_time_mins": lead_time,
             "hosur_eta": hsra_eta,

@@ -993,8 +993,17 @@ class RailDaemon:
         target_name = "Bellandur Road (BLRR)" if target_station == "BLRR" else "Carmelaram (CRLM)"
         lead_time = (active_opt.get("lead_time_mins") if active_opt else None) or (LEAD_TIME_BLRR if target_station == "BLRR" else LEAD_TIME_CRLM)
         leave_desk_time = (active_opt.get("leave_desk_time") if active_opt else None) or ""
-        boarding_eta = (active_opt.get("boarding_sta") if active_opt else None) or ""
+        boarding_eta = (
+            (active_opt.get("estimated_departure") if active_opt else None)
+            or (active_opt.get("boarding_sta") if active_opt else None)
+            or (active_opt.get("projected_departure") if active_opt else None)
+            or ""
+        )
         current_delay = (active_opt.get("delay_mins") if active_opt else None) or status.get("delay_minutes", 0)
+        if not boarding_eta:
+            sch_sta = (active_opt.get("scheduled_departure") if active_opt else None) or ""
+            if sch_sta:
+                boarding_eta = rail_tracker.add_minutes_to_time(sch_sta, current_delay)
 
         # 1. Physical Milestone Check
         if not self.store.state_data.get("evening_milestone_fired"):
