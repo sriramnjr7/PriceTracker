@@ -8,10 +8,21 @@ Guarantees 100% network isolation for tests:
 
 import os
 import tempfile
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 import pytest
 import rail_daemon
 import rail_tracker
+
+
+DEFAULT_TEST_WEEKDAY_IST = datetime(2026, 11, 16, 8, 0, 0, tzinfo=rail_daemon.IST_TZ)
+
+
+@pytest.fixture(autouse=True)
+def default_weekday_ist():
+    """Autouse fixture ensuring tests run on a weekday (Monday) by default unless specifically overridden."""
+    with patch("rail_daemon.get_ist_now", return_value=DEFAULT_TEST_WEEKDAY_IST):
+        yield
 
 
 @pytest.fixture(autouse=True)

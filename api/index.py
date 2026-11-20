@@ -1238,8 +1238,13 @@ async def api_archive_collection_item(item_id: str, request: Request):
     if request:
         try:
             body = await request.json()
-            if isinstance(body, dict) and "status" in body:
-                target_status = body["status"]
+            if isinstance(body, dict):
+                if "status" in body:
+                    target_status = body["status"]
+                elif "isArchived" in body:
+                    target_status = "Archived" if body["isArchived"] else "Owned"
+                elif "is_archived" in body:
+                    target_status = "Archived" if body["is_archived"] else "Owned"
         except Exception:
             pass
     item = collection_mgr.archive_item(item_id, target_status=target_status)
