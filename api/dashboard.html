@@ -9703,8 +9703,10 @@
 
       if (isEvening && activeOpt) {
         if (title) title.textContent = `Train ${activeOpt.train_no}: ${activeOpt.train_name}`;
+        const loc = activeOpt.current_location || activeOpt.status_text || "En route";
         if (subtitle) {
-          subtitle.textContent = `ETV Desk (~${activeOpt.leave_desk_time || '16:16'}) → ${activeOpt.boarding_station} (${activeOpt.boarding_sta || activeOpt.projected_departure}) → Hosur (~${activeOpt.dest_eta || activeOpt.hosur_eta || '17:35'})`;
+          subtitle.innerHTML = `<span>ETV Desk (~${activeOpt.leave_desk_time || '16:16'}) → ${activeOpt.boarding_station} (${activeOpt.boarding_sta || activeOpt.projected_departure}) → Hosur (~${activeOpt.dest_eta || activeOpt.hosur_eta || '17:35'})</span>`
+            + `<span style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:600; font-size:11px;">📍 ${loc}</span>`;
         }
         if (stepOutLabel) stepOutLabel.textContent = "Dynamic Leave-Desk Time";
         if (stepOutDisplay) stepOutDisplay.textContent = `${activeOpt.leave_desk_time || data.step_out_time || "16:16"}`;
@@ -9739,13 +9741,17 @@
 
         if (rakeText) {
           const lead = activeOpt.lead_time_mins || 20;
-          rakeText.textContent = `Boarding station: ${activeOpt.boarding_station} (~${lead}m transit cushion from ETV Parcel 5). Milestone station: ${activeOpt.milestone_station || 'BAND/BNC'}.`;
+          rakeText.innerHTML = `<strong>📍 Live Location:</strong> <span style="color:#fff; font-weight:600;">${loc}</span> &nbsp;•&nbsp; <strong>Boarding:</strong> ${activeOpt.boarding_station} (~${lead}m cushion from ETV) &nbsp;•&nbsp; <strong>Milestone:</strong> ${activeOpt.milestone_station || 'BAND/BNC'}`;
         }
       } else {
         // Morning mode
         if (title) title.textContent = `Train ${morningRec.train_no || "66596"}: ${morningRec.train_name || "Hosur MEMU"}`;
+        const activeMorningTno = morningRec.train_no || "66596";
+        const morningActiveOpt = scan.options ? scan.options.find(o => o.train_no === activeMorningTno) : null;
+        const loc = (morningActiveOpt && morningActiveOpt.current_location) ? morningActiveOpt.current_location : (rake.rake_current_station_name ? `Rake: ${rake.rake_current_station_name} (${rake.rake_current_station || ''})` : "En route");
         if (subtitle) {
-          subtitle.textContent = `Hosur (${morningRec.projected_departure || "08:25"}) → Bellandur Road (${morningRec.dest_eta || "09:03"}) → ETV Desk (~${morningRec.desk_eta || "09:35"})`;
+          subtitle.innerHTML = `<span>Hosur (${morningRec.projected_departure || "08:25"}) → Bellandur Road (${morningRec.dest_eta || "09:03"}) → ETV Desk (~${morningRec.desk_eta || "09:35"})</span>`
+            + `<span style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:600; font-size:11px;">📍 ${loc}</span>`;
         }
         if (stepOutLabel) stepOutLabel.textContent = "Dynamic Step-Out Time";
         if (stepOutDisplay) stepOutDisplay.textContent = `${morningRec.step_out_time || data.step_out_time || "08:15"} AM`;
@@ -9779,11 +9785,15 @@
 
         if (rakeText) {
           if (data.state === "MIDDAY_STANDBY") {
-            rakeText.textContent = "🏢 Midday Standby — Morning commute completed. RailRadar will prompt for your return train at 02:00 PM (or tap 'Set Track' on any evening train below).";
-          } else if (rake.is_delayed) {
-            rakeText.textContent = `⚠️ Turnaround Alert: Incoming rake (${rake.incoming_rake_train}) is at ${rake.rake_current_station_name} delayed by ${rake.rake_delay_mins}m. Projected Hosur departure shifted to ${rake.projected_hsra_departure} AM.`;
+            rakeText.innerHTML = "🏢 <strong>Midday Standby:</strong> Morning commute completed. RailRadar will prompt for your return train at 02:00 PM (or tap <strong>'Set Track'</strong> on any evening train below).";
+          } else if (activeMorningTno === "66596") {
+            if (rake.is_delayed) {
+              rakeText.innerHTML = `⚠️ <strong>Turnaround Alert:</strong> Incoming rake (${rake.incoming_rake_train}) is at <strong>${rake.rake_current_station_name}</strong> delayed by <strong>${rake.rake_delay_mins}m</strong>. Projected Hosur departure shifted to ${rake.projected_hsra_departure} AM.`;
+            } else {
+              rakeText.innerHTML = `📍 <strong>Live Location:</strong> Incoming rake (${rake.incoming_rake_train || "66595"}) is on schedule near <strong>${rake.rake_current_station_name || "Heelalige"}</strong>. Normal 08:25 AM turnaround departure.`;
+            }
           } else {
-            rakeText.textContent = `Incoming rake (${rake.incoming_rake_train || "66595"}) is on schedule near ${rake.rake_current_station_name || "Heelalige"}. Normal 08:25 AM turnaround departure.`;
+            rakeText.innerHTML = `📍 <strong>Live Location:</strong> <span style="color:#fff; font-weight:600;">${loc}</span> &nbsp;•&nbsp; <strong>Milestone:</strong> Kelamangalam (KMLM) (14m running time to Hosur PF1)`;
           }
         }
       }
@@ -9805,6 +9815,7 @@
               <span>BLRR Arr: <strong style="color:#e2e8f0;">${opt.dest_eta}</strong></span>
               <span>Desk Arr: <strong style="color:#38bdf8;">${opt.desk_eta}</strong></span>
               <span>Delay: <strong style="color:${opt.delay_mins > 0 ? '#f59e0b' : '#10b981'};">${opt.delay_mins}m</strong></span>
+              <span>📍 Live: <strong style="color:#38bdf8;">${opt.current_location || 'En route'}</strong></span>
             </div>
             <div style="font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
               <span>Step-out at: <strong style="color:#38bdf8;">${opt.step_out_time} AM</strong></span>
@@ -9827,7 +9838,12 @@
           <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div>
               <div style="font-weight:600; color:#fff; font-size:13px;">${opt.train_no} - ${opt.train_name}</div>
-              <div style="font-size:11px; color:var(--text-muted);">Board at <strong>${opt.boarding_station}</strong> • Sch: ${opt.scheduled_departure} • Delay: ${opt.delay_mins}m</div>
+              <div style="font-size:11px; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap; margin-top:2px;">
+                <span>Board at <strong>${opt.boarding_station}</strong></span>
+                <span>• Sch: ${opt.scheduled_departure}</span>
+                <span>• Delay: <strong style="color:${opt.delay_mins > 0 ? '#f59e0b' : '#10b981'};">${opt.delay_mins}m</strong></span>
+                <span>• 📍 <strong style="color:#38bdf8;">${opt.current_location || 'En route'}</strong></span>
+              </div>
             </div>
             <div style="text-align:right;">
               <div style="font-size:11px; color:#f59e0b; font-weight:600;">Leave desk: ~${opt.leave_desk_time}</div>
