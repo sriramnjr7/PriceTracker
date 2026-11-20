@@ -1050,20 +1050,47 @@ class RailDaemon:
 
         if not has_departed_boarding and not self.store.state_data.get("evening_completed"):
             if abs(current_delay - last_evening_delay) >= 3 or (current_delay > 0 and last_evening_delay == 0):
-                if current_delay > last_evening_delay:
-                    extra = current_delay - last_evening_delay
-                    delay_note = f"⏳ Train delayed by an additional *{extra} mins*. You have extra time at desk!"
-                elif current_delay < last_evening_delay:
-                    made_up = last_evening_delay - current_delay
-                    delay_note = f"⚡ Train made up *{made_up} mins*! Arriving earlier at {target_station}."
+                already_stepped_out = self.store.state_data.get("evening_stepped_out", False) or (
+                    rail_tracker.minutes_difference(current_time, leave_desk_time) <= 0 if leave_desk_time else False
+                )
+                extra = current_delay - last_evening_delay
+
+                if already_stepped_out:
+                    # User has already stepped out from desk and is in transit or at the platform
+                    if current_delay > last_evening_delay:
+                        delay_note = f"⏳ Train running an additional *{extra} mins* late. New expected platform arrival: ~*{boarding_eta}*."
+                    elif current_delay < last_evening_delay:
+                        made_up = last_evening_delay - current_delay
+                        delay_note = f"⚡ Train made up *{made_up} mins*! Arriving earlier at platform ~*{boarding_eta}*."
+                    else:
+                        delay_note = f"ℹ️ Revised {target_station} platform arrival: ~*{boarding_eta}*."
+                    timing_line = f"• *Platform Status*: En route / waiting for train at {target_station} (~*{boarding_eta}*)"
+                    header_title = f"⚠️ *Platform Delay Update: Train {active_train}*"
                 else:
-                    delay_note = f"ℹ️ Revised {target_station} arrival: ~*{boarding_eta}*."
+                    # User is still at their desk
+                    diff_to_leave = rail_tracker.minutes_difference(current_time, leave_desk_time) if leave_desk_time else 999
+                    if current_delay > last_evening_delay:
+                        if diff_to_leave >= 5:
+                            delay_note = f"⏳ Train delayed by an additional *{extra} mins*. You have extra time at desk! Relax."
+                        else:
+                            delay_note = f"⏳ Train delayed by an additional *{extra} mins*. Revised {target_station} departure: ~*{boarding_eta}*."
+                    elif current_delay < last_evening_delay:
+                        made_up = last_evening_delay - current_delay
+                        delay_note = f"⚡ Train made up *{made_up} mins*! Arriving earlier at {target_station}. Prepare to leave sooner!"
+                    else:
+                        delay_note = f"ℹ️ Revised {target_station} arrival: ~*{boarding_eta}*."
+                    timing_line = f"• *New Leave-Desk Time*: ~*{leave_desk_time}*"
+                    header_title = f"⚠️ *Commute Delay Alert: Train {active_train}*"
+
+                loc_str = active_opt.get("current_location") if active_opt else status.get("current_station_name", "")
+                loc_line = f"• *Current Position*: Near *{loc_str}*\n" if loc_str else ""
 
                 delay_alert = (
-                    f"⚠️ *Commute Delay Alert: Train {active_train} ({active_opt.get('train_name', '') if active_opt else ''})*\n\n"
+                    f"{header_title} ({active_opt.get('train_name', '') if active_opt else ''})\n\n"
+                    f"{loc_line}"
                     f"• *Current Delay*: *+{current_delay} mins*\n"
                     f"• *Revised {target_station} Arrival*: ~*{boarding_eta}*\n"
-                    f"• *New Leave-Desk Time*: ~*{leave_desk_time}*\n\n"
+                    f"{timing_line}\n\n"
                     f"{delay_note}"
                 )
                 if self.store.state_data.get("alerts_enabled", True):

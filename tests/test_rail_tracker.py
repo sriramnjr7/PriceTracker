@@ -3247,6 +3247,60 @@ def test_evening_train_switch_resets_milestone_fired_flags(tmp_path):
     assert store.state_data["last_evening_delay_reported"] == 0
 
 
+def test_evening_delay_shift_sanitizes_stepped_out_and_past_times(tmp_path):
+    """Verify evening delay shifts do not say 'extra time at desk' or show past leave-desk times when stepped out."""
+    state_file = str(tmp_path / "commute_test_delay.json")
+    store = rail_daemon.CommuteStateStore(file_path=state_file)
+    bot = rail_daemon.TelegramClient("test_token", "12345", store=store)
+    daemon = rail_daemon.RailDaemon(store=store, bot=bot)
+
+    store.state_data["evening_train"] = "16211"
+    store.state_data["evening_stepped_out"] = True
+    store.state_data["last_evening_delay_reported"] = 6
+
+    captured_messages = []
+    bot.send_message = lambda msg, **kwargs: captured_messages.append(msg)
+
+    fake_scan = [
+        {
+            "train_no": "16211",
+            "train_name": "Yesvantpur - Salem Express",
+            "boarding_station": "BLRR",
+            "scheduled_departure": "16:35",
+            "estimated_departure": "16:46",
+            "leave_desk_time": "16:21",
+            "lead_time_mins": 20,
+            "delay_mins": 11,
+            "current_location": "BPHI",
+        }
+    ]
+
+    fake_status = {
+        "train_no": "16211",
+        "delay_minutes": 11,
+        "current_station": "BPHI",
+        "current_station_name": "Baiyyappanahalli Cabin",
+        "stations": [
+            {"code": "BLRR", "name": "BELANDUR ROAD", "has_departed": False},
+        ],
+    }
+
+    with patch("rail_tracker.scan_evening_commute_options", return_value=fake_scan), \
+         patch("rail_tracker.get_live_train_status", return_value=fake_status):
+        daemon.handle_evening_tracking(current_time="16:39", now=datetime(2026, 11, 20, 16, 39))
+
+    assert len(captured_messages) == 1
+    sent = captured_messages[0]
+    # Must NOT say 'You have extra time at desk!'
+    assert "You have extra time at desk" not in sent
+    # Must NOT show 'New Leave-Desk Time: ~16:21'
+    assert "New Leave-Desk Time" not in sent
+    # Must display platform delay update and platform arrival
+    assert "Platform Delay Update" in sent
+    assert "Revised BLRR Arrival" in sent
+    assert "16:46" in sent
+
+
 
 
 
